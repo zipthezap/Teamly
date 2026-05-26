@@ -40,6 +40,10 @@ vi.mock('../../services/notificationFactory', () => ({
   }
 }));
 
+vi.mock('../../services/permissionService', () => ({
+  clearUserPermissionCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../../config/database', () => ({
   default: {
     tournament: {
@@ -6242,5 +6246,318 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
     expect(prisma.tournamentPool.create).not.toHaveBeenCalled();
     expect(prisma.tournamentRegistrationField.create).not.toHaveBeenCalled();
     expect(prisma.tournamentCourt.create).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEGATIVE AUTHORIZATION + ROLE-CONFLICT TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('Authorization: updateTeam captainUserId role-conflict checks', () => {
+  it('returns 400 when new captain user does not exist', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    // User not found
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1')
+      .send({ captainUserId: 'nonexistent-user' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/not found/i);
+  });
+
+  it('returns 403 when new captain is already an organizer/co-organizer', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)  // requester is org
+      .mockResolvedValueOnce(true); // new captain is also org
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'org-user', deletedAt: null } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1')
+      .send({ captainUserId: 'org-user' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/organizer|co-organizer/i);
+  });
+
+  it('returns 400 when new captain is already captain of another team', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst)
+      .mockResolvedValueOnce(mockTeam as any)  // current team lookup
+      .mockResolvedValueOnce({ id: 'team-2', name: 'Team Beta' } as any); // conflict
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)   // requester is org
+      .mockResolvedValueOnce(false); // new captain is not org
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'other-captain', deletedAt: null } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1')
+      .send({ captainUserId: 'other-captain' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/captain/i);
+  });
+});
+
+describe('Authorization: updatePlayer userId role-conflict checks', () => {
+  it('returns 400 when new userId does not exist', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/players/player-1')
+      .send({ userId: 'nonexistent-user' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/not found/i);
+  });
+
+  it('returns 403 when new userId belongs to an organizer/co-organizer', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)  // requester check
+      .mockResolvedValueOnce(true); // new userId is also org
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'org-user', deletedAt: null } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/players/player-1')
+      .send({ userId: 'org-user' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/organizer/i);
+  });
+
+  it('returns 400 when new userId is captain of another team', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst)
+      .mockResolvedValueOnce(mockTeam as any)
+      .mockResolvedValueOnce({ id: 'team-2' } as any); // captain conflict
+    vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'other-captain', deletedAt: null } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/players/player-1')
+      .send({ userId: 'other-captain' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/captain/i);
+  });
+});
+
+describe('Authorization: addAdmin player-conflict check', () => {
+  it('returns 400 when target user is already a team captain in this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...mockVerifiedUser, emailVerified: true, deletedAt: null } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    // Captain conflict
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ id: 'team-1' } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/admins')
+      .send({ userId: 'other-user-id' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/team registered/i);
+  });
+
+  it('returns 400 when target user is already a registered player in this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...mockVerifiedUser, emailVerified: true, deletedAt: null } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    // No captain conflict but player conflict
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValue({ id: 'player-1' } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/admins')
+      .send({ userId: 'other-user-id' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/player/i);
+  });
+
+  it('clears permission cache after admin is added', async () => {
+    const { clearUserPermissionCache } = await import('../../services/permissionService');
+    vi.mocked(clearUserPermissionCache).mockResolvedValue(undefined);
+
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...mockVerifiedUser, emailVerified: true, deletedAt: null } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentAdminRole.create).mockResolvedValue(mockAdminRole as any);
+
+    await request(app)
+      .post('/api/tournaments/tournament-1/admins')
+      .send({ userId: 'other-user-id' });
+
+    expect(clearUserPermissionCache).toHaveBeenCalledWith('other-user-id');
+  });
+});
+
+describe('Authorization: removeAdmin clears permission cache', () => {
+  it('clears permission cache after admin is removed', async () => {
+    const { clearUserPermissionCache } = await import('../../services/permissionService');
+    vi.mocked(clearUserPermissionCache).mockResolvedValue(undefined);
+
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(prisma.tournamentAdminRole.findFirst).mockResolvedValue(mockAdminRole as any);
+    vi.mocked(prisma.tournamentAdminRole.delete).mockResolvedValue(mockAdminRole as any);
+
+    await request(app).delete('/api/tournaments/tournament-1/admins/other-user-id');
+
+    expect(clearUserPermissionCache).toHaveBeenCalledWith('other-user-id');
+  });
+});
+
+describe('Idempotency: startMatch is safe under concurrent calls', () => {
+  it('returns 200 when match is already in_progress (idempotent)', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findFirst).mockResolvedValue({
+      ...mockMatch,
+      status: 'in_progress',
+      startedAt: new Date(),
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/start')
+      .send({});
+
+    expect(res.status).toBe(200);
+    // Should not call updateMany since match is already in_progress
+    expect(prisma.tournamentMatch.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when match is already completed', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findFirst).mockResolvedValue({
+      ...mockMatch,
+      status: 'completed',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/start')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/already completed/i);
+  });
+});
+
+describe('QR check-in: single-use token behavior', () => {
+  it('clears the checkInToken after successful check-in', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      checkInToken: 'valid-token',
+      checkedIn: false,
+      checkedInAt: null,
+    } as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({
+      ...mockTeam,
+      checkedIn: true,
+      checkedInAt: new Date(),
+      checkInToken: null,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/check-in/qr')
+      .send({ token: 'valid-token' });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ checkInToken: null }),
+      })
+    );
+  });
+
+  it('returns 404 when QR token does not match any team', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/check-in/qr')
+      .send({ token: 'invalid-or-used-token' });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('Notifications: addAdmin notifies new co-organizer', () => {
+  it('sends a notification to the newly added admin', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...mockVerifiedUser, emailVerified: true, deletedAt: null } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentAdminRole.create).mockResolvedValue(mockAdminRole as any);
+    vi.mocked(prisma.tournamentNotification.create).mockResolvedValue({} as any);
+
+    await request(app)
+      .post('/api/tournaments/tournament-1/admins')
+      .send({ userId: 'other-user-id' });
+
+    expect(prisma.tournamentNotification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: 'other-user-id' }),
+      })
+    );
+  });
+});
+
+describe('Notifications: resolveMatchIncident notifies reporter', () => {
+  it('notifies the incident reporter when incident is resolved', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentMatchIncident.findFirst).mockResolvedValue({
+      id: 'incident-1',
+      tournamentId: 'tournament-1',
+      matchId: 'match-1',
+      reportedByUserId: 'reporter-user-id',
+      status: 'open',
+      description: 'Test incident',
+    } as any);
+    vi.mocked(prisma.tournamentMatchIncident.update).mockResolvedValue({
+      id: 'incident-1',
+      status: 'resolved',
+    } as any);
+    vi.mocked(prisma.tournamentNotification.create).mockResolvedValue({} as any);
+
+    await request(app)
+      .put('/api/tournaments/tournament-1/incidents/incident-1/resolve')
+      .send({ status: 'resolved', resolution: 'Issue fixed' });
+
+    expect(prisma.tournamentNotification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: 'reporter-user-id' }),
+      })
+    );
   });
 });

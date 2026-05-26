@@ -47,6 +47,7 @@ router.delete(
 router.post(
   '/:id/cancel',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.cancelTournament)
 );
 
@@ -371,14 +372,17 @@ router.get(
 router.put(
   '/:id/teams/:teamId/check-in',
   noCache,
+  requireTeamPermission(Permission.TEAM_UPDATE),
   asyncHandler(tournamentController.checkInTeam)
 );
 // QR-based check-in (Phase 3)
 router.post(
   '/:id/teams/:teamId/check-in/token',
   noCache,
+  requireTeamPermission(Permission.TEAM_UPDATE),
   asyncHandler(tournamentController.generateCheckInQrToken)
 );
+// QR check-in via token — no auth required (token itself is the credential)
 router.post(
   '/:id/check-in/qr',
   noCache,
@@ -435,6 +439,8 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.assignMatchScorekeeper)
 );
+// Match start: organizer/admin OR assigned scorekeeper may start — kept as controller-level auth
+// because scorekeeper is an assigned user ID, not a tournament role in the permission matrix
 router.put(
   '/:id/matches/:matchId/start',
   noCache,
@@ -445,6 +451,7 @@ router.get(
   etagMiddleware({ weak: true }),
   asyncHandler(tournamentController.getMatchIncidents)
 );
+// Incident create: organizer/admin OR assigned scorekeeper — controller-level auth (same reason as start)
 router.post(
   '/:id/matches/:matchId/incidents',
   noCache,
@@ -453,6 +460,7 @@ router.post(
 router.put(
   '/:id/incidents/:incidentId/resolve',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.resolveMatchIncident)
 );
 
@@ -468,6 +476,7 @@ router.delete(
 );
 
 // Score disputes (#3)
+// Dispute create: participants of the involved teams only — controller-level auth (team-scoped, not tournament-level)
 router.post('/:id/matches/:matchId/disputes', noCache, asyncHandler(tournamentController.createScoreDispute));
 router.get(
   '/:id/matches/:matchId/disputes',
@@ -477,6 +486,7 @@ router.get(
 router.put(
   '/:id/disputes/:disputeId',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.resolveScoreDispute)
 );
 
@@ -517,6 +527,7 @@ router.get('/:id/teams/:teamId/player-stats', etagMiddleware({ weak: true }), as
 router.put(
   '/:id/teams/:teamId/players/:playerId/stats',
   noCache,
+  requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
   asyncHandler(tournamentController.upsertPlayerStat)
 );
 
@@ -524,6 +535,7 @@ router.put(
 router.post(
   '/:id/clone',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.cloneTournament)
 );
 
@@ -531,6 +543,7 @@ router.post(
 router.post(
   '/:id/share-token',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.generateShareToken)
 );
 
@@ -538,6 +551,7 @@ router.post(
 router.get(
   '/:id/analytics',
   etagMiddleware({ weak: true }),
+  requireTournamentPermission(Permission.TOURNAMENT_VIEW_ADMIN_PANEL),
   asyncHandler(tournamentController.getTournamentAnalytics)
 );
 

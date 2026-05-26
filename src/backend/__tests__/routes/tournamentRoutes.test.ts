@@ -237,6 +237,14 @@ describe('Tournament Routes', () => {
     expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_BRACKETS);
     expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_MATCHES);
     expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_SUBMIT_SCORES);
+    // Newly wired endpoints
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_UPDATE);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_VIEW_ADMIN_PANEL);
+  });
+
+  it('wires team-scoped endpoints to team permission middleware', async () => {
+    expect(routeSecurityMocks.requireTeamPermission).toHaveBeenCalledWith(Permission.TEAM_UPDATE);
+    expect(routeSecurityMocks.requireTeamPermission).toHaveBeenCalledWith(Permission.TEAM_MANAGE_PLAYERS);
   });
 
   it('applies authenticated limiter to protected routes', async () => {
