@@ -71,6 +71,99 @@ type QualifiedTeam = StandingLike & {
   rankInGroup: number;
 };
 
+const DEFAULT_TIEBREAKER_RULES = ['goal_difference', 'goals_for'] as const;
+
+type TiebreakerRule = (typeof DEFAULT_TIEBREAKER_RULES)[number] | 'goals_against' | 'wins' | 'head_to_head';
+
+const normalizeTiebreakerRules = (tiebreakerRules?: string[] | null): string[] =>
+  tiebreakerRules && tiebreakerRules.length > 0 ? tiebreakerRules : [...DEFAULT_TIEBREAKER_RULES];
+
+const extractHeadToHeadMetric = (standing: Record<string, unknown>): number | null => {
+  const candidates = [
+    standing.headToHeadPoints,
+    standing.head_to_head_points,
+    standing.headToHeadScore,
+    standing.head_to_head_score,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) return candidate;
+  }
+  return null;
+};
+
+const compareStableStandingIdentity = (
+  a: Record<string, unknown>,
+  b: Record<string, unknown>
+): number => {
+  const identityA = typeof a.teamId === 'string'
+    ? a.teamId
+    : typeof a.id === 'string'
+      ? a.id
+      : '';
+  const identityB = typeof b.teamId === 'string'
+    ? b.teamId
+    : typeof b.id === 'string'
+      ? b.id
+      : '';
+  return identityA.localeCompare(identityB);
+};
+
+const compareStandingsWithTiebreakers = (
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  tiebreakerRules?: string[] | null
+): number => {
+  const pointsA = typeof a.points === 'number' ? a.points : 0;
+  const pointsB = typeof b.points === 'number' ? b.points : 0;
+  if (pointsB !== pointsA) return pointsB - pointsA;
+
+  const goalsForA = typeof a.goalsFor === 'number' ? a.goalsFor : 0;
+  const goalsForB = typeof b.goalsFor === 'number' ? b.goalsFor : 0;
+  const goalsAgainstA = typeof a.goalsAgainst === 'number' ? a.goalsAgainst : 0;
+  const goalsAgainstB = typeof b.goalsAgainst === 'number' ? b.goalsAgainst : 0;
+  const winsA = typeof a.wins === 'number' ? a.wins : 0;
+  const winsB = typeof b.wins === 'number' ? b.wins : 0;
+  const goalDifferenceA = goalsForA - goalsAgainstA;
+  const goalDifferenceB = goalsForB - goalsAgainstB;
+  const rules = normalizeTiebreakerRules(tiebreakerRules);
+  const appliedRules = new Set(rules);
+
+  const compareByRule = (rule: string): number => {
+    switch (rule as TiebreakerRule) {
+      case 'goal_difference':
+        return goalDifferenceB - goalDifferenceA;
+      case 'goals_for':
+        return goalsForB - goalsForA;
+      case 'goals_against':
+        return goalsAgainstA - goalsAgainstB;
+      case 'wins':
+        return winsB - winsA;
+      case 'head_to_head': {
+        const headToHeadA = extractHeadToHeadMetric(a);
+        const headToHeadB = extractHeadToHeadMetric(b);
+        if (headToHeadA === null || headToHeadB === null) return 0;
+        return headToHeadB - headToHeadA;
+      }
+      default:
+        return 0;
+    }
+  };
+
+  for (const rule of rules) {
+    const comparison = compareByRule(rule);
+    if (comparison !== 0) return comparison;
+  }
+
+  const fallbackRules: TiebreakerRule[] = ['wins', 'goal_difference', 'goals_for', 'goals_against'];
+  for (const fallbackRule of fallbackRules) {
+    if (appliedRules.has(fallbackRule)) continue;
+    const fallbackComparison = compareByRule(fallbackRule);
+    if (fallbackComparison !== 0) return fallbackComparison;
+  }
+
+  return compareStableStandingIdentity(a, b);
+};
+
 /**
  * Returns the largest supported knockout bracket size (power of two, capped at 16)
  * that fits the number of available teams, or 0 when there are not enough teams
@@ -149,35 +242,7 @@ const compareStandingsPerformance = (
   b: StandingLike,
   tiebreakerRules?: string[] | null
 ) => {
-  if (b.points !== a.points) return b.points - a.points;
-
-  const rules = tiebreakerRules && tiebreakerRules.length > 0
-    ? tiebreakerRules
-    : ['goal_difference', 'goals_for'];
-
-  for (const rule of rules) {
-    switch (rule) {
-      case 'goal_difference': {
-        const gdA = a.goalsFor - a.goalsAgainst;
-        const gdB = b.goalsFor - b.goalsAgainst;
-        if (gdB !== gdA) return gdB - gdA;
-        break;
-      }
-      case 'goals_for':
-        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-        break;
-      case 'goals_against':
-        if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
-        break;
-      case 'wins':
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        break;
-      default:
-        break;
-    }
-  }
-
-  return 0;
+  return compareStandingsWithTiebreakers(a as Record<string, unknown>, b as Record<string, unknown>, tiebreakerRules);
 };
 
 const compareQualifiedTeams = (
@@ -1746,35 +1811,13 @@ export const sortStandingsByTiebreakerRules = <T extends {
   standings: T[],
   tiebreakerRules?: string[] | null
 ): T[] => {
-  const rules = tiebreakerRules && tiebreakerRules.length > 0
-    ? tiebreakerRules
-    : ['goal_difference', 'goals_for'];
-
-  return [...standings].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    for (const rule of rules) {
-      switch (rule) {
-        case 'goal_difference': {
-          const gdA = a.goalsFor - a.goalsAgainst;
-          const gdB = b.goalsFor - b.goalsAgainst;
-          if (gdB !== gdA) return gdB - gdA;
-          break;
-        }
-        case 'goals_for':
-          if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-          break;
-        case 'goals_against':
-          if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
-          break;
-        case 'wins':
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          break;
-        default:
-          break;
-      }
-    }
-    return 0;
-  });
+  return [...standings].sort((a, b) =>
+    compareStandingsWithTiebreakers(
+      a as unknown as Record<string, unknown>,
+      b as unknown as Record<string, unknown>,
+      tiebreakerRules
+    )
+  );
 };
 
 // ==================== SPORT-SPECIFIC SCORE VALIDATION ====================

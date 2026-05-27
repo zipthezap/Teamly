@@ -1019,18 +1019,10 @@ export const getTournament = async (req: Request, res: Response) => {
 
   const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
-  // Apply goal-difference tiebreaker (GD = goalsFor - goalsAgainst) in memory,
-  // consistent with getStandings. Prisma nested orderBy cannot express computed columns.
-  const sortedStandings = [...(syncedTournament.standings ?? [])].sort((
-    a: { points: number; goalsFor: number; goalsAgainst: number },
-    b: { points: number; goalsFor: number; goalsAgainst: number }
-  ) => {
-    if (b.points !== a.points) return b.points - a.points;
-    const gdA = a.goalsFor - a.goalsAgainst;
-    const gdB = b.goalsFor - b.goalsAgainst;
-    if (gdB !== gdA) return gdB - gdA;
-    return b.goalsFor - a.goalsFor;
-  });
+  const sortedStandings = tournamentService.sortStandingsByTiebreakerRules(
+    syncedTournament.standings ?? [],
+    (syncedTournament.tiebreakerRules as string[] | null | undefined) ?? null
+  );
 
   res.json({ ...syncedTournament, standings: sortedStandings });
 };

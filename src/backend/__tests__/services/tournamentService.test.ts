@@ -26,6 +26,7 @@ import {
   generateRandomizedSingleEliminationBracketsFromPools,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
+  sortStandingsByTiebreakerRules,
   advanceWinners,
 } from '../../services/tournamentService';
 import prisma from '../../config/database';
@@ -790,6 +791,56 @@ describe('Tournament Service', () => {
       await expect(
         generatePoolAwareBrackets('tournament-1', { fallbackToRoundRobin: false })
       ).rejects.toThrow('No populated groups or pools are available to generate a groups + knockout stage');
+    });
+  });
+
+  describe('sortStandingsByTiebreakerRules', () => {
+    it('applies head-to-head values when explicitly configured', () => {
+      const standings = [
+        {
+          teamId: 'team-a',
+          points: 6,
+          wins: 2,
+          goalsFor: 5,
+          goalsAgainst: 3,
+          headToHeadPoints: 1,
+        },
+        {
+          teamId: 'team-b',
+          points: 6,
+          wins: 2,
+          goalsFor: 5,
+          goalsAgainst: 3,
+          headToHeadPoints: 4,
+        },
+      ];
+
+      const sorted = sortStandingsByTiebreakerRules(standings, ['head_to_head']);
+
+      expect(sorted.map((standing) => standing.teamId)).toEqual(['team-b', 'team-a']);
+    });
+
+    it('uses a deterministic fallback when every configured rule is tied', () => {
+      const standings = [
+        {
+          teamId: 'team-z',
+          points: 3,
+          wins: 1,
+          goalsFor: 2,
+          goalsAgainst: 1,
+        },
+        {
+          teamId: 'team-a',
+          points: 3,
+          wins: 1,
+          goalsFor: 2,
+          goalsAgainst: 1,
+        },
+      ];
+
+      const sorted = sortStandingsByTiebreakerRules(standings, ['wins']);
+
+      expect(sorted.map((standing) => standing.teamId)).toEqual(['team-a', 'team-z']);
     });
   });
 
