@@ -1572,6 +1572,24 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when scores are not whole numbers', async () => {
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1.5, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('whole number');
+  });
+
+  it('returns 400 when scores exceed the supported limit', async () => {
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1000, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('999 or less');
+  });
+
   it('returns 400 for draw score in elimination format', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
@@ -1790,6 +1808,24 @@ describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore)', (
       .send({ homeScore: 2 });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when admin score overrides are not whole numbers', async () => {
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 0.5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('whole number');
+  });
+
+  it('returns 400 when admin score overrides exceed the supported limit', async () => {
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1000 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('999 or less');
   });
 
   it('returns 403 when user is not organizer or admin', async () => {
