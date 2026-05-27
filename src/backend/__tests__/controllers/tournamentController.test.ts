@@ -741,6 +741,54 @@ describe('POST /api/tournaments (createTournament)', () => {
 
     expect(res.status).toBe(201);
   });
+
+  it('persists advanced tournament policy settings', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      timezone: 'Europe/Berlin',
+      noShowGraceMinutes: 10,
+      noShowAutoForfeit: true,
+      forfeitScoreFor: 3,
+      forfeitScoreAgainst: 0,
+      minTeamRestMinutes: 20,
+      autoPromoteRegistrationWaitlist: true,
+      rescheduleCutoffMinutes: 30,
+      allowRescheduleAfterStart: true,
+      seedingPolicy: 'random',
+      enableThirdPlaceMatch: false,
+      allowByes: false,
+      contingencyMode: 'delayed',
+      contingencyDelayMinutes: 15,
+    });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          timezone: 'Europe/Berlin',
+          noShowGraceMinutes: 10,
+          noShowAutoForfeit: true,
+          forfeitScoreFor: 3,
+          forfeitScoreAgainst: 0,
+          minTeamRestMinutes: 20,
+          seedingPolicy: 'random',
+          allowByes: false,
+          contingencyMode: 'delayed',
+        }),
+      })
+    );
+  });
+
+  it('returns 400 for invalid timezone policy value', async () => {
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      timezone: 'Not/A Timezone',
+    });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('GET /api/tournaments (getTournaments)', () => {
@@ -909,6 +957,45 @@ describe('PUT /api/tournaments/:id (updateTournament)', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('before they start');
     expect(vi.mocked(prisma.tournament.update)).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when forfeit scores are invalid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ forfeitScoreFor: 0, forfeitScoreAgainst: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('forfeitScoreFor');
+  });
+
+  it('updates advanced seeding and contingency settings', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.update).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({
+        seedingPolicy: 'random',
+        allowByes: false,
+        contingencyMode: 'delayed',
+        contingencyDelayMinutes: 20,
+      });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournament.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          seedingPolicy: 'random',
+          allowByes: false,
+          contingencyMode: 'delayed',
+          contingencyDelayMinutes: 20,
+        }),
+      })
+    );
   });
 });
 
