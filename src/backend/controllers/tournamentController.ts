@@ -59,6 +59,8 @@ const MAX_TEAMS_UPPER_BOUND = 1000;
 const MAX_BATCH_PAYMENT_TEAMS = 500;
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const MAX_MATCH_DURATION_MINUTES = 480;
+const MILLISECONDS_PER_MINUTE = 60_000;
+const MAX_BULK_SHIFT_MINUTES = 1_440;
 const MAX_PAYMENT_METADATA_BYTES = 4096;
 const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
 const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -72,6 +74,8 @@ const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in toke
 // Minimum cool-down window between referee assignments to reduce back-to-back fatigue.
 const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
 const OVERLAP_GAP_INDICATOR = -1;
+const DEFAULT_FORFEIT_SCORE_FOR = 1;
+const DEFAULT_FORFEIT_SCORE_AGAINST = 0;
 const TIMEZONE_IANA_LIKE_REGEX = /^(UTC|[A-Za-z_]+\/[A-Za-z0-9_\-+]+(?:\/[A-Za-z0-9_\-+]+)?)$/;
 type PoolWaitlistPromoterClient = Pick<typeof prisma, 'tournamentPoolWaitlist' | 'tournamentPool' | 'tournamentTeam'>;
 
@@ -174,6 +178,21 @@ const parseBoolean = (value: unknown, fieldName: string): boolean => {
   return value;
 };
 
+const assertValidTournamentTimezone = (value: unknown): string => {
+  if (typeof value !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(value.trim())) {
+    throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
+  }
+  const normalized = value.trim();
+  if (normalized === 'UTC') return normalized;
+  try {
+    // Throws RangeError when the timezone is unknown.
+    new Intl.DateTimeFormat('en-US', { timeZone: normalized }).format(new Date());
+  } catch {
+    throw new BadRequestError('timezone must reference a real IANA timezone');
+  }
+  return normalized;
+};
+
 const normalizeRegistrationAnswers = (
   answers: unknown
 ): Array<{ fieldId: string; value: string }> => {
@@ -200,8 +219,8 @@ const hasScheduleOverlap = (
   startB: Date,
   durationMinutesB: number
 ): boolean => {
-  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
-  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  const endA = new Date(startA.getTime() + durationMinutesA * MILLISECONDS_PER_MINUTE);
+  const endB = new Date(startB.getTime() + durationMinutesB * MILLISECONDS_PER_MINUTE);
   return startA < endB && startB < endA;
 };
 
@@ -211,15 +230,15 @@ const getRequiredRestGapMinutes = (
   startB: Date,
   durationMinutesB: number
 ): number => {
-  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
-  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  const endA = new Date(startA.getTime() + durationMinutesA * MILLISECONDS_PER_MINUTE);
+  const endB = new Date(startB.getTime() + durationMinutesB * MILLISECONDS_PER_MINUTE);
   if (hasScheduleOverlap(startA, durationMinutesA, startB, durationMinutesB)) {
     return OVERLAP_GAP_INDICATOR;
   }
   if (endA <= startB) {
-    return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / 60_000));
+    return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / MILLISECONDS_PER_MINUTE));
   }
-  return Math.max(0, Math.floor((startA.getTime() - endB.getTime()) / 60_000));
+  return Math.max(0, Math.floor((startA.getTime() - endB.getTime()) / MILLISECONDS_PER_MINUTE));
 };
 
 const maybeAutoGenerateGroupsKnockoutBrackets = async (
@@ -639,11 +658,8 @@ export const createTournament = async (req: Request, res: Response) => {
     }
   }
 
-  if (timezone !== undefined && timezone !== null) {
-    if (typeof timezone !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(timezone.trim())) {
-      throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
-    }
-  }
+  const normalizedTimezone =
+    timezone !== undefined && timezone !== null ? assertValidTournamentTimezone(timezone) : undefined;
 
   if (noShowGraceMinutes !== undefined) parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes');
   if (minTeamRestMinutes !== undefined) parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes');
@@ -762,7 +778,7 @@ export const createTournament = async (req: Request, res: Response) => {
       // Self-ref
       selfRefEnabled: selfRefEnabled || false,
       // Advanced tournament policy controls
-      timezone: timezone ? timezone.trim() : undefined,
+      timezone: normalizedTimezone,
       noShowGraceMinutes:
         noShowGraceMinutes !== undefined ? parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes') : undefined,
       noShowAutoForfeit: noShowAutoForfeit !== undefined ? parseBoolean(noShowAutoForfeit, 'noShowAutoForfeit') : undefined,
@@ -1260,10 +1276,8 @@ export const updateTournament = async (req: Request, res: Response) => {
   if (timezone !== undefined) {
     if (timezone === null || timezone === '') {
       updateData.timezone = null;
-    } else if (typeof timezone !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(timezone.trim())) {
-      throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
     } else {
-      updateData.timezone = timezone.trim();
+      updateData.timezone = assertValidTournamentTimezone(timezone);
     }
   }
   if (noShowGraceMinutes !== undefined) {
@@ -1279,9 +1293,11 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.forfeitScoreAgainst = parseNonNegativeInteger(forfeitScoreAgainst, 'forfeitScoreAgainst');
   }
   const nextForfeitScoreFor =
-    (updateData.forfeitScoreFor as number | undefined) ?? tournament!.forfeitScoreFor ?? 1;
+    (updateData.forfeitScoreFor as number | undefined) ?? tournament!.forfeitScoreFor ?? DEFAULT_FORFEIT_SCORE_FOR;
   const nextForfeitScoreAgainst =
-    (updateData.forfeitScoreAgainst as number | undefined) ?? tournament!.forfeitScoreAgainst ?? 0;
+    (updateData.forfeitScoreAgainst as number | undefined) ??
+    tournament!.forfeitScoreAgainst ??
+    DEFAULT_FORFEIT_SCORE_AGAINST;
   if (nextForfeitScoreFor <= nextForfeitScoreAgainst) {
     throw new BadRequestError('forfeitScoreFor must be greater than forfeitScoreAgainst');
   }
@@ -1704,11 +1720,14 @@ export const deleteTeam = async (req: Request, res: Response) => {
       where: { id: teamId }
     });
 
+    const parsedWithdrawalDeadline = tournament!.withdrawalDeadline
+      ? new Date(tournament!.withdrawalDeadline)
+      : null;
     const shouldAutoPromote =
       tournament!.autoPromoteRegistrationWaitlist === true &&
       (
-        !tournament!.withdrawalDeadline ||
-        new Date() <= new Date(tournament!.withdrawalDeadline)
+        !parsedWithdrawalDeadline ||
+        new Date() <= parsedWithdrawalDeadline
       );
 
     if (!shouldAutoPromote) {
@@ -5817,7 +5836,7 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
   }
 
   if (isReschedule && (tournament.rescheduleCutoffMinutes ?? 0) > 0 && match.scheduledAt) {
-    const cutoffMs = (tournament.rescheduleCutoffMinutes as number) * 60_000;
+    const cutoffMs = (tournament.rescheduleCutoffMinutes as number) * MILLISECONDS_PER_MINUTE;
     const cutoffAt = new Date(match.scheduledAt.getTime() - cutoffMs);
     if (new Date() >= cutoffAt) {
       throw new BadRequestError(
@@ -5935,8 +5954,10 @@ export const bulkShiftScheduledMatches = async (req: Request, res: Response) => 
   const { minutes, contingencyMode, contingencyNotes } = req.body ?? {};
 
   const shiftMinutes = Number(minutes);
-  if (!Number.isInteger(shiftMinutes) || shiftMinutes === 0 || Math.abs(shiftMinutes) > 1440) {
-    throw new BadRequestError('minutes must be a non-zero integer between -1440 and 1440');
+  if (!Number.isInteger(shiftMinutes) || shiftMinutes === 0 || Math.abs(shiftMinutes) > MAX_BULK_SHIFT_MINUTES) {
+    throw new BadRequestError(
+      `minutes must be a non-zero integer between -${MAX_BULK_SHIFT_MINUTES} and ${MAX_BULK_SHIFT_MINUTES}`
+    );
   }
 
   const tournament = ensureResourceExists(
@@ -5951,6 +5972,12 @@ export const bulkShiftScheduledMatches = async (req: Request, res: Response) => 
     contingencyMode !== undefined
       ? parseEnumInput(contingencyMode, TOURNAMENT_CONTINGENCY_MODES, 'contingencyMode')
       : undefined;
+  const nextContingencyDelayMinutes = (tournament.contingencyDelayMinutes ?? 0) + shiftMinutes;
+  if (nextContingencyDelayMinutes < 0) {
+    throw new BadRequestError(
+      'Requested shift would make contingencyDelayMinutes negative; reduce rollback magnitude or reset contingency settings first'
+    );
+  }
 
   const matches = await prisma.tournamentMatch.findMany({
     where: {
@@ -5964,7 +5991,7 @@ export const bulkShiftScheduledMatches = async (req: Request, res: Response) => 
   const updatedCount = await prisma.$transaction(async (tx) => {
     for (const match of matches) {
       if (!match.scheduledAt) continue;
-      const shifted = new Date(match.scheduledAt.getTime() + shiftMinutes * 60_000);
+      const shifted = new Date(match.scheduledAt.getTime() + shiftMinutes * MILLISECONDS_PER_MINUTE);
       await tx.tournamentMatch.update({
         where: { id: match.id },
         data: { scheduledAt: shifted },
@@ -5981,7 +6008,7 @@ export const bulkShiftScheduledMatches = async (req: Request, res: Response) => 
               ? null
               : sanitizeString(String(contingencyNotes))
             : tournament.contingencyNotes,
-        contingencyDelayMinutes: Math.max(0, (tournament.contingencyDelayMinutes ?? 0) + shiftMinutes),
+        contingencyDelayMinutes: nextContingencyDelayMinutes,
       },
     });
 
@@ -7336,7 +7363,7 @@ export const createMatchIncident = async (req: Request, res: Response) => {
 
   const slaMs = (typeof slaMinutes === 'number' && slaMinutes > 0
     ? slaMinutes
-    : DEFAULT_INCIDENT_SLA_MINUTES) * 60_000;
+    : DEFAULT_INCIDENT_SLA_MINUTES) * MILLISECONDS_PER_MINUTE;
 
   const incident = await prisma.tournamentMatchIncident.create({
     data: {
@@ -7596,7 +7623,7 @@ export const getTournamentAnalytics = async (req: Request, res: Response) => {
       ? Math.round(
           completedMatches.reduce((sum, m) => {
             const dur =
-              (new Date(m.completedAt!).getTime() - new Date(m.startedAt!).getTime()) / 60_000;
+              (new Date(m.completedAt!).getTime() - new Date(m.startedAt!).getTime()) / MILLISECONDS_PER_MINUTE;
             return sum + dur;
           }, 0) / completedMatches.length
         )
