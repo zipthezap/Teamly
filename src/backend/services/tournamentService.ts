@@ -589,12 +589,15 @@ export const isRegisteredPlayer = async (teamId: string, userId: string): Promis
  * - Registered player on the referee team
  */
 export const canSubmitScore = async (
-  match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null },
+  match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null; scorekeeperUserId?: string | null },
   tournament: { id: string; organizerId: string },
   userId: string
 ): Promise<boolean> => {
   // Check if organizer (no DB query needed)
   if (tournament.organizerId === userId) {
+    return true;
+  }
+  if (match.scorekeeperUserId === userId) {
     return true;
   }
 
@@ -1450,7 +1453,6 @@ export const createTeamInvitation = async (
     });
   } catch (err) {
     // Non-fatal: log and continue
-    // eslint-disable-next-line no-console
     console.error('Failed to create InviteLog for tournament invitation', err);
   }
   
@@ -1642,10 +1644,15 @@ export const expireOldInvitations = async () => {
  * Default: points, goal_difference, goals_for.
  * Custom rules: "goal_difference" | "goals_for" | "goals_against" | "wins" | "head_to_head"
  */
-export const sortStandingsByTiebreakerRules = (
-  standings: any[],
+export const sortStandingsByTiebreakerRules = <T extends {
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  wins: number;
+}>(
+  standings: T[],
   tiebreakerRules?: string[] | null
-): any[] => {
+): T[] => {
   const rules = tiebreakerRules && tiebreakerRules.length > 0
     ? tiebreakerRules
     : ['goal_difference', 'goals_for'];

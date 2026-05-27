@@ -1,4 +1,4 @@
-// prisma/seed.js
+﻿// prisma/seed.js
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
@@ -1186,7 +1186,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-teamup-5',
-      title: 'Available for hockey games – intermediate skater',
+      title: 'Available for hockey games â€“ intermediate skater',
       description: 'Looking for a pickup hockey game or team that needs a forward. Available weekday evenings.',
       sportType: 'iceHockey',
       requestType: 'looking_for_play',
@@ -2394,7 +2394,7 @@ async function main() {
 
   // Create teams for Pool B (Championship Division) - 4 teams (FULL)
   const teamNamesPool4B = [
-    'Laval Rockets', 'Gatineau Olympiques', 'Sherbrooke Phoenix', 'Trois-Rivières Lions'
+    'Laval Rockets', 'Gatineau Olympiques', 'Sherbrooke Phoenix', 'Trois-RiviÃ¨res Lions'
   ];
   const pool4BTeams = [];
   for (let i = 0; i < teamNamesPool4B.length; i++) {
@@ -2544,312 +2544,261 @@ async function main() {
     }
   });
 
-  // Create matches for Pool A with different timestamps
-  const baseDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // yesterday (tournament in progress)
-  
-  // Pool A Match 1: Day 1, 10:00 AM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-1' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-1',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[0].id,
-      awayTeamId: pool4ATeams[1].id,
-      stage: 'group_stage',
-      roundNumber: 1,
-      groupName: pool4A.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 10 * 60 * 60 * 1000), // 10:00 AM
-      matchOrder: 1
-    }
+  // ---------------------------------------------------------------------------
+  // Tournament 4 matches — most group games completed, 2 remaining
+  // Pool A: 5/6 done · Pool B: 5/6 done · Pools C+D: all 6/6 done
+  // ---------------------------------------------------------------------------
+  // baseDate = 3 days ago so completed matches are firmly in the past
+  const baseDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const h = (hrs) => new Date(baseDate.getTime() + hrs * 3600 * 1000);
+  const mkCompleted = (id, tId, home, away, hs, as_, round, group, order, ref) => ({
+    id, tournamentId: tId, homeTeamId: home, awayTeamId: away,
+    refereeTeamId: ref || null, homeScore: hs, awayScore: as_,
+    stage: 'group_stage', roundNumber: round, groupName: group,
+    status: 'completed',
+    scheduledAt: h(order * 4), startedAt: h(order * 4), completedAt: h(order * 4 + 1.5),
+    matchOrder: order,
+  });
+  const mkScheduled = (id, tId, home, away, round, group, order, ref) => ({
+    id, tournamentId: tId, homeTeamId: home, awayTeamId: away,
+    refereeTeamId: ref || null,
+    stage: 'group_stage', roundNumber: round, groupName: group,
+    status: 'scheduled',
+    scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+    matchOrder: order,
   });
 
-  // Pool A Match 2: Day 1, 2:00 PM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-2' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-2',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[2].id,
-      awayTeamId: pool4ATeams[3].id,
-      stage: 'group_stage',
-      roundNumber: 1,
-      groupName: pool4A.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 14 * 60 * 60 * 1000), // 2:00 PM
-      matchOrder: 2
-    }
-  });
+  // Pool A — 6 round-robin matches, 5 completed, 1 scheduled
+  const pool4AMatchDefs = [
+    mkCompleted('seed-match-4a-1', tournament4.id, pool4ATeams[0].id, pool4ATeams[1].id, 3, 1, 1, pool4A.name, 1, pool4ATeams[2].id),
+    mkCompleted('seed-match-4a-2', tournament4.id, pool4ATeams[2].id, pool4ATeams[3].id, 4, 2, 1, pool4A.name, 2, pool4ATeams[0].id),
+    mkCompleted('seed-match-4a-3', tournament4.id, pool4ATeams[0].id, pool4ATeams[2].id, 2, 1, 2, pool4A.name, 3, pool4ATeams[3].id),
+    mkCompleted('seed-match-4a-4', tournament4.id, pool4ATeams[1].id, pool4ATeams[3].id, 1, 1, 2, pool4A.name, 4, pool4ATeams[0].id),
+    mkCompleted('seed-match-4a-5', tournament4.id, pool4ATeams[0].id, pool4ATeams[3].id, 4, 2, 3, pool4A.name, 5, pool4ATeams[1].id),
+    mkScheduled('seed-match-4a-6', tournament4.id, pool4ATeams[1].id, pool4ATeams[2].id, 3, pool4A.name, 6, pool4ATeams[3].id),
+  ];
+  for (const def of pool4AMatchDefs) {
+    await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
+  }
 
-  // Pool A Match 3: Day 2, 11:00 AM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-3' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-3',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[0].id,
-      awayTeamId: pool4ATeams[2].id,
-      refereeTeamId: pool4ATeams[1].id, // Team on break acts as referee
-      stage: 'group_stage',
-      roundNumber: 2,
-      groupName: pool4A.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 25 * 60 * 60 * 1000), // Day 2, 11:00 AM
-      matchOrder: 3
-    }
-  });
+  // Pool B — 6 round-robin matches, 5 completed, 1 scheduled
+  const pool4BMatchDefs = [
+    mkCompleted('seed-match-4b-1', tournament4.id, pool4BTeams[0].id, pool4BTeams[1].id, 2, 1, 1, pool4B.name, 1, pool4BTeams[2].id),
+    mkCompleted('seed-match-4b-2', tournament4.id, pool4BTeams[2].id, pool4BTeams[3].id, 1, 3, 1, pool4B.name, 2, pool4BTeams[0].id),
+    mkCompleted('seed-match-4b-3', tournament4.id, pool4BTeams[0].id, pool4BTeams[2].id, 3, 0, 2, pool4B.name, 3, pool4BTeams[3].id),
+    mkCompleted('seed-match-4b-4', tournament4.id, pool4BTeams[1].id, pool4BTeams[3].id, 2, 2, 2, pool4B.name, 4, pool4BTeams[2].id),
+    mkCompleted('seed-match-4b-5', tournament4.id, pool4BTeams[0].id, pool4BTeams[3].id, 1, 0, 3, pool4B.name, 5, pool4BTeams[2].id),
+    mkScheduled('seed-match-4b-6', tournament4.id, pool4BTeams[1].id, pool4BTeams[2].id, 3, pool4B.name, 6, pool4BTeams[0].id),
+  ];
+  for (const def of pool4BMatchDefs) {
+    await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
+  }
 
-  // Pool A Match 4: Day 2, 3:00 PM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-4' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-4',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[1].id,
-      awayTeamId: pool4ATeams[3].id,
-      refereeTeamId: pool4ATeams[2].id,
-      stage: 'group_stage',
-      roundNumber: 2,
-      groupName: pool4A.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 29 * 60 * 60 * 1000), // Day 2, 3:00 PM
-      matchOrder: 4
-    }
-  });
+  // Pool C — all 6 matches completed
+  const pool4CMatchDefs = [
+    mkCompleted('seed-match-4c-1', tournament4.id, pool4CTeams[0].id, pool4CTeams[1].id, 5, 3, 1, pool4C.name, 1, pool4CTeams[2].id),
+    mkCompleted('seed-match-4c-2', tournament4.id, pool4CTeams[2].id, pool4CTeams[3].id, 2, 2, 1, pool4C.name, 2, pool4CTeams[0].id),
+    mkCompleted('seed-match-4c-3', tournament4.id, pool4CTeams[0].id, pool4CTeams[2].id, 4, 1, 2, pool4C.name, 3, pool4CTeams[3].id),
+    mkCompleted('seed-match-4c-4', tournament4.id, pool4CTeams[1].id, pool4CTeams[3].id, 3, 2, 2, pool4C.name, 4, pool4CTeams[0].id),
+    mkCompleted('seed-match-4c-5', tournament4.id, pool4CTeams[0].id, pool4CTeams[3].id, 2, 1, 3, pool4C.name, 5, pool4CTeams[1].id),
+    mkCompleted('seed-match-4c-6', tournament4.id, pool4CTeams[1].id, pool4CTeams[2].id, 4, 3, 3, pool4C.name, 6, pool4CTeams[3].id),
+  ];
+  for (const def of pool4CMatchDefs) {
+    await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
+  }
 
-  // Pool A Match 5: Day 3, 12:00 PM (with scores - completed)
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-5' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-5',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[0].id,
-      awayTeamId: pool4ATeams[3].id,
-      refereeTeamId: pool4ATeams[1].id,
-      homeScore: 4,
-      awayScore: 2,
-      stage: 'group_stage',
-      roundNumber: 3,
-      groupName: pool4A.name,
-      status: 'completed',
-      scheduledAt: new Date(baseDate.getTime() + 50 * 60 * 60 * 1000), // Day 3, 12:00 PM
-      startedAt: new Date(baseDate.getTime() + 50 * 60 * 60 * 1000),
-      completedAt: new Date(baseDate.getTime() + 52 * 60 * 60 * 1000),
-      matchOrder: 5
-    }
-  });
+  // Pool D — all 6 matches completed
+  const pool4DMatchDefs = [
+    mkCompleted('seed-match-4d-1', tournament4.id, pool4DTeams[0].id, pool4DTeams[1].id, 3, 2, 1, pool4D.name, 1, pool4DTeams[2].id),
+    mkCompleted('seed-match-4d-2', tournament4.id, pool4DTeams[2].id, pool4DTeams[3].id, 1, 4, 1, pool4D.name, 2, pool4DTeams[0].id),
+    mkCompleted('seed-match-4d-3', tournament4.id, pool4DTeams[0].id, pool4DTeams[2].id, 2, 0, 2, pool4D.name, 3, pool4DTeams[3].id),
+    mkCompleted('seed-match-4d-4', tournament4.id, pool4DTeams[1].id, pool4DTeams[3].id, 3, 3, 2, pool4D.name, 4, pool4DTeams[0].id),
+    mkCompleted('seed-match-4d-5', tournament4.id, pool4DTeams[0].id, pool4DTeams[3].id, 1, 2, 3, pool4D.name, 5, pool4DTeams[1].id),
+    mkCompleted('seed-match-4d-6', tournament4.id, pool4DTeams[1].id, pool4DTeams[2].id, 2, 1, 3, pool4D.name, 6, pool4DTeams[3].id),
+  ];
+  for (const def of pool4DMatchDefs) {
+    await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
+  }
 
-  // Pool A Match 6: Day 3, 4:00 PM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4a-6' },
-    update: {},
-    create: {
-      id: 'seed-match-4a-6',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4ATeams[1].id,
-      awayTeamId: pool4ATeams[2].id,
-      refereeTeamId: pool4ATeams[3].id,
-      stage: 'group_stage',
-      roundNumber: 3,
-      groupName: pool4A.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 54 * 60 * 60 * 1000), // Day 3, 4:00 PM
-      matchOrder: 6
-    }
-  });
-
-  // Create matches for Pool B
-  // Pool B Match 1: Day 1, 11:30 AM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4b-1' },
-    update: {},
-    create: {
-      id: 'seed-match-4b-1',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4BTeams[0].id,
-      awayTeamId: pool4BTeams[1].id,
-      stage: 'group_stage',
-      roundNumber: 1,
-      groupName: pool4B.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 11.5 * 60 * 60 * 1000), // 11:30 AM
-      matchOrder: 1
-    }
-  });
-
-  // Pool B Match 2: Day 1, 3:30 PM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4b-2' },
-    update: {},
-    create: {
-      id: 'seed-match-4b-2',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4BTeams[2].id,
-      awayTeamId: pool4BTeams[3].id,
-      stage: 'group_stage',
-      roundNumber: 1,
-      groupName: pool4B.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 15.5 * 60 * 60 * 1000), // 3:30 PM
-      matchOrder: 2
-    }
-  });
-
-  // Pool B Match 3: Day 2, 12:30 PM
-  await prisma.tournamentMatch.upsert({
-    where: { id: 'seed-match-4b-3' },
-    update: {},
-    create: {
-      id: 'seed-match-4b-3',
-      tournamentId: tournament4.id,
-      homeTeamId: pool4BTeams[0].id,
-      awayTeamId: pool4BTeams[2].id,
-      stage: 'group_stage',
-      roundNumber: 2,
-      groupName: pool4B.name,
-      status: 'scheduled',
-      scheduledAt: new Date(baseDate.getTime() + 26.5 * 60 * 60 * 1000), // Day 2, 12:30 PM
-      matchOrder: 3
-    }
-  });
-
-  // Create standings for Pool A teams
-  await prisma.tournamentStanding.upsert({
-    where: { id: 'seed-standing-4a-1' },
-    update: {},
-    create: {
-      id: 'seed-standing-4a-1',
-      tournamentId: tournament4.id,
-      teamId: pool4ATeams[0].id,
-      points: 3,
-      wins: 1,
-      losses: 0,
-      draws: 0,
-      goalsFor: 4,
-      goalsAgainst: 2,
-      groupName: pool4A.name
-    }
-  });
-
-  await prisma.tournamentStanding.upsert({
-    where: { id: 'seed-standing-4a-2' },
-    update: {},
-    create: {
-      id: 'seed-standing-4a-2',
-      tournamentId: tournament4.id,
-      teamId: pool4ATeams[1].id,
-      points: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      groupName: pool4A.name
-    }
-  });
-
-  await prisma.tournamentStanding.upsert({
-    where: { id: 'seed-standing-4a-3' },
-    update: {},
-    create: {
-      id: 'seed-standing-4a-3',
-      tournamentId: tournament4.id,
-      teamId: pool4ATeams[2].id,
-      points: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      groupName: pool4A.name
-    }
-  });
-
-  await prisma.tournamentStanding.upsert({
-    where: { id: 'seed-standing-4a-4' },
-    update: {},
-    create: {
-      id: 'seed-standing-4a-4',
-      tournamentId: tournament4.id,
-      teamId: pool4ATeams[3].id,
-      points: 0,
-      wins: 0,
-      losses: 1,
-      draws: 0,
-      goalsFor: 2,
-      goalsAgainst: 4,
-      groupName: pool4A.name
-    }
-  });
-
-  // Create standings for Pool B teams (all zeros - no matches completed yet)
-  for (let i = 0; i < pool4BTeams.length; i++) {
+  // Standings for Pool A
+  // Team 0: W3 D0 L0 GF9 GA4 → 9pts
+  // Team 1: W0 D1 L2 GF3 GA7 → 1pt
+  // Team 2: W1 D0 L2 GF6 GA9 → 3pts
+  // Team 3: W0 D1 L2 GF5 GA9 → 1pt
+  const pool4AStandings = [
+    { id: 'seed-standing-4a-1', team: pool4ATeams[0], pts: 9,  w: 3, l: 0, d: 0, gf: 9,  ga: 4 },
+    { id: 'seed-standing-4a-2', team: pool4ATeams[1], pts: 1,  w: 0, l: 2, d: 1, gf: 3,  ga: 7 },
+    { id: 'seed-standing-4a-3', team: pool4ATeams[2], pts: 3,  w: 1, l: 2, d: 0, gf: 6,  ga: 9 },
+    { id: 'seed-standing-4a-4', team: pool4ATeams[3], pts: 1,  w: 0, l: 2, d: 1, gf: 5,  ga: 9 },
+  ];
+  for (const s of pool4AStandings) {
     await prisma.tournamentStanding.upsert({
-      where: { id: `seed-standing-4b-${i + 1}` },
-      update: {},
-      create: {
-        id: `seed-standing-4b-${i + 1}`,
-        tournamentId: tournament4.id,
-        teamId: pool4BTeams[i].id,
-        points: 0,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        groupName: pool4B.name
-      }
+      where: { id: s.id },
+      update: { points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga },
+      create: { id: s.id, tournamentId: tournament4.id, teamId: s.team.id, points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga, groupName: pool4A.name },
     });
   }
 
-  // Create standings for Pool C teams
-  for (let i = 0; i < pool4CTeams.length; i++) {
+  // Standings for Pool B
+  // Team 0: W3 D0 L0 GF6 GA1 → 9pts
+  // Team 1: W0 D1 L2 GF5 GA6 → 1pt
+  // Team 2: W1 D0 L2 GF4 GA8 → 3pts
+  // Team 3: W1 D1 L1 GF5 GA5 → 4pts
+  const pool4BStandings = [
+    { id: 'seed-standing-4b-1', team: pool4BTeams[0], pts: 9,  w: 3, l: 0, d: 0, gf: 6,  ga: 1 },
+    { id: 'seed-standing-4b-2', team: pool4BTeams[1], pts: 1,  w: 0, l: 2, d: 1, gf: 5,  ga: 6 },
+    { id: 'seed-standing-4b-3', team: pool4BTeams[2], pts: 3,  w: 1, l: 2, d: 0, gf: 4,  ga: 8 },
+    { id: 'seed-standing-4b-4', team: pool4BTeams[3], pts: 4,  w: 1, l: 1, d: 1, gf: 5,  ga: 5 },
+  ];
+  for (const s of pool4BStandings) {
     await prisma.tournamentStanding.upsert({
-      where: { id: `seed-standing-4c-${i + 1}` },
-      update: {},
-      create: {
-        id: `seed-standing-4c-${i + 1}`,
-        tournamentId: tournament4.id,
-        teamId: pool4CTeams[i].id,
-        points: 0,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        groupName: pool4C.name
-      }
+      where: { id: s.id },
+      update: { points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga },
+      create: { id: s.id, tournamentId: tournament4.id, teamId: s.team.id, points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga, groupName: pool4B.name },
     });
   }
 
-  // Create standings for Pool D teams
-  for (let i = 0; i < pool4DTeams.length; i++) {
+  // Standings for Pool C
+  // Team 0: W3 D0 L0 GF11 GA6 → 9pts
+  // Team 1: W1 D0 L2 GF10 GA10 → 3pts
+  // Team 2: W0 D1 L2 GF6 GA10 → 1pt
+  // Team 3: W1 D1 L1 GF5 GA6  → 4pts
+  const pool4CStandings = [
+    { id: 'seed-standing-4c-1', team: pool4CTeams[0], pts: 9,  w: 3, l: 0, d: 0, gf: 11, ga: 6  },
+    { id: 'seed-standing-4c-2', team: pool4CTeams[1], pts: 3,  w: 1, l: 2, d: 0, gf: 10, ga: 10 },
+    { id: 'seed-standing-4c-3', team: pool4CTeams[2], pts: 1,  w: 0, l: 2, d: 1, gf: 6,  ga: 10 },
+    { id: 'seed-standing-4c-4', team: pool4CTeams[3], pts: 4,  w: 1, l: 1, d: 1, gf: 5,  ga: 6  },
+  ];
+  for (const s of pool4CStandings) {
     await prisma.tournamentStanding.upsert({
-      where: { id: `seed-standing-4d-${i + 1}` },
-      update: {},
-      create: {
-        id: `seed-standing-4d-${i + 1}`,
-        tournamentId: tournament4.id,
-        teamId: pool4DTeams[i].id,
-        points: 0,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        groupName: pool4D.name
-      }
+      where: { id: s.id },
+      update: { points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga },
+      create: { id: s.id, tournamentId: tournament4.id, teamId: s.team.id, points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga, groupName: pool4C.name },
     });
   }
 
-  console.log('Created Montreal tournament with teams, matches, and standings');
+  // Standings for Pool D
+  // Team 0: W2 D0 L1 GF6 GA6  → 6pts
+  // Team 1: W2 D1 L0 GF7 GA6  → 7pts
+  // Team 2: W0 D0 L3 GF2 GA7  → 0pts
+  // Team 3: W1 D1 L1 GF9 GA5  → 4pts
+  const pool4DStandings = [
+    { id: 'seed-standing-4d-1', team: pool4DTeams[0], pts: 6,  w: 2, l: 1, d: 0, gf: 6, ga: 6 },
+    { id: 'seed-standing-4d-2', team: pool4DTeams[1], pts: 7,  w: 2, l: 0, d: 1, gf: 7, ga: 6 },
+    { id: 'seed-standing-4d-3', team: pool4DTeams[2], pts: 0,  w: 0, l: 3, d: 0, gf: 2, ga: 7 },
+    { id: 'seed-standing-4d-4', team: pool4DTeams[3], pts: 4,  w: 1, l: 1, d: 1, gf: 9, ga: 5 },
+  ];
+  for (const s of pool4DStandings) {
+    await prisma.tournamentStanding.upsert({
+      where: { id: s.id },
+      update: { points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga },
+      create: { id: s.id, tournamentId: tournament4.id, teamId: s.team.id, points: s.pts, wins: s.w, losses: s.l, draws: s.d, goalsFor: s.gf, goalsAgainst: s.ga, groupName: pool4D.name },
+    });
+  }
 
-  // Create tournament notifications (new model) — moved here so tournaments exist
+  console.log('Created Montreal tournament with 22 completed matches, 2 remaining, and updated standings');
+
+  // ===========================================================================
+  // Tournament 5: Volleyball — registration_closed, teams registered, no pools
+  // ===========================================================================
+  console.log('\nSeeding tournament 5 (registration_closed volleyball)...');
+  const tournament5 = await prisma.tournament.upsert({
+    where: { id: 'seed-tournament-5' },
+    update: {},
+    create: {
+      id: 'seed-tournament-5',
+      name: 'Summer Volleyball Showdown',
+      description: 'Registration is closed. All 8 teams are confirmed — groups will be announced shortly.',
+      sportType: 'volleyball',
+      format: 'groups_knockout',
+      status: 'registration_closed',
+      startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      endDate:   new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
+      registrationStartDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      registrationDeadline:  new Date(Date.now() -  1 * 24 * 60 * 60 * 1000),
+      maxTeams: 8,
+      location: 'Parc des Sports',
+      city: 'Sherbrooke',
+      country: 'Canada',
+      latitude: 45.4042,
+      longitude: -71.8929,
+      locationName: 'Parc des Sports, Sherbrooke',
+      organizerId: user4.id,
+      groupId: group5.id,
+      isPublic: true,
+      allowLateRegistration: false,
+      autoGenerateBrackets: false,
+      useManualBrackets: true,
+      registrationFee: 50.0,
+      paymentInfo: 'Interac e-transfer to payments@showdown.ca — include your team name in the memo.',
+      prizesDescription: 'Champion trophy + $300 prize pool split among top 3',
+      rulesDescription: 'FIVB rules. Best of 3 sets. Sets to 25 (cap 27), deciding set to 15 (cap 17).',
+    },
+  });
+
+  await prisma.tournamentAdminRole.upsert({
+    where: { tournamentId_userId: { tournamentId: tournament5.id, userId: user3.id } },
+    update: {},
+    create: {
+      id: 'seed-admin-role-5',
+      tournamentId: tournament5.id,
+      userId: user3.id,
+      role: 'co_organizer',
+      grantedById: user4.id,
+    },
+  });
+
+  // 8 teams registered but NO poolId — groups not yet formed
+  const t5Teams = [
+    { id: 'seed-t5-team-0', name: 'Spike Queens',      captain: user1.name,      email: user1.email,     userId: user1.id, paid: 'paid'   },
+    { id: 'seed-t5-team-1', name: 'Block Party',       captain: 'Marc Tremblay', email: 'marc@vball.ca',  userId: null,     paid: 'paid'   },
+    { id: 'seed-t5-team-2', name: 'Net Ninjas',        captain: 'Julie Caron',   email: 'julie@vball.ca', userId: null,     paid: 'paid'   },
+    { id: 'seed-t5-team-3', name: 'Dig Deep',          captain: 'Sam Bouchard',  email: 'sam@vball.ca',   userId: null,     paid: 'unpaid' },
+    { id: 'seed-t5-team-4', name: 'Serve & Destroy',   captain: 'Lena Potvin',   email: 'lena@vball.ca',  userId: null,     paid: 'paid'   },
+    { id: 'seed-t5-team-5', name: 'Ace Hunters',       captain: 'Tom Girard',    email: 'tom@vball.ca',   userId: null,     paid: 'paid'   },
+    { id: 'seed-t5-team-6', name: 'The Liberos',       captain: 'Nina Fortin',   email: 'nina@vball.ca',  userId: null,     paid: 'paid'   },
+    { id: 'seed-t5-team-7', name: 'Overhead Smashers', captain: 'Phil Dionne',   email: 'phil@vball.ca',  userId: null,     paid: 'unpaid' },
+  ];
+  for (let i = 0; i < t5Teams.length; i++) {
+    const t = t5Teams[i];
+    await prisma.tournamentTeam.upsert({
+      where: { id: t.id },
+      update: {},
+      create: {
+        id: t.id,
+        name: t.name,
+        captainName: t.captain,
+        captainEmail: t.email,
+        captainUserId: t.userId,
+        tournamentId: tournament5.id,
+        // No poolId — groups not yet formed
+        registrationOrder: i + 1,
+        paymentStatus: t.paid,
+        paidAt: t.paid === 'paid' ? new Date(Date.now() - (8 - i) * 24 * 60 * 60 * 1000) : null,
+      },
+    });
+  }
+
+  // Roster for Alice's team
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-5-1' },
+    update: {},
+    create: { id: 'seed-player-5-1', teamId: 'seed-t5-team-0', userId: user1.id, playerName: user1.name, playerEmail: user1.email },
+  });
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-5-2' },
+    update: {},
+    create: { id: 'seed-player-5-2', teamId: 'seed-t5-team-0', playerName: 'Sophie Leblanc', playerEmail: 'sophie@vball.ca' },
+  });
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-5-3' },
+    update: {},
+    create: { id: 'seed-player-5-3', teamId: 'seed-t5-team-0', playerName: 'Claire Vachon', playerEmail: 'claire@vball.ca' },
+  });
+
+  console.log('Created tournament 5 (registration_closed) with 8 registered teams, no pool assignments');
+
+  // Create tournament notifications (new model) â€” moved here so tournaments exist
   console.log('\nSeeding tournament notifications...');
   await prisma.tournamentNotification.upsert({
     where: { id: 'seed-tournament-notif-1' },
@@ -2921,16 +2870,20 @@ async function main() {
   console.log('- Session Comments: 4');
   console.log('- Guest Participants: 8');
   console.log('- Tournament Team Invitations: 1');
-  console.log('- Tournaments: 4 (3 upcoming/draft, 1 in progress)');
-  console.log('  - Montreal Winter Hockey Championship (in_progress) with 4 pools and scheduled matches');
-  console.log('- Tournament Categories: 11 (across all 4 tournaments)');
-  console.log('- Tournament Admin Roles: 4 (1 co_organizer per tournament)');
-  console.log('- Tournament Pools: 13 (with categories assigned and varying team capacities)');
-  console.log('- Tournament Teams: 46+');
-  console.log('- Tournament Matches: 9+ (with different timestamps and referee assignments)');
+  console.log('- Tournaments: 5 (covers every status)');
+  console.log('  - T1: Spring Football Championship        → registration (open, 3 pools)');
+  console.log('  - T2: Summer Basketball League            → registration (open, 2 pools)');
+  console.log('  - T3: Fall Tennis Open                    → draft (no teams yet)');
+  console.log('  - T4: Montreal Winter Hockey Championship → in_progress (22 done, 2 matches left)');
+  console.log('  - T5: Summer Volleyball Showdown          → registration_closed (8 teams, no groups yet)');
+  console.log('- Tournament Categories: 12 (across 5 tournaments)');
+  console.log('- Tournament Admin Roles: 5 (1 co_organizer per tournament)');
+  console.log('- Tournament Pools: 13 (T4 has 4 pools, T5 has none — groups pending)');
+  console.log('- Tournament Teams: 54+');
+  console.log('- Tournament Matches: 24 (22 completed with scores, 2 scheduled)');
   console.log('- Waitlist Entries: 5 (across multiple pools)');
-  console.log('- Tournament Players: 8+');
-  console.log('- Tournament Standings: 16+ (with stats)');
+  console.log('- Tournament Players: 11+');
+  console.log('- Tournament Standings: 16 (T4 all pools, realistic points/GD)');
   console.log('========================================');
 }
 

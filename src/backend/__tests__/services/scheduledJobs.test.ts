@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import prisma from '../../config/database';
-import { runCleanupTasks, sendDueEventReminders } from '../../services/scheduledJobs';
+import {
+  checkIncidentSlas,
+  runCleanupTasks,
+  sendDueEventReminders,
+  sendTournamentPaymentDeadlineReminders,
+} from '../../services/scheduledJobs';
 
 vi.mock('../../config/database', () => ({
   default: {
@@ -16,6 +21,16 @@ vi.mock('../../config/database', () => ({
     sessionReminder: {
       findMany: vi.fn(),
       update: vi.fn(),
+    },
+    tournamentMatchIncident: {
+      findMany: vi.fn(),
+    },
+    tournamentNotification: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+    tournament: {
+      findMany: vi.fn(),
     },
   },
 }));
@@ -40,11 +55,25 @@ const db = prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
+  tournamentMatchIncident: {
+    findMany: ReturnType<typeof vi.fn>;
+  };
+  tournamentNotification: {
+    findFirst: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
+  tournament: {
+    findMany: ReturnType<typeof vi.fn>;
+  };
 };
 
 describe('scheduledJobs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    db.tournamentMatchIncident.findMany.mockResolvedValue([]);
+    db.tournamentNotification.findFirst.mockResolvedValue(null);
+    db.tournamentNotification.create.mockResolvedValue({});
+    db.tournament.findMany.mockResolvedValue([]);
   });
 
   // ─── runCleanupTasks ───────────────────────────────────────────────────────
@@ -160,6 +189,57 @@ describe('scheduledJobs', () => {
     it('does not throw when no reminders are due', async () => {
       db.sessionReminder.findMany.mockResolvedValue([]);
       await expect(sendDueEventReminders()).resolves.not.toThrow();
+    });
+  });
+
+  describe('checkIncidentSlas', () => {
+    it('creates a notification for overdue incidents that have not been notified yet', async () => {
+      db.tournamentMatchIncident.findMany.mockResolvedValue([
+        {
+          id: 'incident-1',
+          tournamentId: 'tournament-1',
+          matchId: 'match-1',
+          tournament: { id: 'tournament-1', name: 'Summer Cup', organizerId: 'user-1' },
+        },
+      ]);
+      db.tournamentNotification.findFirst.mockResolvedValue(null);
+
+      await checkIncidentSlas();
+
+      expect(db.tournamentNotification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'user-1',
+            tournamentId: 'tournament-1',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('sendTournamentPaymentDeadlineReminders', () => {
+    it('creates payment reminders for overdue unpaid teams', async () => {
+      db.tournament.findMany.mockResolvedValue([
+        {
+          id: 'tournament-1',
+          name: 'Summer Cup',
+          paymentDeadline: new Date('2025-01-01T00:00:00Z'),
+          teams: [{ id: 'team-1', captainUserId: 'captain-1' }],
+        },
+      ]);
+      db.tournamentNotification.findFirst.mockResolvedValue(null);
+
+      await sendTournamentPaymentDeadlineReminders();
+
+      expect(db.tournamentNotification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'captain-1',
+            tournamentId: 'tournament-1',
+            type: 'payment_reminder',
+          }),
+        })
+      );
     });
   });
 });
