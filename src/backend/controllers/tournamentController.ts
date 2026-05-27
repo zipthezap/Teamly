@@ -25,6 +25,8 @@ import {
   TournamentPaymentStatus,
   TOURNAMENT_PAYMENT_STATUSES,
   TournamentPaymentTransactionStatus,
+  TournamentSeedingPolicy,
+  TournamentContingencyMode,
   MatchIncidentType,
   MatchIncidentStatus,
   MATCH_INCIDENT_TYPES,
@@ -57,10 +59,14 @@ const MAX_TEAMS_UPPER_BOUND = 1000;
 const MAX_BATCH_PAYMENT_TEAMS = 500;
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const MAX_MATCH_DURATION_MINUTES = 480;
+const MILLISECONDS_PER_MINUTE = 60_000;
+const MAX_BULK_SHIFT_MINUTES = 1_440;
 const MAX_PAYMENT_METADATA_BYTES = 4096;
 const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
 const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
+const TOURNAMENT_SEEDING_POLICIES = Object.values(TournamentSeedingPolicy);
+const TOURNAMENT_CONTINGENCY_MODES = Object.values(TournamentContingencyMode);
 const SPORT_CONFIG_TYPES = ['default', 'volleyball', 'tennis'] as const;
 const DEFAULT_INCIDENT_SLA_MINUTES = 30;
 const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
@@ -68,6 +74,9 @@ const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in toke
 // Minimum cool-down window between referee assignments to reduce back-to-back fatigue.
 const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
 const OVERLAP_GAP_INDICATOR = -1;
+const DEFAULT_FORFEIT_SCORE_FOR = 1;
+const DEFAULT_FORFEIT_SCORE_AGAINST = 0;
+const TIMEZONE_IANA_LIKE_REGEX = /^(UTC|[A-Za-z_]+\/[A-Za-z0-9_\-+]+(?:\/[A-Za-z0-9_\-+]+)?)$/;
 type PoolWaitlistPromoterClient = Pick<typeof prisma, 'tournamentPoolWaitlist' | 'tournamentPool' | 'tournamentTeam'>;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
@@ -154,6 +163,36 @@ const parseTimeToMinutes = (time: string): number => {
   return Number(match[1]) * 60 + Number(match[2]);
 };
 
+const parseNonNegativeInteger = (value: unknown, fieldName: string): number => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new BadRequestError(`${fieldName} must be a non-negative integer`);
+  }
+  return parsed;
+};
+
+const parseBoolean = (value: unknown, fieldName: string): boolean => {
+  if (typeof value !== 'boolean') {
+    throw new BadRequestError(`${fieldName} must be a boolean`);
+  }
+  return value;
+};
+
+const assertValidTournamentTimezone = (value: unknown): string => {
+  if (typeof value !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(value.trim())) {
+    throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
+  }
+  const normalized = value.trim();
+  if (normalized === 'UTC') return normalized;
+  try {
+    // Throws RangeError when the timezone is unknown.
+    new Intl.DateTimeFormat('en-US', { timeZone: normalized }).format(new Date());
+  } catch {
+    throw new BadRequestError('timezone must reference a real IANA timezone');
+  }
+  return normalized;
+};
+
 const normalizeRegistrationAnswers = (
   answers: unknown
 ): Array<{ fieldId: string; value: string }> => {
@@ -180,8 +219,8 @@ const hasScheduleOverlap = (
   startB: Date,
   durationMinutesB: number
 ): boolean => {
-  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
-  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  const endA = new Date(startA.getTime() + durationMinutesA * MILLISECONDS_PER_MINUTE);
+  const endB = new Date(startB.getTime() + durationMinutesB * MILLISECONDS_PER_MINUTE);
   return startA < endB && startB < endA;
 };
 
@@ -191,15 +230,15 @@ const getRequiredRestGapMinutes = (
   startB: Date,
   durationMinutesB: number
 ): number => {
-  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
-  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  const endA = new Date(startA.getTime() + durationMinutesA * MILLISECONDS_PER_MINUTE);
+  const endB = new Date(startB.getTime() + durationMinutesB * MILLISECONDS_PER_MINUTE);
   if (hasScheduleOverlap(startA, durationMinutesA, startB, durationMinutesB)) {
     return OVERLAP_GAP_INDICATOR;
   }
   if (endA <= startB) {
-    return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / 60_000));
+    return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / MILLISECONDS_PER_MINUTE));
   }
-  return Math.max(0, Math.floor((startA.getTime() - endB.getTime()) / 60_000));
+  return Math.max(0, Math.floor((startA.getTime() - endB.getTime()) / MILLISECONDS_PER_MINUTE));
 };
 
 const maybeAutoGenerateGroupsKnockoutBrackets = async (
@@ -517,6 +556,25 @@ export const createTournament = async (req: Request, res: Response) => {
     tiebreakerRules,
     // Self-ref
     selfRefEnabled,
+    // Advanced tournament policy controls
+    timezone,
+    noShowGraceMinutes,
+    noShowAutoForfeit,
+    forfeitScoreFor,
+    forfeitScoreAgainst,
+    minTeamRestMinutes,
+    withdrawalDeadline,
+    autoPromoteRegistrationWaitlist,
+    rescheduleCutoffMinutes,
+    allowRescheduleAfterStart,
+    seedingPolicy,
+    seedsLockedAt,
+    enableThirdPlaceMatch,
+    enableConsolationBracket,
+    allowByes,
+    contingencyMode,
+    contingencyNotes,
+    contingencyDelayMinutes,
   } = req.body;
 
   const userId = req.user!.id;
@@ -600,6 +658,51 @@ export const createTournament = async (req: Request, res: Response) => {
     }
   }
 
+  const normalizedTimezone =
+    timezone !== undefined && timezone !== null ? assertValidTournamentTimezone(timezone) : undefined;
+
+  if (noShowGraceMinutes !== undefined) parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes');
+  if (minTeamRestMinutes !== undefined) parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes');
+  if (rescheduleCutoffMinutes !== undefined) parseNonNegativeInteger(rescheduleCutoffMinutes, 'rescheduleCutoffMinutes');
+  if (contingencyDelayMinutes !== undefined) parseNonNegativeInteger(contingencyDelayMinutes, 'contingencyDelayMinutes');
+
+  if (noShowAutoForfeit !== undefined) parseBoolean(noShowAutoForfeit, 'noShowAutoForfeit');
+  if (autoPromoteRegistrationWaitlist !== undefined) {
+    parseBoolean(autoPromoteRegistrationWaitlist, 'autoPromoteRegistrationWaitlist');
+  }
+  if (allowRescheduleAfterStart !== undefined) parseBoolean(allowRescheduleAfterStart, 'allowRescheduleAfterStart');
+  if (enableThirdPlaceMatch !== undefined) parseBoolean(enableThirdPlaceMatch, 'enableThirdPlaceMatch');
+  if (enableConsolationBracket !== undefined) parseBoolean(enableConsolationBracket, 'enableConsolationBracket');
+  if (allowByes !== undefined) parseBoolean(allowByes, 'allowByes');
+
+  const parsedForfeitScoreFor =
+    forfeitScoreFor !== undefined ? parseNonNegativeInteger(forfeitScoreFor, 'forfeitScoreFor') : undefined;
+  const parsedForfeitScoreAgainst =
+    forfeitScoreAgainst !== undefined ? parseNonNegativeInteger(forfeitScoreAgainst, 'forfeitScoreAgainst') : undefined;
+  if (
+    parsedForfeitScoreFor !== undefined &&
+    parsedForfeitScoreAgainst !== undefined &&
+    parsedForfeitScoreFor <= parsedForfeitScoreAgainst
+  ) {
+    throw new BadRequestError('forfeitScoreFor must be greater than forfeitScoreAgainst');
+  }
+
+  const normalizedSeedingPolicy =
+    seedingPolicy !== undefined
+      ? parseEnumInput(seedingPolicy, TOURNAMENT_SEEDING_POLICIES, 'seedingPolicy')
+      : undefined;
+  const normalizedContingencyMode =
+    contingencyMode !== undefined
+      ? parseEnumInput(contingencyMode, TOURNAMENT_CONTINGENCY_MODES, 'contingencyMode')
+      : undefined;
+
+  if (withdrawalDeadline !== undefined && withdrawalDeadline !== null && Number.isNaN(new Date(withdrawalDeadline).getTime())) {
+    throw new BadRequestError('withdrawalDeadline must be a valid date');
+  }
+  if (seedsLockedAt !== undefined && seedsLockedAt !== null && Number.isNaN(new Date(seedsLockedAt).getTime())) {
+    throw new BadRequestError('seedsLockedAt must be a valid date');
+  }
+
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
     parseCoordinates(latitude, longitude);
@@ -674,6 +777,46 @@ export const createTournament = async (req: Request, res: Response) => {
       tiebreakerRules: tiebreakerRules || undefined,
       // Self-ref
       selfRefEnabled: selfRefEnabled || false,
+      // Advanced tournament policy controls
+      timezone: normalizedTimezone,
+      noShowGraceMinutes:
+        noShowGraceMinutes !== undefined ? parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes') : undefined,
+      noShowAutoForfeit: noShowAutoForfeit !== undefined ? parseBoolean(noShowAutoForfeit, 'noShowAutoForfeit') : undefined,
+      forfeitScoreFor: parsedForfeitScoreFor,
+      forfeitScoreAgainst: parsedForfeitScoreAgainst,
+      minTeamRestMinutes:
+        minTeamRestMinutes !== undefined ? parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes') : undefined,
+      withdrawalDeadline: withdrawalDeadline ? new Date(withdrawalDeadline) : undefined,
+      autoPromoteRegistrationWaitlist:
+        autoPromoteRegistrationWaitlist !== undefined
+          ? parseBoolean(autoPromoteRegistrationWaitlist, 'autoPromoteRegistrationWaitlist')
+          : undefined,
+      rescheduleCutoffMinutes:
+        rescheduleCutoffMinutes !== undefined
+          ? parseNonNegativeInteger(rescheduleCutoffMinutes, 'rescheduleCutoffMinutes')
+          : undefined,
+      allowRescheduleAfterStart:
+        allowRescheduleAfterStart !== undefined
+          ? parseBoolean(allowRescheduleAfterStart, 'allowRescheduleAfterStart')
+          : undefined,
+      seedingPolicy: normalizedSeedingPolicy,
+      seedsLockedAt: seedsLockedAt ? new Date(seedsLockedAt) : undefined,
+      enableThirdPlaceMatch:
+        enableThirdPlaceMatch !== undefined ? parseBoolean(enableThirdPlaceMatch, 'enableThirdPlaceMatch') : undefined,
+      enableConsolationBracket:
+        enableConsolationBracket !== undefined
+          ? parseBoolean(enableConsolationBracket, 'enableConsolationBracket')
+          : undefined,
+      allowByes: allowByes !== undefined ? parseBoolean(allowByes, 'allowByes') : undefined,
+      contingencyMode: normalizedContingencyMode,
+      contingencyNotes:
+        contingencyNotes !== undefined && contingencyNotes !== null
+          ? sanitizeString(String(contingencyNotes))
+          : undefined,
+      contingencyDelayMinutes:
+        contingencyDelayMinutes !== undefined
+          ? parseNonNegativeInteger(contingencyDelayMinutes, 'contingencyDelayMinutes')
+          : undefined,
     },
     include: {
       organizer: {
@@ -913,6 +1056,25 @@ export const updateTournament = async (req: Request, res: Response) => {
     rosterLockDate, paymentDeadline, tiebreakerRules,
     // Self-ref
     selfRefEnabled,
+    // Advanced tournament policy controls
+    timezone,
+    noShowGraceMinutes,
+    noShowAutoForfeit,
+    forfeitScoreFor,
+    forfeitScoreAgainst,
+    minTeamRestMinutes,
+    withdrawalDeadline,
+    autoPromoteRegistrationWaitlist,
+    rescheduleCutoffMinutes,
+    allowRescheduleAfterStart,
+    seedingPolicy,
+    seedsLockedAt,
+    enableThirdPlaceMatch,
+    enableConsolationBracket,
+    allowByes,
+    contingencyMode,
+    contingencyNotes,
+    contingencyDelayMinutes,
   } = req.body;
 
   let tournament = await prisma.tournament.findUnique({
@@ -1110,6 +1272,95 @@ export const updateTournament = async (req: Request, res: Response) => {
       throw new BadRequestError('selfRefEnabled must be a boolean');
     }
     updateData.selfRefEnabled = selfRefEnabled;
+  }
+  if (timezone !== undefined) {
+    if (timezone === null || timezone === '') {
+      updateData.timezone = null;
+    } else {
+      updateData.timezone = assertValidTournamentTimezone(timezone);
+    }
+  }
+  if (noShowGraceMinutes !== undefined) {
+    updateData.noShowGraceMinutes = parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes');
+  }
+  if (noShowAutoForfeit !== undefined) {
+    updateData.noShowAutoForfeit = parseBoolean(noShowAutoForfeit, 'noShowAutoForfeit');
+  }
+  if (forfeitScoreFor !== undefined) {
+    updateData.forfeitScoreFor = parseNonNegativeInteger(forfeitScoreFor, 'forfeitScoreFor');
+  }
+  if (forfeitScoreAgainst !== undefined) {
+    updateData.forfeitScoreAgainst = parseNonNegativeInteger(forfeitScoreAgainst, 'forfeitScoreAgainst');
+  }
+  const nextForfeitScoreFor =
+    (updateData.forfeitScoreFor as number | undefined) ?? tournament!.forfeitScoreFor ?? DEFAULT_FORFEIT_SCORE_FOR;
+  const nextForfeitScoreAgainst =
+    (updateData.forfeitScoreAgainst as number | undefined) ??
+    tournament!.forfeitScoreAgainst ??
+    DEFAULT_FORFEIT_SCORE_AGAINST;
+  if (nextForfeitScoreFor <= nextForfeitScoreAgainst) {
+    throw new BadRequestError('forfeitScoreFor must be greater than forfeitScoreAgainst');
+  }
+  if (minTeamRestMinutes !== undefined) {
+    updateData.minTeamRestMinutes = parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes');
+  }
+  if (withdrawalDeadline !== undefined) {
+    if (withdrawalDeadline === null || withdrawalDeadline === '') {
+      updateData.withdrawalDeadline = null;
+    } else {
+      const parsed = new Date(withdrawalDeadline);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestError('withdrawalDeadline must be a valid date');
+      }
+      updateData.withdrawalDeadline = parsed;
+    }
+  }
+  if (autoPromoteRegistrationWaitlist !== undefined) {
+    updateData.autoPromoteRegistrationWaitlist = parseBoolean(
+      autoPromoteRegistrationWaitlist,
+      'autoPromoteRegistrationWaitlist'
+    );
+  }
+  if (rescheduleCutoffMinutes !== undefined) {
+    updateData.rescheduleCutoffMinutes = parseNonNegativeInteger(rescheduleCutoffMinutes, 'rescheduleCutoffMinutes');
+  }
+  if (allowRescheduleAfterStart !== undefined) {
+    updateData.allowRescheduleAfterStart = parseBoolean(allowRescheduleAfterStart, 'allowRescheduleAfterStart');
+  }
+  if (seedingPolicy !== undefined) {
+    updateData.seedingPolicy = parseEnumInput(seedingPolicy, TOURNAMENT_SEEDING_POLICIES, 'seedingPolicy');
+  }
+  if (seedsLockedAt !== undefined) {
+    if (seedsLockedAt === null || seedsLockedAt === '') {
+      updateData.seedsLockedAt = null;
+    } else {
+      const parsed = new Date(seedsLockedAt);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestError('seedsLockedAt must be a valid date');
+      }
+      updateData.seedsLockedAt = parsed;
+    }
+  }
+  if (enableThirdPlaceMatch !== undefined) {
+    updateData.enableThirdPlaceMatch = parseBoolean(enableThirdPlaceMatch, 'enableThirdPlaceMatch');
+  }
+  if (enableConsolationBracket !== undefined) {
+    updateData.enableConsolationBracket = parseBoolean(enableConsolationBracket, 'enableConsolationBracket');
+  }
+  if (allowByes !== undefined) {
+    updateData.allowByes = parseBoolean(allowByes, 'allowByes');
+  }
+  if (contingencyMode !== undefined) {
+    updateData.contingencyMode = parseEnumInput(contingencyMode, TOURNAMENT_CONTINGENCY_MODES, 'contingencyMode');
+  }
+  if (contingencyNotes !== undefined) {
+    updateData.contingencyNotes =
+      contingencyNotes === null || contingencyNotes === ''
+        ? null
+        : sanitizeString(String(contingencyNotes));
+  }
+  if (contingencyDelayMinutes !== undefined) {
+    updateData.contingencyDelayMinutes = parseNonNegativeInteger(contingencyDelayMinutes, 'contingencyDelayMinutes');
   }
 
   tournamentService.validateTournamentBusinessRules({
@@ -1464,8 +1715,47 @@ export const deleteTeam = async (req: Request, res: Response) => {
   });
   ensureResourceExists(team, 'Team');
 
-  await prisma.tournamentTeam.delete({
-    where: { id: teamId }
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.tournamentTeam.delete({
+      where: { id: teamId }
+    });
+
+    const parsedWithdrawalDeadline = tournament!.withdrawalDeadline
+      ? new Date(tournament!.withdrawalDeadline)
+      : null;
+    const shouldAutoPromote =
+      tournament!.autoPromoteRegistrationWaitlist === true &&
+      (
+        !parsedWithdrawalDeadline ||
+        new Date() <= parsedWithdrawalDeadline
+      );
+
+    if (!shouldAutoPromote) {
+      return { promotedTeamId: null as string | null };
+    }
+
+    const firstWaitlistEntry = await tx.tournamentRegistrationWaitlist.findFirst({
+      where: { tournamentId: id },
+      orderBy: { position: 'asc' },
+      select: { id: true, teamId: true, position: true },
+    });
+
+    if (!firstWaitlistEntry) {
+      return { promotedTeamId: null as string | null };
+    }
+
+    await tx.tournamentRegistrationWaitlist.delete({
+      where: { id: firstWaitlistEntry.id },
+    });
+    await tx.tournamentRegistrationWaitlist.updateMany({
+      where: {
+        tournamentId: id,
+        position: { gt: firstWaitlistEntry.position },
+      },
+      data: { position: { decrement: 1 } },
+    });
+
+    return { promotedTeamId: firstWaitlistEntry.teamId };
   });
 
   logger.info('Team deleted', 'TournamentController', {
@@ -1474,7 +1764,10 @@ export const deleteTeam = async (req: Request, res: Response) => {
     userId
   });
 
-  res.json({ message: 'Team deleted successfully' });
+  res.json({
+    message: 'Team deleted successfully',
+    ...(result.promotedTeamId ? { promotedTeamId: result.promotedTeamId } : {}),
+  });
 };
 
 /**
@@ -2005,7 +2298,10 @@ export const generateBrackets = async (req: Request, res: Response) => {
     case TournamentFormat.SINGLE_ELIMINATION:
       result = usePoolAssignments
         ? await tournamentService.generateRandomizedSingleEliminationBracketsFromPools(id)
-        : await tournamentService.generateSingleEliminationBrackets(id);
+        : await tournamentService.generateSingleEliminationBrackets(id, {
+            randomizeSeeds: tournament.seedingPolicy === TournamentSeedingPolicy.RANDOM,
+            allowByes: tournament.allowByes !== false,
+          });
       break;
     case TournamentFormat.DOUBLE_ELIMINATION:
       throw new BadRequestError('Double elimination bracket generation is not supported yet');
@@ -5530,6 +5826,25 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
     'Court'
   );
 
+  const isReschedule = !!match.scheduledAt;
+  if (
+    isReschedule &&
+    tournament.status === TournamentStatus.IN_PROGRESS &&
+    tournament.allowRescheduleAfterStart !== true
+  ) {
+    throw new BadRequestError('Rescheduling is disabled once the tournament is in progress');
+  }
+
+  if (isReschedule && (tournament.rescheduleCutoffMinutes ?? 0) > 0 && match.scheduledAt) {
+    const cutoffMs = (tournament.rescheduleCutoffMinutes as number) * MILLISECONDS_PER_MINUTE;
+    const cutoffAt = new Date(match.scheduledAt.getTime() - cutoffMs);
+    if (new Date() >= cutoffAt) {
+      throw new BadRequestError(
+        `Reschedule cutoff reached (${tournament.rescheduleCutoffMinutes} minute(s) before kickoff)`
+      );
+    }
+  }
+
   const localDate = new Date(startAt);
   localDate.setHours(0, 0, 0, 0);
 
@@ -5578,6 +5893,40 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
     throw new ConflictError(`Court conflict with match ${conflictingMatch.id}`);
   }
 
+  const minTeamRestMinutes = tournament.minTeamRestMinutes ?? 0;
+  if (minTeamRestMinutes > 0) {
+    const relatedMatches = await prisma.tournamentMatch.findMany({
+      where: {
+        tournamentId: id,
+        id: { not: match.id },
+        status: { not: MatchStatus.CANCELLED },
+        scheduledAt: { not: null },
+        OR: [
+          { homeTeamId: match.homeTeamId },
+          { awayTeamId: match.homeTeamId },
+          { homeTeamId: match.awayTeamId },
+          { awayTeamId: match.awayTeamId },
+        ],
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+        scheduledDurationMinutes: true,
+      },
+    });
+
+    for (const related of relatedMatches) {
+      if (!related.scheduledAt) continue;
+      const relatedDuration = related.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
+      const restGap = getRequiredRestGapMinutes(startAt, duration, related.scheduledAt, relatedDuration);
+      if (restGap < minTeamRestMinutes) {
+        throw new ConflictError(
+          `Team rest-window conflict with match ${related.id}: requires at least ${minTeamRestMinutes} minutes between matches`
+        );
+      }
+    }
+  }
+
   const updated = await prisma.tournamentMatch.update({
     where: { id: match.id },
     data: {
@@ -5594,6 +5943,82 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
   });
 
   res.json(updated);
+};
+
+/**
+ * Bulk-shift scheduled matches for operational contingency scenarios.
+ */
+export const bulkShiftScheduledMatches = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { minutes, contingencyMode, contingencyNotes } = req.body ?? {};
+
+  const shiftMinutes = Number(minutes);
+  if (!Number.isInteger(shiftMinutes) || shiftMinutes === 0 || Math.abs(shiftMinutes) > MAX_BULK_SHIFT_MINUTES) {
+    throw new BadRequestError(
+      `minutes must be a non-zero integer between -${MAX_BULK_SHIFT_MINUTES} and ${MAX_BULK_SHIFT_MINUTES}`
+    );
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can bulk-shift scheduled matches');
+  }
+
+  const normalizedContingencyMode =
+    contingencyMode !== undefined
+      ? parseEnumInput(contingencyMode, TOURNAMENT_CONTINGENCY_MODES, 'contingencyMode')
+      : undefined;
+  const nextContingencyDelayMinutes = (tournament.contingencyDelayMinutes ?? 0) + shiftMinutes;
+  if (nextContingencyDelayMinutes < 0) {
+    throw new BadRequestError(
+      'Requested shift would make contingencyDelayMinutes negative; reduce rollback magnitude or reset contingency settings first'
+    );
+  }
+
+  const matches = await prisma.tournamentMatch.findMany({
+    where: {
+      tournamentId: id,
+      status: { in: [MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS] },
+      scheduledAt: { not: null },
+    },
+    select: { id: true, scheduledAt: true },
+  });
+
+  const updatedCount = await prisma.$transaction(async (tx) => {
+    for (const match of matches) {
+      if (!match.scheduledAt) continue;
+      const shifted = new Date(match.scheduledAt.getTime() + shiftMinutes * MILLISECONDS_PER_MINUTE);
+      await tx.tournamentMatch.update({
+        where: { id: match.id },
+        data: { scheduledAt: shifted },
+      });
+    }
+
+    await tx.tournament.update({
+      where: { id },
+      data: {
+        contingencyMode: normalizedContingencyMode ?? tournament.contingencyMode,
+        contingencyNotes:
+          contingencyNotes !== undefined
+            ? contingencyNotes === null || contingencyNotes === ''
+              ? null
+              : sanitizeString(String(contingencyNotes))
+            : tournament.contingencyNotes,
+        contingencyDelayMinutes: nextContingencyDelayMinutes,
+      },
+    });
+
+    return matches.length;
+  });
+
+  res.json({
+    message: `Shifted ${updatedCount} scheduled match(es) by ${shiftMinutes} minute(s)`,
+    shiftedMatches: updatedCount,
+  });
 };
 
 export const deleteCourt = async (req: Request, res: Response) => {
@@ -6535,6 +6960,24 @@ export const cloneTournament = async (req: Request, res: Response) => {
         waiverText: source.waiverText ?? undefined,
         tiebreakerRules: source.tiebreakerRules ?? undefined,
         selfRefEnabled: source.selfRefEnabled,
+        timezone: source.timezone ?? undefined,
+        noShowGraceMinutes: source.noShowGraceMinutes,
+        noShowAutoForfeit: source.noShowAutoForfeit,
+        forfeitScoreFor: source.forfeitScoreFor,
+        forfeitScoreAgainst: source.forfeitScoreAgainst,
+        minTeamRestMinutes: source.minTeamRestMinutes,
+        withdrawalDeadline: source.withdrawalDeadline ?? undefined,
+        autoPromoteRegistrationWaitlist: source.autoPromoteRegistrationWaitlist,
+        rescheduleCutoffMinutes: source.rescheduleCutoffMinutes,
+        allowRescheduleAfterStart: source.allowRescheduleAfterStart,
+        seedingPolicy: source.seedingPolicy,
+        seedsLockedAt: source.seedsLockedAt ?? undefined,
+        enableThirdPlaceMatch: source.enableThirdPlaceMatch,
+        enableConsolationBracket: source.enableConsolationBracket,
+        allowByes: source.allowByes,
+        contingencyMode: source.contingencyMode,
+        contingencyNotes: source.contingencyNotes ?? undefined,
+        contingencyDelayMinutes: source.contingencyDelayMinutes,
       },
       include: {
         organizer: { select: { id: true, name: true, email: true } },
@@ -6920,7 +7363,7 @@ export const createMatchIncident = async (req: Request, res: Response) => {
 
   const slaMs = (typeof slaMinutes === 'number' && slaMinutes > 0
     ? slaMinutes
-    : DEFAULT_INCIDENT_SLA_MINUTES) * 60_000;
+    : DEFAULT_INCIDENT_SLA_MINUTES) * MILLISECONDS_PER_MINUTE;
 
   const incident = await prisma.tournamentMatchIncident.create({
     data: {
@@ -7180,7 +7623,7 @@ export const getTournamentAnalytics = async (req: Request, res: Response) => {
       ? Math.round(
           completedMatches.reduce((sum, m) => {
             const dur =
-              (new Date(m.completedAt!).getTime() - new Date(m.startedAt!).getTime()) / 60_000;
+              (new Date(m.completedAt!).getTime() - new Date(m.startedAt!).getTime()) / MILLISECONDS_PER_MINUTE;
             return sum + dur;
           }, 0) / completedMatches.length
         )

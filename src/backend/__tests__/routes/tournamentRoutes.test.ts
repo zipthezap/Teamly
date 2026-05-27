@@ -127,6 +127,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   createCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
   scheduleMatchOnCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  bulkShiftScheduledMatches: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
   joinRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
   leaveRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),

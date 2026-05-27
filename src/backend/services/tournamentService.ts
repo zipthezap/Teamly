@@ -6,6 +6,7 @@ import {
   BracketStage,
   TournamentFormat,
   TournamentStatus,
+  TournamentSeedingPolicy,
   TournamentNotificationType,
   VolleyballConfig,
   SportScoringConfig,
@@ -764,6 +765,8 @@ const buildSingleEliminationMatches = (tournamentId: string, teams: Array<{ id: 
   return matches;
 };
 
+const isPowerOfTwo = (value: number): boolean => value > 0 && (value & (value - 1)) === 0;
+
 const shuffleTeams = <T>(teams: T[]): T[] => {
   const shuffled = [...teams];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -773,12 +776,23 @@ const shuffleTeams = <T>(teams: T[]): T[] => {
   return shuffled;
 };
 
-export const generateSingleEliminationBrackets = async (tournamentId: string) => {
-  const teams = await prisma.tournamentTeam.findMany({
+export const generateSingleEliminationBrackets = async (
+  tournamentId: string,
+  options?: { randomizeSeeds?: boolean; allowByes?: boolean }
+) => {
+  const teamsRaw = await prisma.tournamentTeam.findMany({
     where: { tournamentId },
     orderBy: { createdAt: 'asc' }
   });
 
+  if (options?.allowByes === false && !isPowerOfTwo(teamsRaw.length)) {
+    throw new BadRequestError(
+      'Bracket generation without byes requires a power-of-two number of teams',
+      'INVALID_TEAM_COUNT_FOR_NO_BYES'
+    );
+  }
+
+  const teams = options?.randomizeSeeds ? shuffleTeams(teamsRaw) : teamsRaw;
   const matches = buildSingleEliminationMatches(tournamentId, teams);
   const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
 
@@ -1048,7 +1062,7 @@ export const generatePoolAwareBrackets = async (
 export const generateKnockoutFromStandings = async (tournamentId: string) => {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
-    select: { tiebreakerRules: true },
+    select: { tiebreakerRules: true, seedingPolicy: true },
   });
 
   const standings = await prisma.tournamentStanding.findMany({
@@ -1075,7 +1089,12 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
     tournament?.tiebreakerRules as string[] | null | undefined
   );
 
-  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, qualifiers);
+  const seededQualifiers =
+    tournament?.seedingPolicy === TournamentSeedingPolicy.RANDOM
+      ? shuffleTeams(qualifiers)
+      : qualifiers;
+
+  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, seededQualifiers);
 
   if (firstStageMatches.length === 0) {
     throw new BadRequestError(
@@ -1373,10 +1392,18 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
   const matchesToCreate = [...nextMatches];
 
   // If both semifinals are complete, also create a third-place match between semifinal losers.
+  const thirdPlacePolicyTournament =
+    currentStage === BracketStage.SEMI_FINALS
+      ? await prisma.tournament.findUnique({
+          where: { id: tournamentId },
+          select: { enableThirdPlaceMatch: true },
+        })
+      : null;
   if (
     currentStage === BracketStage.SEMI_FINALS &&
     allStageMatches.length === 2 &&
-    existingThirdPlaceMatches === 0
+    existingThirdPlaceMatches === 0 &&
+    (thirdPlacePolicyTournament?.enableThirdPlaceMatch ?? true)
   ) {
     const hasDrawnSemiFinal = allStageMatches.some(match => match.homeScore === match.awayScore);
     if (hasDrawnSemiFinal) {

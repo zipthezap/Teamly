@@ -432,6 +432,12 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.scheduleMatchOnCourt)
 );
+router.put(
+  '/:id/matches/bulk-shift',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.bulkShiftScheduledMatches)
+);
 // Scorekeeper assignment, match start, incidents (Phase 3)
 router.put(
   '/:id/matches/:matchId/scorekeeper',
