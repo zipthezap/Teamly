@@ -7,49 +7,49 @@ This map defines target bounded contexts for tournament features and the current
 1. **Lifecycle**
    - **Owns:** status transitions, auto-status sync, action gating.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/services/tournamentLifecyclePolicy.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/services/tournamentService.ts` (lifecycle sections)  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/tournament_status_policy.dart`
+     - `src/backend/services/tournamentLifecyclePolicy.ts`  
+     - `src/backend/services/tournamentService.ts` (lifecycle sections)  
+     - `src/mobile/lib/features/tournaments/presentation/tournament_status_policy.dart`
 
 2. **Registration**
    - **Owns:** team self-registration, registration waitlist, registration fields, roster lock checks.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/routes/tournamentRoutes.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/data/tournament_repository_impl.dart`
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/backend/routes/tournamentRoutes.ts`  
+     - `src/mobile/lib/features/tournaments/data/tournament_repository_impl.dart`
 
 3. **Pools**
    - **Owns:** pool CRUD, pool assignment/move, pool waitlists, standings-by-pool.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/services/tournamentService.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/pools_management_page.dart`
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/backend/services/tournamentService.ts`  
+     - `src/mobile/lib/features/tournaments/presentation/pools_management_page.dart`
 
 4. **Brackets**
    - **Owns:** bracket generation/regeneration, knockout progression, third-place generation.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/services/tournamentService.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/bracket_visualization_page.dart`
+     - `src/backend/services/tournamentService.ts`  
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/mobile/lib/features/tournaments/presentation/bracket_visualization_page.dart`
 
 5. **Match Operations**
    - **Owns:** match start, score submission, scheduling/courts, check-in, scorekeeper assignment.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/routes/tournamentRoutes.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/matches_management_page.dart`
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/backend/routes/tournamentRoutes.ts`  
+     - `src/mobile/lib/features/tournaments/presentation/matches_management_page.dart`
 
 6. **Incidents & Disputes**
    - **Owns:** match incident lifecycle, score dispute create/review/resolve.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/tournament_operations_page.dart`
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/mobile/lib/features/tournaments/presentation/tournament_operations_page.dart`
 
 7. **Analytics**
    - **Owns:** organizer analytics aggregation and UI rendering.
    - **Current files:**  
-     - `/tmp/workspace/zipthezap/Teamly/src/backend/controllers/tournamentController.ts`  
-     - `/tmp/workspace/zipthezap/Teamly/src/mobile/lib/features/tournaments/presentation/tournament_analytics_page.dart`
+     - `src/backend/controllers/tournamentController.ts`  
+     - `src/mobile/lib/features/tournaments/presentation/tournament_analytics_page.dart`
 
 ## Refactor Target Structure (Backend)
 

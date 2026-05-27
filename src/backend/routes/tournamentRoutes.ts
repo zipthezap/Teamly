@@ -279,7 +279,7 @@ router.post(
   asyncHandler(tournamentController.registerTeamToPool)
 );
 
-// Admin: move a team from one pool to another (deprecated path)
+// Admin: move a team from one pool to another (deprecated path; remove after mobile/web migration by 2026-09-30)
 // Prefer PUT /:id/teams/:teamId/pool-move for new clients.
 router.post(
   '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',

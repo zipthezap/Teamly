@@ -2404,6 +2404,11 @@ describe('POST /api/tournaments/:id/teams/:teamId/players (addPlayer)', () => {
 
 describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   it('returns 200 with players list', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
     vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([mockPlayer] as any);
 
@@ -2422,6 +2427,11 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   });
 
   it('prepends captain to players when captain has no player record', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     const teamWithCaptain = {
       ...mockTeam,
       captainUserId: 'captain-1',
@@ -2442,6 +2452,11 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   });
 
   it('does not duplicate captain when captain already in players list', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     const teamWithCaptain = {
       ...mockTeam,
       captainUserId: 'cap-2',

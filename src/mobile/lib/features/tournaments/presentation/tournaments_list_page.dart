@@ -192,14 +192,14 @@ class _TournamentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tournament;
+    final groupMatches = t.matches
+        .where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null))
+        .toList();
+    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
     final statusPresentation = getTournamentStatusPresentation(
       status: t.status,
-      isFormingKnockoutBrackets: t.format == 'groups_knockout' &&
-          t.matches.where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null)).isNotEmpty &&
-          t.matches
-              .where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null))
-              .every((m) => m.status == 'completed') &&
-          !t.matches.any((m) => m.stage != null && m.stage != 'group_stage'),
+      isFormingKnockoutBrackets: t.format == 'groups_knockout' && allGroupsDone && !hasKnockout,
       registrationStartDate: t.registrationStartDate,
       registrationDeadline: t.registrationDeadline,
     );

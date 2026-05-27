@@ -115,6 +115,15 @@ const assertTournamentSetupEditable = (
   }
 };
 
+const resolveMoveTeamTargetPoolId = (
+  body: unknown,
+  params: { targetPoolId?: string }
+): string | null => {
+  const typedBody = body as { poolId?: string | null };
+  if (typedBody.poolId !== undefined) return typedBody.poolId;
+  return params.targetPoolId ?? null;
+};
+
 const assertTeamPaymentUpdateAllowed = (
   tournament: { status: string; paymentDeadline?: Date | null },
   paymentStatus: string
@@ -173,6 +182,9 @@ const parseNonNegativeInteger = (value: unknown, fieldName: string): number => {
 };
 
 const parseMatchScoreInput = (value: unknown, fieldName: string): number => {
+  if (value === null || value === undefined) {
+    throw new BadRequestError(`${fieldName} is required`);
+  }
   if (typeof value === 'string' && value.trim().length === 0) {
     throw new BadRequestError(`${fieldName} must be a whole number`);
   }
@@ -4235,8 +4247,7 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
 export const moveTeamToPool = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = req.user!.id;
-  const { poolId } = req.body as { poolId?: string | null };
-  const targetPoolId = poolId === undefined ? req.params.targetPoolId ?? null : poolId;
+  const targetPoolId = resolveMoveTeamTargetPoolId(req.body, req.params);
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
