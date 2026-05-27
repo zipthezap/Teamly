@@ -8,6 +8,8 @@ import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
+import 'tournament_status_presentation.dart';
+import 'tournament_status_policy.dart';
 import '../state/tournaments_notifier.dart';
 
 // ===========================================================================
@@ -173,14 +175,7 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
   }
 
   String _formatStatus(String s) {
-    const m = {
-      'draft': 'Draft',
-      'registration': 'Registration',
-      'in_progress': 'In Progress',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled',
-    };
-    return m[s] ?? s;
+    return getTournamentStageLabel(status: s);
   }
 }
 
@@ -194,89 +189,22 @@ class _TournamentCard extends StatelessWidget {
   final TournamentModel tournament;
   final VoidCallback onTap;
 
-  String _formatStatus(TournamentModel t) {
-    if (t.status == 'completed') return 'Done';
-    if (t.status == 'in_progress' || t.status == 'active') {
-      final groupMatches =
-          t.matches.where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null)).toList();
-      final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
-      final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
-      if (t.format == 'groups_knockout' && allGroupsDone && !hasKnockout) {
-        return 'Forming Brackets';
-      }
-      return 'In Progress';
-    }
-    if (t.status == 'registration_closed') return 'Registration Closed';
-    if (t.status == 'registration') return 'Registration Open';
-    if (t.status == 'cancelled') return 'Cancelled';
-    final now = DateTime.now();
-    final hasOpened = t.registrationStartDate == null ||
-        !now.isBefore(t.registrationStartDate!);
-    final isClosed =
-        t.registrationDeadline != null && now.isAfter(t.registrationDeadline!);
-    if (hasOpened && isClosed) return 'Registration Closed';
-    return 'Draft';
-  }
-
-  IconData _statusIcon(String s) {
-    switch (s) {
-      case 'registration':
-        return Icons.app_registration_outlined;
-      case 'registration_closed':
-        return Icons.lock_clock_outlined;
-      case 'in_progress':
-      case 'active':
-        return Icons.play_circle_outline;
-      case 'completed':
-        return Icons.check_circle_outline;
-      case 'cancelled':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.edit_note_outlined;
-    }
-  }
-
-  Color _statusColor(String s) {
-    switch (s) {
-      case 'completed':
-        return AppThemeTokens.success;
-      case 'in_progress':
-      case 'active':
-        return AppThemeTokens.info;
-      case 'cancelled':
-        return AppThemeTokens.error;
-      case 'registration':
-        return AppThemeTokens.warning;
-      case 'registration_closed':
-        return AppThemeTokens.error;
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
-  Color _statusBgColor(String s) {
-    switch (s) {
-      case 'completed':
-        return AppThemeTokens.successBg;
-      case 'in_progress':
-      case 'active':
-        return AppThemeTokens.infoBg;
-      case 'cancelled':
-        return AppThemeTokens.errorBg;
-      case 'registration':
-        return AppThemeTokens.warningBg;
-      case 'registration_closed':
-        return AppThemeTokens.errorBg;
-      default:
-        return AppThemeTokens.primaryGlow;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = tournament;
-    final statusColor = _statusColor(t.status);
-    final statusBgColor = _statusBgColor(t.status);
+    final groupMatches = t.matches
+        .where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null))
+        .toList();
+    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+    final statusPresentation = getTournamentStatusPresentation(
+      status: t.status,
+      isFormingKnockoutBrackets: t.format == 'groups_knockout' && allGroupsDone && !hasKnockout,
+      registrationStartDate: t.registrationStartDate,
+      registrationDeadline: t.registrationDeadline,
+    );
+    final statusColor = statusPresentation.color;
+    final statusBgColor = statusPresentation.backgroundColor;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -312,13 +240,13 @@ class _TournamentCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _statusIcon(t.status),
+                          statusPresentation.icon,
                           size: 12,
                           color: statusColor,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _formatStatus(t),
+                          statusPresentation.label,
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 11,

@@ -37,6 +37,9 @@ import '../features/tournaments/presentation/bracket_visualization_page.dart';
 import '../features/tournaments/presentation/match_schedule_page.dart';
 import '../features/tournaments/presentation/public_tournaments_page.dart';
 import '../features/tournaments/presentation/live_scores_page.dart';
+import '../features/tournaments/presentation/tournament_analytics_page.dart';
+import '../features/tournaments/presentation/tournament_operations_page.dart';
+import '../features/tournaments/presentation/tournament_announcements_page.dart';
 import '../features/leagues/presentation/leagues_page.dart';
 import '../features/leagues/presentation/league_detail_page.dart';
 import '../features/leagues/presentation/create_league_page.dart';
@@ -284,6 +287,29 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => LiveScoresPage(
                   tournamentId: state.pathParameters['id']!,
                 ),
+              ),
+              GoRoute(
+                path: 'analytics',
+                builder: (context, state) => TournamentAnalyticsPage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
+              ),
+              GoRoute(
+                path: 'operations',
+                builder: (context, state) => TournamentOperationsPage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
+              ),
+              GoRoute(
+                path: 'announcements',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final isAdmin = extra?['isAdmin'] as bool? ?? false;
+                  return TournamentAnnouncementsPage(
+                    tournamentId: state.pathParameters['id']!,
+                    isAdmin: isAdmin,
+                  );
+                },
               ),
             ],
           ),

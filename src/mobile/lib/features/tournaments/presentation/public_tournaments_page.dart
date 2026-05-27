@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/geocoding_utils.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/location_search_form.dart';
+import 'tournament_status_presentation.dart';
 
 final _publicTournamentsProvider = FutureProvider.family<List<TournamentModel>,
     ({double latitude, double longitude, double radius})?>((ref, location) async {
@@ -381,21 +382,14 @@ class _TournamentCard extends StatelessWidget {
   final TournamentModel tournament;
   final VoidCallback onTap;
 
-  Color _statusColor() {
-    switch (tournament.status) {
-      case 'registration':
-        return AppThemeTokens.info;
-      case 'in_progress':
-        return AppThemeTokens.success;
-      case 'completed':
-        return AppThemeTokens.warning;
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final statusPresentation = getTournamentStatusPresentation(
+      status: tournament.status,
+      registrationStartDate: tournament.registrationStartDate,
+      registrationDeadline: tournament.registrationDeadline,
+    );
+    final statusColor = statusPresentation.color;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
@@ -423,13 +417,13 @@ class _TournamentCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _statusColor().withOpacity(0.15),
+                    color: statusPresentation.backgroundColor,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    tournament.status,
+                    statusPresentation.label,
                     style: TextStyle(
-                      color: _statusColor(),
+                      color: statusColor,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),

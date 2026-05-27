@@ -12,6 +12,8 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
 import 'team_roster_page.dart';
+import 'tournament_status_presentation.dart';
+import 'tournament_status_policy.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
 
@@ -36,39 +38,19 @@ bool _isFormingKnockoutBrackets(TournamentModel tournament) {
 }
 
 bool _isTournamentStarted(TournamentModel tournament) {
-  return tournament.status == 'in_progress' ||
-      tournament.status == 'active' ||
-      tournament.status == 'completed' ||
+  return isTournamentStartedStatus(tournament.status) ||
       // Brackets have been generated but the status hasn't synced yet — treat
       // as started so the Scores tab is visible immediately.
       tournament.matches.isNotEmpty;
 }
 
 String _statusStageLabel(TournamentModel tournament) {
-  if (tournament.status == 'completed') return 'Done';
-
-  if (tournament.status == 'in_progress' || tournament.status == 'active') {
-    return _isFormingKnockoutBrackets(tournament) ? 'Forming Brackets' : 'In Progress';
-  }
-
-  if (tournament.status == 'registration_closed') return 'Registration Closed';
-  if (tournament.status == 'registration') return 'Registration Open';
-  if (tournament.status == 'cancelled') return 'Cancelled';
-
-  final now = DateTime.now();
-  final hasRegDates =
-      tournament.registrationStartDate != null || tournament.registrationDeadline != null;
-  if (hasRegDates) {
-    final hasOpened = tournament.registrationStartDate == null ||
-        !now.isBefore(tournament.registrationStartDate!);
-    final isClosed = tournament.registrationDeadline != null &&
-        now.isAfter(tournament.registrationDeadline!);
-    if (hasOpened && isClosed) {
-      return 'Registration Closed';
-    }
-  }
-
-  return 'Draft';
+  return getTournamentStageLabel(
+    status: tournament.status,
+    isFormingKnockoutBrackets: _isFormingKnockoutBrackets(tournament),
+    registrationStartDate: tournament.registrationStartDate,
+    registrationDeadline: tournament.registrationDeadline,
+  );
 }
 
 // ---------------- SECTION DIVIDER ----------------
@@ -511,6 +493,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
+          // Announcements shortcut (visible to everyone)
+          const SizedBox(height: 12),
+          _InfoRow(
+            icon: Icons.campaign_outlined,
+            label: 'Announcements',
+            value: 'View',
+            onTap: () => context.push(
+              '/tournaments/${t.id}/announcements',
+              extra: {'isAdmin': isOrganizer || isAdmin},
+            ),
+          ),
           if (canRegister) ...[
             const SizedBox(height: 16),
             if (t.hasFee) ...[
@@ -907,6 +900,29 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 _GroupMatchesButton(tournament: t, onRefresh: onRefresh),
                 _KnockoutBracketButton(tournament: t, onRefresh: onRefresh),
               ],
+              // Phase 3-5 feature shortcuts
+              OutlinedButton.icon(
+                icon: const Icon(Icons.campaign_outlined, size: 16),
+                label: const Text('Announcements'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/announcements',
+                      extra: {'isAdmin': true});
+                  if (context.mounted) onRefresh();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.dashboard_outlined, size: 16),
+                label: const Text('Operations Hub'),
+                onPressed: canManageTournament || t.status == 'in_progress'
+                    ? () => context.push('/tournaments/${t.id}/operations')
+                    : null,
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights_outlined, size: 16),
+                label: const Text('Analytics'),
+                onPressed: () =>
+                    context.push('/tournaments/${t.id}/analytics'),
+              ),
             ]),
           ],
           const SizedBox(height: 32),
@@ -2803,57 +2819,11 @@ class _StatusChip extends StatelessWidget {
 
   final String status;
 
-  IconData _icon() {
-    switch (status) {
-      case 'completed':
-        return Icons.check_circle_outline;
-      case 'in_progress':
-        return Icons.play_circle_outline;
-      case 'cancelled':
-        return Icons.cancel_outlined;
-      case 'registration':
-        return Icons.app_registration_outlined;
-      default:
-        return Icons.edit_note_outlined;
-    }
-  }
-
-  Color _statusColor() {
-    switch (status) {
-      case 'completed':
-        return AppThemeTokens.success;
-      case 'in_progress':
-      case 'active':
-        return AppThemeTokens.info;
-      case 'cancelled':
-        return AppThemeTokens.error;
-      case 'registration':
-        return AppThemeTokens.warning;
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
-  Color _statusBgColor() {
-    switch (status) {
-      case 'completed':
-        return AppThemeTokens.successBg;
-      case 'in_progress':
-      case 'active':
-        return AppThemeTokens.infoBg;
-      case 'cancelled':
-        return AppThemeTokens.errorBg;
-      case 'registration':
-        return AppThemeTokens.warningBg;
-      default:
-        return AppThemeTokens.primaryGlow;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor();
-    final bgColor = _statusBgColor();
+    final statusPresentation = getTournamentStatusPresentation(status: status);
+    final statusColor = statusPresentation.color;
+    final bgColor = statusPresentation.backgroundColor;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -2863,9 +2833,9 @@ class _StatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icon(), size: 12, color: statusColor),
+          Icon(statusPresentation.icon, size: 12, color: statusColor),
           const SizedBox(width: 4),
-          Text(status.replaceAll('_', ' '),
+          Text(statusPresentation.label,
               style: TextStyle(
                   color: statusColor,
                   fontSize: 11,

@@ -1,14 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createTestApp } from '../helpers/testApp';
+import { Permission } from '../../../shared/types/permissions.types';
 import tournamentRoutes from '../../routes/tournamentRoutes';
+import * as tournamentController from '../../controllers/tournamentController';
+
+const routeSecurityMocks = vi.hoisted(() => ({
+  authenticatedLimiter: vi.fn((_: any, __: any, next: any) => next()),
+  requireTournamentPermission: vi.fn(() => (_: any, __: any, next: any) => next()),
+  requireTeamPermission: vi.fn(() => (_: any, __: any, next: any) => next()),
+}));
 
 vi.mock('../../middleware/auth', () => ({
   default: (req: any, _res: any, next: any) => { req.user = { id: 'test-user-id', email: 'test@example.com', name: 'Test User' }; next(); },
   optionalAuthMiddleware: (req: any, _res: any, next: any) => { req.user = { id: 'test-user-id' }; next(); }
 }));
 vi.mock('../../middleware/rateLimiter', () => ({
-  authenticatedLimiter: (_: any, __: any, next: any) => next(),
+  authenticatedLimiter: routeSecurityMocks.authenticatedLimiter,
   apiLimiter: (_: any, __: any, next: any) => next(),
   authLimiter: (_: any, __: any, next: any) => next()
 }));
@@ -33,8 +41,8 @@ vi.mock('../../middleware/cacheControl', () => ({
 }));
 
 vi.mock('../../middleware/authorization', () => ({
-  requireTournamentPermission: () => (_: any, __: any, next: any) => next(),
-  requireTeamPermission: () => (_: any, __: any, next: any) => next(),
+  requireTournamentPermission: routeSecurityMocks.requireTournamentPermission,
+  requireTeamPermission: routeSecurityMocks.requireTeamPermission,
   requireTeamUpPermission: () => (_: any, __: any, next: any) => next()
 }));
 
@@ -71,6 +79,8 @@ vi.mock('../../controllers/tournamentController', () => ({
   cancelMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
   assignReferee: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  autoAssignReferees: vi.fn((req: any, res: any) => res.json({ assigned: 0, matches: [] })),
+  getRefereeDuties: vi.fn((req: any, res: any) => res.json([])),
   getStandings: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPools: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPoolDetails: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -118,6 +128,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   createCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
   scheduleMatchOnCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  bulkShiftScheduledMatches: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
   joinRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
   leaveRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -220,6 +231,54 @@ describe('Tournament Routes', () => {
 
   it('GET /api/:id/standings → 200', async () => {
     const res = await request(app).get('/api/tournament-1/standings');
+    expect(res.status).toBe(200);
+  });
+
+  it('wires high-risk endpoints to tournament permission middleware', async () => {
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_TEAMS);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_BRACKETS);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_MATCHES);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_SUBMIT_SCORES);
+    // Newly wired endpoints
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_UPDATE);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_VIEW_ADMIN_PANEL);
+  });
+
+  it('wires team-scoped endpoints to team permission middleware', async () => {
+    expect(routeSecurityMocks.requireTeamPermission).toHaveBeenCalledWith(Permission.TEAM_UPDATE);
+    expect(routeSecurityMocks.requireTeamPermission).toHaveBeenCalledWith(Permission.TEAM_MANAGE_PLAYERS);
+  });
+
+  it('applies authenticated limiter to protected routes', async () => {
+    routeSecurityMocks.authenticatedLimiter.mockClear();
+    await request(app).post('/api/tournament-1/generate-brackets').send({});
+    expect(routeSecurityMocks.authenticatedLimiter).toHaveBeenCalled();
+  });
+
+  it('POST /api/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId → 200 and preserves body', async () => {
+    const moveTeamToPoolMock = vi.mocked(tournamentController.moveTeamToPool);
+    moveTeamToPoolMock.mockImplementationOnce((req: any, res: any) =>
+      res.json({ body: req.body, params: req.params })
+    );
+
+    const res = await request(app)
+      .post('/api/tournament-1/pools/pool-a/admin/teams/team-1/move/pool-b')
+      .send({ keep: 'value' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.body).toEqual({ keep: 'value' });
+    expect(res.body.params.targetPoolId).toBe('pool-b');
+  });
+
+  it('POST /api/:id/registration-waitlist/:teamId/promote → 200', async () => {
+    const res = await request(app)
+      .post('/api/tournament-1/registration-waitlist/team-1/promote')
+      .send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/:id/registration-waitlist/me → 200', async () => {
+    const res = await request(app).delete('/api/tournament-1/registration-waitlist/me');
     expect(res.status).toBe(200);
   });
 });

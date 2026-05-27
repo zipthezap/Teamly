@@ -63,6 +63,18 @@ export enum TournamentPaymentTransactionStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum TournamentSeedingPolicy {
+  MANUAL = 'manual',
+  RANDOM = 'random',
+  RATING = 'rating',
+}
+
+export enum TournamentContingencyMode {
+  NORMAL = 'normal',
+  DELAYED = 'delayed',
+  SUSPENDED = 'suspended',
+}
+
 // Type definitions for detailed scoring
 export interface SetScore {
   home: number;
@@ -140,6 +152,27 @@ export interface Tournament {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
+  // Advanced tournament policy controls
+  timezone?: string;
+  noShowGraceMinutes?: number;
+  noShowAutoForfeit?: boolean;
+  forfeitScoreFor?: number;
+  forfeitScoreAgainst?: number;
+  minTeamRestMinutes?: number;
+  withdrawalDeadline?: Date | string;
+  autoPromoteRegistrationWaitlist?: boolean;
+  rescheduleCutoffMinutes?: number;
+  allowRescheduleAfterStart?: boolean;
+  seedingPolicy?: TournamentSeedingPolicy;
+  seedsLockedAt?: Date | string;
+  enableThirdPlaceMatch?: boolean;
+  enableConsolationBracket?: boolean;
+  allowByes?: boolean;
+  contingencyMode?: TournamentContingencyMode;
+  contingencyNotes?: string;
+  contingencyDelayMinutes?: number;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -270,6 +303,27 @@ export interface CreateTournamentDto {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
+  // Advanced tournament policy controls
+  timezone?: string;
+  noShowGraceMinutes?: number;
+  noShowAutoForfeit?: boolean;
+  forfeitScoreFor?: number;
+  forfeitScoreAgainst?: number;
+  minTeamRestMinutes?: number;
+  withdrawalDeadline?: Date | string;
+  autoPromoteRegistrationWaitlist?: boolean;
+  rescheduleCutoffMinutes?: number;
+  allowRescheduleAfterStart?: boolean;
+  seedingPolicy?: TournamentSeedingPolicy;
+  seedsLockedAt?: Date | string;
+  enableThirdPlaceMatch?: boolean;
+  enableConsolationBracket?: boolean;
+  allowByes?: boolean;
+  contingencyMode?: TournamentContingencyMode;
+  contingencyNotes?: string;
+  contingencyDelayMinutes?: number;
 }
 
 export interface UpdateTournamentDto {
@@ -302,6 +356,27 @@ export interface UpdateTournamentDto {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
+  // Advanced tournament policy controls
+  timezone?: string;
+  noShowGraceMinutes?: number;
+  noShowAutoForfeit?: boolean;
+  forfeitScoreFor?: number;
+  forfeitScoreAgainst?: number;
+  minTeamRestMinutes?: number;
+  withdrawalDeadline?: Date | string;
+  autoPromoteRegistrationWaitlist?: boolean;
+  rescheduleCutoffMinutes?: number;
+  allowRescheduleAfterStart?: boolean;
+  seedingPolicy?: TournamentSeedingPolicy;
+  seedsLockedAt?: Date | string;
+  enableThirdPlaceMatch?: boolean;
+  enableConsolationBracket?: boolean;
+  allowByes?: boolean;
+  contingencyMode?: TournamentContingencyMode;
+  contingencyNotes?: string;
+  contingencyDelayMinutes?: number;
 }
 
 export interface CreateTeamDto {
@@ -402,6 +477,18 @@ export interface TournamentCourtAvailability {
 
 export interface AssignRefereeDto {
   refereeTeamId: string | null; // null to remove referee assignment
+}
+
+export interface AutoAssignRefereesDto {
+  roundNumber?: number;
+  groupName?: string;
+  stage?: BracketStage;
+}
+
+export interface RefereeDutyEntry {
+  teamId: string;
+  teamName: string;
+  dutyCount: number;
 }
 
 export interface AssignPoolDto {

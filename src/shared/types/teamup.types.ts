@@ -21,6 +21,8 @@ export enum TeamUpResponseStatus {
   pending = 'pending',
   accepted = 'accepted',
   declined = 'declined',
+  waitlisted = 'waitlisted',
+  cancelled = 'cancelled',
 }
 
 // TeamUp Request
@@ -76,7 +78,7 @@ export interface TeamUpResponse {
   id: string;
   message?: string | null;
   applicantSkillLevel?: string | null;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'waitlisted' | 'cancelled';
   createdAt: Date | string;
   teamUpRequestId: string;
   requestPositionId?: string | null;

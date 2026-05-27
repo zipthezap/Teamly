@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import * as tournamentController from '../controllers/tournamentController';
-import authMiddleware from '../middleware/auth';
+import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireTournamentPermission, requireTeamPermission } from '../middleware/authorization';
 import { Permission } from '../../shared/types/permissions.types';
 import { noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -20,7 +21,12 @@ router.get('/portal/:shareToken', etagMiddleware({ weak: true }), asyncHandler(t
 router.get('/invitations/preview/:inviteToken', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getInvitationDetails));
 
 // Allow anyone to view team players for public discovery (no auth required)
-router.get('/:id/teams/:teamId/players', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayers));
+router.get(
+  '/:id/teams/:teamId/players',
+  optionalAuthMiddleware,
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getPlayers)
+);
 
 // All tournament routes require authentication
 router.use(authMiddleware);
@@ -47,6 +53,7 @@ router.delete(
 router.post(
   '/:id/cancel',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.cancelTournament)
 );
 
@@ -227,6 +234,13 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_ASSIGN_REFEREES),
   asyncHandler(tournamentController.assignReferee)
 );
+router.post(
+  '/:id/matches/auto-assign-referees',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_ASSIGN_REFEREES),
+  asyncHandler(tournamentController.autoAssignReferees)
+);
+router.get('/:id/referee-duties', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRefereeDuties));
 
 // Standings
 router.get('/:id/standings', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getStandings));
@@ -266,17 +280,28 @@ router.post(
   asyncHandler(tournamentController.registerTeamToPool)
 );
 
-// Admin: move a team from one pool to another (deprecated path — proxied to moveTeamToPool)
+// Admin: move a team from one pool to another (deprecated path; remove after mobile/web migration by 2026-09-30)
 // Prefer PUT /:id/teams/:teamId/pool-move for new clients.
 router.post(
   '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',
   noCache,
+  (req, _res, next) => {
+    logger.warn(
+      'Deprecated pool-move route used — migrate to PUT /:id/teams/:teamId/pool-move',
+      'TournamentRoutes',
+      {
+        tournamentId: req.params.id,
+        poolId: req.params.poolId,
+        teamId: req.params.teamId,
+        targetPoolId: req.params.targetPoolId,
+        userId: (req as any).user?.id,
+        path: req.path,
+      }
+    );
+    next();
+  },
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
-  asyncHandler(async (req, res) => {
-    // Re-map URL params to the body shape expected by moveTeamToPool
-    req.body = { ...req.body, poolId: req.params.targetPoolId };
-    return tournamentController.moveTeamToPool(req, res);
-  })
+  asyncHandler(tournamentController.moveTeamToPool)
 );
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',
@@ -364,14 +389,17 @@ router.get(
 router.put(
   '/:id/teams/:teamId/check-in',
   noCache,
+  requireTeamPermission(Permission.TEAM_UPDATE),
   asyncHandler(tournamentController.checkInTeam)
 );
 // QR-based check-in (Phase 3)
 router.post(
   '/:id/teams/:teamId/check-in/token',
   noCache,
+  requireTeamPermission(Permission.TEAM_UPDATE),
   asyncHandler(tournamentController.generateCheckInQrToken)
 );
+// QR check-in via token — no auth required (token itself is the credential)
 router.post(
   '/:id/check-in/qr',
   noCache,
@@ -421,6 +449,12 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.scheduleMatchOnCourt)
 );
+router.put(
+  '/:id/matches/bulk-shift',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.bulkShiftScheduledMatches)
+);
 // Scorekeeper assignment, match start, incidents (Phase 3)
 router.put(
   '/:id/matches/:matchId/scorekeeper',
@@ -428,6 +462,8 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.assignMatchScorekeeper)
 );
+// Match start: organizer/admin OR assigned scorekeeper may start — kept as controller-level auth
+// because scorekeeper is an assigned user ID, not a tournament role in the permission matrix
 router.put(
   '/:id/matches/:matchId/start',
   noCache,
@@ -438,6 +474,7 @@ router.get(
   etagMiddleware({ weak: true }),
   asyncHandler(tournamentController.getMatchIncidents)
 );
+// Incident create: organizer/admin OR assigned scorekeeper — controller-level auth (same reason as start)
 router.post(
   '/:id/matches/:matchId/incidents',
   noCache,
@@ -446,6 +483,7 @@ router.post(
 router.put(
   '/:id/incidents/:incidentId/resolve',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.resolveMatchIncident)
 );
 
@@ -453,6 +491,13 @@ router.put(
 router.get('/:id/registration-waitlist', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRegistrationWaitlist));
 router.post('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.joinRegistrationWaitlist));
 router.delete('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.leaveRegistrationWaitlist));
+router.delete('/:id/registration-waitlist/me', noCache, asyncHandler(tournamentController.leaveRegistrationWaitlist));
+router.post(
+  '/:id/registration-waitlist/:teamId/promote',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.promoteFromRegistrationWaitlist)
+);
 router.delete(
   '/:id/registration-waitlist/:teamId',
   noCache,
@@ -461,6 +506,7 @@ router.delete(
 );
 
 // Score disputes (#3)
+// Dispute create: participants of the involved teams only — controller-level auth (team-scoped, not tournament-level)
 router.post('/:id/matches/:matchId/disputes', noCache, asyncHandler(tournamentController.createScoreDispute));
 router.get(
   '/:id/matches/:matchId/disputes',
@@ -470,6 +516,7 @@ router.get(
 router.put(
   '/:id/disputes/:disputeId',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.resolveScoreDispute)
 );
 
@@ -510,6 +557,7 @@ router.get('/:id/teams/:teamId/player-stats', etagMiddleware({ weak: true }), as
 router.put(
   '/:id/teams/:teamId/players/:playerId/stats',
   noCache,
+  requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
   asyncHandler(tournamentController.upsertPlayerStat)
 );
 
@@ -517,6 +565,7 @@ router.put(
 router.post(
   '/:id/clone',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.cloneTournament)
 );
 
@@ -524,6 +573,7 @@ router.post(
 router.post(
   '/:id/share-token',
   noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.generateShareToken)
 );
 
@@ -531,6 +581,7 @@ router.post(
 router.get(
   '/:id/analytics',
   etagMiddleware({ weak: true }),
+  requireTournamentPermission(Permission.TOURNAMENT_VIEW_ADMIN_PANEL),
   asyncHandler(tournamentController.getTournamentAnalytics)
 );
 

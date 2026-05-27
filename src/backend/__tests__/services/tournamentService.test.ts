@@ -26,6 +26,7 @@ import {
   generateRandomizedSingleEliminationBracketsFromPools,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
+  sortStandingsByTiebreakerRules,
   advanceWinners,
 } from '../../services/tournamentService';
 import prisma from '../../config/database';
@@ -793,6 +794,56 @@ describe('Tournament Service', () => {
     });
   });
 
+  describe('sortStandingsByTiebreakerRules', () => {
+    it('applies head-to-head values when explicitly configured', () => {
+      const standings = [
+        {
+          teamId: 'team-a',
+          points: 6,
+          wins: 2,
+          goalsFor: 5,
+          goalsAgainst: 3,
+          headToHeadPoints: 1,
+        },
+        {
+          teamId: 'team-b',
+          points: 6,
+          wins: 2,
+          goalsFor: 5,
+          goalsAgainst: 3,
+          headToHeadPoints: 4,
+        },
+      ];
+
+      const sorted = sortStandingsByTiebreakerRules(standings, ['head_to_head']);
+
+      expect(sorted.map((standing) => standing.teamId)).toEqual(['team-b', 'team-a']);
+    });
+
+    it('uses a deterministic fallback when every configured rule is tied', () => {
+      const standings = [
+        {
+          teamId: 'team-z',
+          points: 3,
+          wins: 1,
+          goalsFor: 2,
+          goalsAgainst: 1,
+        },
+        {
+          teamId: 'team-a',
+          points: 3,
+          wins: 1,
+          goalsFor: 2,
+          goalsAgainst: 1,
+        },
+      ];
+
+      const sorted = sortStandingsByTiebreakerRules(standings, ['wins']);
+
+      expect(sorted.map((standing) => standing.teamId)).toEqual(['team-a', 'team-z']);
+    });
+  });
+
   describe('advanceWinners', () => {
     it('seeds the initial knockout round for groups knockout after all group matches complete', async () => {
       vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
@@ -965,6 +1016,59 @@ describe('Tournament Service', () => {
             awayTeamId: 'team-4',
           }),
         ],
+      });
+    });
+
+    it('creates a third-place match when semifinals complete', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'semi-1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 2,
+          awayScore: 1,
+          roundNumber: 3,
+          matchOrder: 1,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: 'semi-2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-3',
+          awayTeamId: 'team-4',
+          homeScore: 0,
+          awayScore: 1,
+          roundNumber: 3,
+          matchOrder: 2,
+          createdAt: new Date('2025-01-10'),
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count)
+        .mockResolvedValueOnce(0) // no finals yet
+        .mockResolvedValueOnce(0) // no third-place match yet
+        .mockResolvedValueOnce(2); // previous stages existed
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.SEMI_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            stage: BracketStage.FINALS,
+            homeTeamId: 'team-1',
+            awayTeamId: 'team-4',
+          }),
+          expect.objectContaining({
+            stage: BracketStage.THIRD_PLACE,
+            homeTeamId: 'team-2',
+            awayTeamId: 'team-3',
+          }),
+        ]),
       });
     });
   });

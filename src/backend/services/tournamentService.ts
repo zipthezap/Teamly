@@ -6,6 +6,7 @@ import {
   BracketStage,
   TournamentFormat,
   TournamentStatus,
+  TournamentSeedingPolicy,
   TournamentNotificationType,
   VolleyballConfig,
   SportScoringConfig,
@@ -18,6 +19,11 @@ import {
   recordTournamentLifecycleTransition,
   recordTournamentLifecycleTransitionFailure,
 } from './metricsService';
+import {
+  canPerformTournamentLifecycleAction,
+  canTransitionTournamentStatus,
+  isTerminalTournamentStatus,
+} from './tournamentLifecyclePolicy';
 
 const ALLOWED_SPORT_TYPES = [
   'football',
@@ -65,12 +71,106 @@ type QualifiedTeam = StandingLike & {
   rankInGroup: number;
 };
 
+const DEFAULT_TIEBREAKER_RULES = ['goal_difference', 'goals_for'] as const;
+
+type TiebreakerRule = (typeof DEFAULT_TIEBREAKER_RULES)[number] | 'goals_against' | 'wins' | 'head_to_head';
+
+const normalizeTiebreakerRules = (tiebreakerRules?: string[] | null): string[] =>
+  tiebreakerRules && tiebreakerRules.length > 0 ? tiebreakerRules : [...DEFAULT_TIEBREAKER_RULES];
+
+const extractHeadToHeadMetric = (standing: Record<string, unknown>): number | null => {
+  const candidates = [
+    standing.headToHeadPoints,
+    standing.head_to_head_points,
+    standing.headToHeadScore,
+    standing.head_to_head_score,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) return candidate;
+  }
+  return null;
+};
+
+const compareStableStandingIdentity = (
+  a: Record<string, unknown>,
+  b: Record<string, unknown>
+): number => {
+  const identityA = typeof a.teamId === 'string'
+    ? a.teamId
+    : typeof a.id === 'string'
+      ? a.id
+      : '';
+  const identityB = typeof b.teamId === 'string'
+    ? b.teamId
+    : typeof b.id === 'string'
+      ? b.id
+      : '';
+  return identityA.localeCompare(identityB);
+};
+
+const compareStandingsWithTiebreakers = (
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+  tiebreakerRules?: string[] | null
+): number => {
+  const pointsA = typeof a.points === 'number' ? a.points : 0;
+  const pointsB = typeof b.points === 'number' ? b.points : 0;
+  if (pointsB !== pointsA) return pointsB - pointsA;
+
+  const goalsForA = typeof a.goalsFor === 'number' ? a.goalsFor : 0;
+  const goalsForB = typeof b.goalsFor === 'number' ? b.goalsFor : 0;
+  const goalsAgainstA = typeof a.goalsAgainst === 'number' ? a.goalsAgainst : 0;
+  const goalsAgainstB = typeof b.goalsAgainst === 'number' ? b.goalsAgainst : 0;
+  const winsA = typeof a.wins === 'number' ? a.wins : 0;
+  const winsB = typeof b.wins === 'number' ? b.wins : 0;
+  const goalDifferenceA = goalsForA - goalsAgainstA;
+  const goalDifferenceB = goalsForB - goalsAgainstB;
+  const rules = normalizeTiebreakerRules(tiebreakerRules);
+  const appliedRules = new Set(rules);
+
+  const compareByRule = (rule: string): number => {
+    switch (rule as TiebreakerRule) {
+      case 'goal_difference':
+        return goalDifferenceB - goalDifferenceA;
+      case 'goals_for':
+        return goalsForB - goalsForA;
+      case 'goals_against':
+        return goalsAgainstA - goalsAgainstB;
+      case 'wins':
+        return winsB - winsA;
+      case 'head_to_head': {
+        const headToHeadA = extractHeadToHeadMetric(a);
+        const headToHeadB = extractHeadToHeadMetric(b);
+        if (headToHeadA === null || headToHeadB === null) return 0;
+        return headToHeadB - headToHeadA;
+      }
+      default:
+        return 0;
+    }
+  };
+
+  for (const rule of rules) {
+    const comparison = compareByRule(rule);
+    if (comparison !== 0) return comparison;
+  }
+
+  const fallbackRules: TiebreakerRule[] = ['wins', 'goal_difference', 'goals_for', 'goals_against'];
+  for (const fallbackRule of fallbackRules) {
+    if (appliedRules.has(fallbackRule)) continue;
+    const fallbackComparison = compareByRule(fallbackRule);
+    if (fallbackComparison !== 0) return fallbackComparison;
+  }
+
+  return compareStableStandingIdentity(a, b);
+};
+
 /**
  * Returns the largest supported knockout bracket size (power of two, capped at 16)
  * that fits the number of available teams, or 0 when there are not enough teams
  * to seed a knockout round.
  */
 const knockoutBracketSize = (teamCount: number) => {
+  if (teamCount >= 32) return 32;
   if (teamCount >= 16) return 16;
   if (teamCount >= 8) return 8;
   if (teamCount >= 4) return 4;
@@ -79,6 +179,7 @@ const knockoutBracketSize = (teamCount: number) => {
 };
 
 const firstKnockoutStageForSize = (size: number): BracketStage => {
+  if (size >= 32) return BracketStage.ROUND_OF_32;
   if (size >= 16) return BracketStage.ROUND_OF_16;
   if (size >= 8) return BracketStage.QUARTER_FINALS;
   if (size >= 4) return BracketStage.SEMI_FINALS;
@@ -87,6 +188,25 @@ const firstKnockoutStageForSize = (size: number): BracketStage => {
 
 const seededPairOrder = (size: number): Array<[number, number]> => {
   switch (size) {
+    case 32:
+      return [
+        [0, 31],
+        [15, 16],
+        [8, 23],
+        [7, 24],
+        [4, 27],
+        [11, 20],
+        [12, 19],
+        [3, 28],
+        [2, 29],
+        [13, 18],
+        [10, 21],
+        [5, 26],
+        [6, 25],
+        [9, 22],
+        [14, 17],
+        [1, 30],
+      ];
     case 16:
       return [
         [0, 15],
@@ -122,35 +242,7 @@ const compareStandingsPerformance = (
   b: StandingLike,
   tiebreakerRules?: string[] | null
 ) => {
-  if (b.points !== a.points) return b.points - a.points;
-
-  const rules = tiebreakerRules && tiebreakerRules.length > 0
-    ? tiebreakerRules
-    : ['goal_difference', 'goals_for'];
-
-  for (const rule of rules) {
-    switch (rule) {
-      case 'goal_difference': {
-        const gdA = a.goalsFor - a.goalsAgainst;
-        const gdB = b.goalsFor - b.goalsAgainst;
-        if (gdB !== gdA) return gdB - gdA;
-        break;
-      }
-      case 'goals_for':
-        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-        break;
-      case 'goals_against':
-        if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
-        break;
-      case 'wins':
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        break;
-      default:
-        break;
-    }
-  }
-
-  return 0;
+  return compareStandingsWithTiebreakers(a as Record<string, unknown>, b as Record<string, unknown>, tiebreakerRules);
 };
 
 const compareQualifiedTeams = (
@@ -395,11 +487,8 @@ export const validateRegistrationEligibility = (tournament: {
   registrationDeadline?: Date | null;
   allowLateRegistration?: boolean;
 }) => {
-  if (
-    tournament.status !== 'draft' &&
-    tournament.status !== 'registration'
-  ) {
-    // registration_closed, in_progress, completed, cancelled all reject registration
+  const registrationEligibility = canPerformTournamentLifecycleAction('register_team', tournament.status);
+  if (!registrationEligibility.allowed) {
     throw new BadRequestError('Tournament registration is closed');
   }
 
@@ -441,7 +530,7 @@ export const computeAutoStatus = (tournament: {
   hasMatches?: boolean;
   hasIncompleteMatches?: boolean;
 }): string | null => {
-  if (tournament.status === 'cancelled') return null;
+  if (isTerminalTournamentStatus(tournament.status)) return null;
 
   const now = new Date();
 
@@ -741,6 +830,8 @@ const buildSingleEliminationMatches = (tournamentId: string, teams: Array<{ id: 
   return matches;
 };
 
+const isPowerOfTwo = (value: number): boolean => value > 0 && (value & (value - 1)) === 0;
+
 const shuffleTeams = <T>(teams: T[]): T[] => {
   const shuffled = [...teams];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -750,12 +841,23 @@ const shuffleTeams = <T>(teams: T[]): T[] => {
   return shuffled;
 };
 
-export const generateSingleEliminationBrackets = async (tournamentId: string) => {
-  const teams = await prisma.tournamentTeam.findMany({
+export const generateSingleEliminationBrackets = async (
+  tournamentId: string,
+  options?: { randomizeSeeds?: boolean; allowByes?: boolean }
+) => {
+  const teamsRaw = await prisma.tournamentTeam.findMany({
     where: { tournamentId },
     orderBy: { createdAt: 'asc' }
   });
 
+  if (options?.allowByes === false && !isPowerOfTwo(teamsRaw.length)) {
+    throw new BadRequestError(
+      'Bracket generation without byes requires a power-of-two number of teams',
+      'INVALID_TEAM_COUNT_FOR_NO_BYES'
+    );
+  }
+
+  const teams = options?.randomizeSeeds ? shuffleTeams(teamsRaw) : teamsRaw;
   const matches = buildSingleEliminationMatches(tournamentId, teams);
   const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
 
@@ -1025,7 +1127,7 @@ export const generatePoolAwareBrackets = async (
 export const generateKnockoutFromStandings = async (tournamentId: string) => {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
-    select: { tiebreakerRules: true },
+    select: { tiebreakerRules: true, seedingPolicy: true },
   });
 
   const standings = await prisma.tournamentStanding.findMany({
@@ -1052,7 +1154,12 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
     tournament?.tiebreakerRules as string[] | null | undefined
   );
 
-  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, qualifiers);
+  const seededQualifiers =
+    tournament?.seedingPolicy === TournamentSeedingPolicy.RANDOM
+      ? shuffleTeams(qualifiers)
+      : qualifiers;
+
+  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, seededQualifiers);
 
   if (firstStageMatches.length === 0) {
     throw new BadRequestError(
@@ -1275,7 +1382,18 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
       stage: nextStage,
     },
   });
-  if (existingNextStageMatches > 0) {
+  const existingThirdPlaceMatches = currentStage === BracketStage.SEMI_FINALS
+    ? await prisma.tournamentMatch.count({
+        where: {
+          tournamentId,
+          stage: BracketStage.THIRD_PLACE,
+        },
+      })
+    : 0;
+  if (
+    existingNextStageMatches > 0 &&
+    (currentStage !== BracketStage.SEMI_FINALS || existingThirdPlaceMatches > 0)
+  ) {
     return;
   }
 
@@ -1336,9 +1454,49 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     }
   }
   
-  if (nextMatches.length > 0) {
+  const matchesToCreate = [...nextMatches];
+
+  // If both semifinals are complete, also create a third-place match between semifinal losers.
+  const thirdPlacePolicyTournament =
+    currentStage === BracketStage.SEMI_FINALS
+      ? await prisma.tournament.findUnique({
+          where: { id: tournamentId },
+          select: { enableThirdPlaceMatch: true },
+        })
+      : null;
+  if (
+    currentStage === BracketStage.SEMI_FINALS &&
+    allStageMatches.length === 2 &&
+    existingThirdPlaceMatches === 0 &&
+    (thirdPlacePolicyTournament?.enableThirdPlaceMatch ?? true)
+  ) {
+    const hasDrawnSemiFinal = allStageMatches.some(match => match.homeScore === match.awayScore);
+    if (hasDrawnSemiFinal) {
+      logger.warn('Skipping third-place match generation because semifinals have unresolved winners', 'TournamentService', {
+        tournamentId,
+      });
+    } else {
+    const semiLosers = allStageMatches.map(match =>
+      match.homeScore! > match.awayScore! ? match.awayTeamId : match.homeTeamId
+    );
+
+    if (semiLosers.length === 2) {
+      matchesToCreate.push({
+        tournamentId,
+        homeTeamId: semiLosers[0],
+        awayTeamId: semiLosers[1],
+        stage: BracketStage.THIRD_PLACE,
+        roundNumber: currentIndex + 2,
+        matchOrder: 1,
+        status: MatchStatus.SCHEDULED,
+      });
+    }
+    }
+  }
+
+  if (matchesToCreate.length > 0) {
     await prisma.tournamentMatch.createMany({
-      data: nextMatches
+      data: matchesToCreate
     });
   }
 };
@@ -1653,35 +1811,13 @@ export const sortStandingsByTiebreakerRules = <T extends {
   standings: T[],
   tiebreakerRules?: string[] | null
 ): T[] => {
-  const rules = tiebreakerRules && tiebreakerRules.length > 0
-    ? tiebreakerRules
-    : ['goal_difference', 'goals_for'];
-
-  return [...standings].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    for (const rule of rules) {
-      switch (rule) {
-        case 'goal_difference': {
-          const gdA = a.goalsFor - a.goalsAgainst;
-          const gdB = b.goalsFor - b.goalsAgainst;
-          if (gdB !== gdA) return gdB - gdA;
-          break;
-        }
-        case 'goals_for':
-          if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-          break;
-        case 'goals_against':
-          if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
-          break;
-        case 'wins':
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          break;
-        default:
-          break;
-      }
-    }
-    return 0;
-  });
+  return [...standings].sort((a, b) =>
+    compareStandingsWithTiebreakers(
+      a as unknown as Record<string, unknown>,
+      b as unknown as Record<string, unknown>,
+      tiebreakerRules
+    )
+  );
 };
 
 // ==================== SPORT-SPECIFIC SCORE VALIDATION ====================
@@ -1722,9 +1858,9 @@ export const buildRosterWithCaptain = (
   team: {
     id: string;
     createdAt: Date;
-    captainUser: { id: string; name: string | null; email: string } | null;
+    captainUser: { id: string; name: string | null; email?: string | null } | null;
   },
-  players: Array<{ user: { id: string; name?: string | null; email?: string } | null; [key: string]: unknown }>
+  players: Array<{ user: { id: string; name?: string | null; email?: string | null } | null; [key: string]: unknown }>
 ): Array<unknown> => {
   if (team.captainUser && !players.some((p) => p.user?.id === team.captainUser!.id)) {
     const captain = team.captainUser;
@@ -1832,6 +1968,22 @@ export const syncTournamentAutoStatus = async <T extends {
   });
 
   if (!nextStatus || nextStatus === tournament.status) {
+    lastSyncedAt.set(tournament.id, new Date());
+    return tournament;
+  }
+
+  if (
+    !canTransitionTournamentStatus(
+      tournament.status as TournamentStatus,
+      nextStatus as TournamentStatus
+    )
+  ) {
+    logger.warn('Skipping invalid lifecycle transition', 'TournamentService', {
+      tournamentId: tournament.id,
+      from: tournament.status,
+      to: nextStatus,
+      trigger,
+    });
     lastSyncedAt.set(tournament.id, new Date());
     return tournament;
   }

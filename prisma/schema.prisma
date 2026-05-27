@@ -1038,6 +1038,18 @@ enum BracketStage {
   finals
 }
 
+enum TournamentSeedingPolicy {
+  manual
+  random
+  rating
+}
+
+enum TournamentContingencyMode {
+  normal
+  delayed
+  suspended
+}
+
 model Tournament {
   id          String   @id @default(uuid())
   name        String
@@ -1092,6 +1104,29 @@ model Tournament {
   rosterLockDate   DateTime?  // Date after which roster changes are locked (#10)
   paymentDeadline  DateTime?  // Deadline for team payment (#15)
   tiebreakerRules  Json?      // Array of tiebreaker rule keys e.g. ["goal_difference","goals_for"] (#6)
+
+  // Self-ref: teams on break are asked to officiate concurrent matches
+  selfRefEnabled   Boolean    @default(false) // Enable self-ref mode for this tournament
+
+  // Advanced tournament policy controls
+  timezone                         String?   // Canonical tournament timezone (e.g. "Europe/Berlin")
+  noShowGraceMinutes               Int       @default(15)
+  noShowAutoForfeit                Boolean   @default(false)
+  forfeitScoreFor                  Int       @default(1)
+  forfeitScoreAgainst              Int       @default(0)
+  minTeamRestMinutes               Int       @default(0)
+  withdrawalDeadline               DateTime?
+  autoPromoteRegistrationWaitlist  Boolean   @default(true)
+  rescheduleCutoffMinutes          Int       @default(0)
+  allowRescheduleAfterStart        Boolean   @default(false)
+  seedingPolicy                    TournamentSeedingPolicy @default(manual)
+  seedsLockedAt                    DateTime?
+  enableThirdPlaceMatch            Boolean   @default(true)
+  enableConsolationBracket         Boolean   @default(false)
+  allowByes                        Boolean   @default(true)
+  contingencyMode                  TournamentContingencyMode @default(normal)
+  contingencyNotes                 String?
+  contingencyDelayMinutes          Int       @default(0)
 
   // Public portal (Phase 4)
   shareToken       String?   @unique  // Opaque token for shareable/embeddable public URL

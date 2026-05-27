@@ -27,6 +27,9 @@ let tournamentSyncInterval: NodeJS.Timeout | null = null;
  */
 export const syncAllTournamentStatuses = async (): Promise<void> => {
   const now = new Date();
+  // Threshold: warn about tournaments that appear to be stuck for over 2 hours
+  const stuckThreshold = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+
   try {
     // Fetch tournaments that might need a status change:
     // - Not yet completed or cancelled
@@ -49,6 +52,9 @@ export const syncAllTournamentStatuses = async (): Promise<void> => {
     if (candidates.length === 0) return;
 
     let updated = 0;
+    let failed = 0;
+    const stuck: string[] = [];
+
     for (const t of candidates) {
       try {
         const prev = t.status;
@@ -68,12 +74,39 @@ export const syncAllTournamentStatuses = async (): Promise<void> => {
           updated++;
         }
       } catch (err) {
+        failed++;
         logger.warn(`Failed to sync status for tournament ${t.id}`, 'ScheduledJobs', { err });
+      }
+
+      // Detect stuck tournaments: registration should have opened or tournament should have started
+      const registrationShouldBeOpen =
+        t.status === 'draft' &&
+        t.registrationStartDate != null &&
+        new Date(t.registrationStartDate) < stuckThreshold;
+      const tournamentShouldBeInProgress =
+        t.status === 'registration_closed' &&
+        t.startDate != null &&
+        new Date(t.startDate) < stuckThreshold;
+      if (registrationShouldBeOpen || tournamentShouldBeInProgress) {
+        stuck.push(t.id);
       }
     }
 
-    if (updated > 0) {
-      logger.info(`Tournament lifecycle sync: updated ${updated}/${candidates.length} tournaments`, 'ScheduledJobs', { at: now.toISOString() });
+    if (updated > 0 || failed > 0) {
+      logger.info(
+        `Tournament lifecycle sync: updated ${updated}/${candidates.length} tournaments` +
+          (failed > 0 ? `, ${failed} failed` : ''),
+        'ScheduledJobs',
+        { updated, failed, total: candidates.length, at: now.toISOString() }
+      );
+    }
+
+    if (stuck.length > 0) {
+      logger.warn(
+        `Stuck tournaments detected (${stuck.length}): status transition overdue by >2h`,
+        'ScheduledJobs',
+        { stuckTournamentIds: stuck, at: now.toISOString() }
+      );
     }
   } catch (error) {
     logger.error('Error syncing tournament statuses', 'ScheduledJobs', { error });
@@ -291,6 +324,8 @@ export const checkIncidentSlas = async (): Promise<void> => {
       },
     });
 
+    let notified = 0;
+    let skipped = 0;
     for (const incident of overdueIncidents) {
       const existing = await prisma.tournamentNotification.findFirst({
         where: {
@@ -302,7 +337,10 @@ export const checkIncidentSlas = async (): Promise<void> => {
         select: { id: true },
       });
 
-      if (existing) continue;
+      if (existing) {
+        skipped++;
+        continue;
+      }
 
       await prisma.tournamentNotification.create({
         data: {
@@ -319,6 +357,15 @@ export const checkIncidentSlas = async (): Promise<void> => {
           },
         },
       });
+      notified++;
+    }
+
+    if (overdueIncidents.length > 0) {
+      logger.warn(
+        `Incident SLA check: ${overdueIncidents.length} overdue, ${notified} notified, ${skipped} already notified`,
+        'ScheduledJobs',
+        { overdueCount: overdueIncidents.length, notified, skipped, at: now.toISOString() }
+      );
     }
   } catch (error) {
     logger.error('Error checking incident SLA deadlines', 'ScheduledJobs', { error });
@@ -350,6 +397,8 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
       },
     });
 
+    let reminded = 0;
+    let skipped = 0;
     for (const tournament of tournaments) {
       for (const team of tournament.teams) {
         if (!team.captainUserId) continue;
@@ -364,7 +413,10 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
           select: { id: true },
         });
 
-        if (existing) continue;
+        if (existing) {
+          skipped++;
+          continue;
+        }
 
         await prisma.tournamentNotification.create({
           data: {
@@ -381,7 +433,16 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
             },
           },
         });
+        reminded++;
       }
+    }
+
+    if (reminded > 0 || skipped > 0) {
+      logger.info(
+        `Payment deadline reminders: ${reminded} sent, ${skipped} already sent`,
+        'ScheduledJobs',
+        { reminded, skipped, tournamentCount: tournaments.length, at: now.toISOString() }
+      );
     }
   } catch (error) {
     logger.error('Error sending tournament payment deadline reminders', 'ScheduledJobs', { error });
