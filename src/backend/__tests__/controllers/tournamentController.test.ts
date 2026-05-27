@@ -886,17 +886,22 @@ describe('GET /api/tournaments/:id (getTournament)', () => {
   });
 
   it('applies configured tournament tiebreaker rules when returning detail standings', async () => {
+    const rawStandings = [
+      { teamId: 'team-1', points: 3, wins: 1, goalsFor: 2, goalsAgainst: 1 },
+      { teamId: 'team-2', points: 3, wins: 2, goalsFor: 2, goalsAgainst: 1 },
+    ];
+    const sortedStandings = [rawStandings[1], rawStandings[0]];
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       tiebreakerRules: ['wins', 'goal_difference'],
-      standings: [
-        { teamId: 'team-1', points: 3, wins: 1, goalsFor: 2, goalsAgainst: 1 },
-      ],
+      standings: rawStandings,
     } as any);
+    vi.mocked(tournamentService.sortStandingsByTiebreakerRules).mockReturnValueOnce(sortedStandings as any);
 
     const res = await request(app).get('/api/tournaments/tournament-1');
 
     expect(res.status).toBe(200);
+    expect(res.body.standings).toEqual(sortedStandings);
     expect(tournamentService.sortStandingsByTiebreakerRules).toHaveBeenCalledWith(
       expect.any(Array),
       ['wins', 'goal_difference']
@@ -4916,7 +4921,7 @@ describe('Tournament workflow e2e scenarios', () => {
       });
       return selected as any;
     });
-    vi.mocked(prisma.tournamentTeam.count).mockImplementation(async () => teams.length);
+    vi.mocked(prisma.tournamentTeam.count).mockImplementation(async () => teams.length as any);
     vi.mocked(prisma.tournamentTeam.create).mockImplementation(async ({ data }: any) => {
       const team = {
         ...mockTeam,

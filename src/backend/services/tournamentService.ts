@@ -75,7 +75,7 @@ const DEFAULT_TIEBREAKER_RULES = ['goal_difference', 'goals_for'] as const;
 
 type TiebreakerRule = (typeof DEFAULT_TIEBREAKER_RULES)[number] | 'goals_against' | 'wins' | 'head_to_head';
 
-const resolveTiebreakerRules = (tiebreakerRules?: string[] | null): string[] =>
+const normalizeTiebreakerRules = (tiebreakerRules?: string[] | null): string[] =>
   tiebreakerRules && tiebreakerRules.length > 0 ? tiebreakerRules : [...DEFAULT_TIEBREAKER_RULES];
 
 const extractHeadToHeadMetric = (standing: Record<string, unknown>): number | null => {
@@ -123,44 +123,44 @@ const compareStandingsWithTiebreakers = (
   const goalsAgainstB = typeof b.goalsAgainst === 'number' ? b.goalsAgainst : 0;
   const winsA = typeof a.wins === 'number' ? a.wins : 0;
   const winsB = typeof b.wins === 'number' ? b.wins : 0;
-  const rules = resolveTiebreakerRules(tiebreakerRules);
+  const goalDifferenceA = goalsForA - goalsAgainstA;
+  const goalDifferenceB = goalsForB - goalsAgainstB;
+  const rules = normalizeTiebreakerRules(tiebreakerRules);
+  const appliedRules = new Set(rules);
 
-  for (const rule of rules) {
+  const compareByRule = (rule: string): number => {
     switch (rule as TiebreakerRule) {
-      case 'goal_difference': {
-        const goalDifferenceA = goalsForA - goalsAgainstA;
-        const goalDifferenceB = goalsForB - goalsAgainstB;
-        if (goalDifferenceB !== goalDifferenceA) return goalDifferenceB - goalDifferenceA;
-        break;
-      }
+      case 'goal_difference':
+        return goalDifferenceB - goalDifferenceA;
       case 'goals_for':
-        if (goalsForB !== goalsForA) return goalsForB - goalsForA;
-        break;
+        return goalsForB - goalsForA;
       case 'goals_against':
-        if (goalsAgainstA !== goalsAgainstB) return goalsAgainstA - goalsAgainstB;
-        break;
+        return goalsAgainstA - goalsAgainstB;
       case 'wins':
-        if (winsB !== winsA) return winsB - winsA;
-        break;
+        return winsB - winsA;
       case 'head_to_head': {
         const headToHeadA = extractHeadToHeadMetric(a);
         const headToHeadB = extractHeadToHeadMetric(b);
-        if (headToHeadA !== null && headToHeadB !== null && headToHeadB !== headToHeadA) {
-          return headToHeadB - headToHeadA;
-        }
-        break;
+        if (headToHeadA === null || headToHeadB === null) return 0;
+        return headToHeadB - headToHeadA;
       }
       default:
-        break;
+        return 0;
     }
+  };
+
+  for (const rule of rules) {
+    const comparison = compareByRule(rule);
+    if (comparison !== 0) return comparison;
   }
 
-  if (winsB !== winsA) return winsB - winsA;
-  const goalDifferenceA = goalsForA - goalsAgainstA;
-  const goalDifferenceB = goalsForB - goalsAgainstB;
-  if (goalDifferenceB !== goalDifferenceA) return goalDifferenceB - goalDifferenceA;
-  if (goalsForB !== goalsForA) return goalsForB - goalsForA;
-  if (goalsAgainstA !== goalsAgainstB) return goalsAgainstA - goalsAgainstB;
+  const fallbackRules: TiebreakerRule[] = ['wins', 'goal_difference', 'goals_for', 'goals_against'];
+  for (const fallbackRule of fallbackRules) {
+    if (appliedRules.has(fallbackRule)) continue;
+    const fallbackComparison = compareByRule(fallbackRule);
+    if (fallbackComparison !== 0) return fallbackComparison;
+  }
+
   return compareStableStandingIdentity(a, b);
 };
 
