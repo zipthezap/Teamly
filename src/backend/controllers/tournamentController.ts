@@ -3426,6 +3426,13 @@ export const addPlayer = async (req: Request, res: Response) => {
     if (existingCaptainTeam) {
       throw new BadRequestError('This user is already a team captain in this tournament');
     }
+    const existingPlayerInTournament = await prisma.tournamentPlayer.findFirst({
+      where: { userId: playerId, team: { tournamentId: id }, NOT: { teamId } },
+      select: { id: true }
+    });
+    if (existingPlayerInTournament) {
+      throw new BadRequestError('This user is already a player in another team in this tournament');
+    }
   }
 
   // Explicitly catch Prisma unique constraint violations (P2002) and return 409
@@ -3570,6 +3577,14 @@ export const updatePlayer = async (req: Request, res: Response) => {
     });
     if (captainConflict) {
       throw new BadRequestError('This user is already a team captain in this tournament');
+    }
+    // Cannot assign someone who is already a player in another team in this tournament
+    const playerConflict = await prisma.tournamentPlayer.findFirst({
+      where: { userId: newUserId, team: { tournamentId: id }, NOT: { id: playerId } },
+      select: { id: true }
+    });
+    if (playerConflict) {
+      throw new BadRequestError('This user is already a player in another team in this tournament');
     }
   }
 
