@@ -884,6 +884,24 @@ describe('GET /api/tournaments/:id (getTournament)', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('applies configured tournament tiebreaker rules when returning detail standings', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      tiebreakerRules: ['wins', 'goal_difference'],
+      standings: [
+        { teamId: 'team-1', points: 3, wins: 1, goalsFor: 2, goalsAgainst: 1 },
+      ],
+    } as any);
+
+    const res = await request(app).get('/api/tournaments/tournament-1');
+
+    expect(res.status).toBe(200);
+    expect(tournamentService.sortStandingsByTiebreakerRules).toHaveBeenCalledWith(
+      expect.any(Array),
+      ['wins', 'goal_difference']
+    );
+  });
 });
 
 describe('PUT /api/tournaments/:id (updateTournament)', () => {
@@ -4862,6 +4880,234 @@ describe('POST /api/tournaments/:id/matches/:matchId/score — groups_knockout a
 
     expect(res.status).toBe(200);
     expect(tournamentService.generateKnockoutFromStandings).toHaveBeenCalledWith('tournament-1');
+  });
+});
+
+describe('Tournament workflow e2e scenarios', () => {
+  it('covers groups_knockout flow from registrations through knockout generation and final scoring', async () => {
+    const tournament = {
+      ...mockTournament,
+      format: 'groups_knockout',
+      status: 'registration',
+      maxTeams: 8,
+      autoGenerateBrackets: false,
+      tiebreakerRules: ['wins', 'goal_difference', 'goals_for'],
+    };
+    const teams: Array<{ id: string; name: string }> = [];
+    const finalMatch = {
+      ...mockMatch,
+      id: 'final-1',
+      stage: 'finals',
+      status: 'scheduled',
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-2',
+      homeScore: null,
+      awayScore: null,
+      startedAt: null,
+      completedAt: null,
+    };
+
+    vi.mocked(prisma.tournament.findUnique).mockImplementation(async (args: any) => {
+      if (args?.where?.id !== 'tournament-1') return null as any;
+      if (!args?.select) return tournament as any;
+      const selected: Record<string, unknown> = {};
+      Object.keys(args.select).forEach((key) => {
+        selected[key] = (tournament as Record<string, unknown>)[key];
+      });
+      return selected as any;
+    });
+    vi.mocked(prisma.tournamentTeam.count).mockImplementation(async () => teams.length);
+    vi.mocked(prisma.tournamentTeam.create).mockImplementation(async ({ data }: any) => {
+      const team = {
+        ...mockTeam,
+        id: `team-${teams.length + 1}`,
+        name: data.name,
+      };
+      teams.push({ id: team.id, name: team.name });
+      return team as any;
+    });
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0 as any);
+    vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValue([{ status: 'completed' }] as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockImplementation(async ({ where }: any) => {
+      if (where?.id === 'final-1') return finalMatch as any;
+      return null as any;
+    });
+    vi.mocked(prisma.tournamentMatch.updateMany).mockImplementation(async ({ where, data }: any) => {
+      if (where?.id === 'final-1' && finalMatch.status !== 'completed') {
+        finalMatch.homeScore = data.homeScore;
+        finalMatch.awayScore = data.awayScore;
+        finalMatch.status = 'completed';
+        finalMatch.startedAt = data.startedAt;
+        finalMatch.completedAt = data.completedAt;
+        return { count: 1 } as any;
+      }
+      return { count: 0 } as any;
+    });
+
+    const firstRegistration = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Team One', captainName: 'Captain One' });
+    const secondRegistration = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Team Two', captainName: 'Captain Two' });
+
+    tournament.status = 'registration_closed';
+    const groupMatchGeneration = await request(app)
+      .post('/api/tournaments/tournament-1/generate-group-matches')
+      .send({ numberOfGroups: 2 });
+
+    tournament.status = 'in_progress';
+    const knockoutGeneration = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({});
+
+    const finalScoreSubmission = await request(app)
+      .post('/api/tournaments/tournament-1/matches/final-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(firstRegistration.status).toBe(201);
+    expect(secondRegistration.status).toBe(201);
+    expect(groupMatchGeneration.status).toBe(200);
+    expect(knockoutGeneration.status).toBe(200);
+    expect(finalScoreSubmission.status).toBe(200);
+    expect(tournamentService.generateGroupsKnockoutBrackets).toHaveBeenCalledWith('tournament-1', 2);
+    expect(tournamentService.generateKnockoutFromStandings).toHaveBeenCalledWith('tournament-1');
+    expect(tournamentService.reconcileTournamentLifecycleStatus).toHaveBeenCalledWith('tournament-1', 'submit_score');
+  });
+
+  it('auto-generates knockout when the final group-stage score is submitted in a tied group race', async () => {
+    const tournament = {
+      ...mockTournament,
+      format: 'groups_knockout',
+      status: 'in_progress',
+      autoGenerateBrackets: true,
+      tiebreakerRules: ['wins', 'goal_difference'],
+    };
+    const decidingGroupMatch = {
+      ...mockMatch,
+      id: 'group-final',
+      stage: 'group_stage',
+      status: 'scheduled',
+      homeScore: null,
+      awayScore: null,
+      startedAt: null,
+      completedAt: null,
+    };
+
+    vi.mocked(prisma.tournament.findUnique).mockImplementation(async (args: any) => {
+      if (args?.where?.id !== 'tournament-1') return null as any;
+      if (!args?.select) return tournament as any;
+      const selected: Record<string, unknown> = {};
+      Object.keys(args.select).forEach((key) => {
+        selected[key] = (tournament as Record<string, unknown>)[key];
+      });
+      return selected as any;
+    });
+    vi.mocked(prisma.tournamentMatch.findUnique).mockImplementation(async ({ where }: any) => {
+      if (where?.id === 'group-final') return decidingGroupMatch as any;
+      return null as any;
+    });
+    vi.mocked(prisma.tournamentMatch.updateMany).mockImplementation(async ({ where, data }: any) => {
+      if (where?.id === 'group-final' && decidingGroupMatch.status !== 'completed') {
+        decidingGroupMatch.status = 'completed';
+        decidingGroupMatch.homeScore = data.homeScore;
+        decidingGroupMatch.awayScore = data.awayScore;
+        decidingGroupMatch.startedAt = data.startedAt;
+        decidingGroupMatch.completedAt = data.completedAt;
+        return { count: 1 } as any;
+      }
+      return { count: 0 } as any;
+    });
+    vi.mocked(prisma.tournamentMatch.count).mockImplementation(async ({ where }: any) => {
+      if (where?.stage === 'group_stage' && !where?.status) return 6 as any;
+      if (where?.stage === 'group_stage' && where?.status?.not === 'completed') return 0 as any;
+      if (where?.stage?.not === 'group_stage') return 0 as any;
+      return 0 as any;
+    });
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/group-final/score')
+      .send({ homeScore: 3, awayScore: 2 });
+
+    expect(res.status).toBe(200);
+    expect(tournamentService.generateKnockoutFromStandings).toHaveBeenCalledWith('tournament-1');
+    expect(tournamentService.reconcileTournamentLifecycleStatus).toHaveBeenCalledWith('tournament-1', 'auto_generate_knockout');
+    expect(tournamentService.reconcileTournamentLifecycleStatus).toHaveBeenCalledWith('tournament-1', 'submit_score');
+  });
+
+  it('enforces registration capacity and then progresses a single-elimination match to the next stage', async () => {
+    const tournament = {
+      ...mockTournament,
+      format: 'single_elimination',
+      status: 'registration',
+      maxTeams: 2,
+    };
+    const teams: string[] = [];
+    const semiFinalMatch = {
+      ...mockMatch,
+      id: 'semi-1',
+      stage: 'semi_finals',
+      status: 'scheduled',
+      homeScore: null,
+      awayScore: null,
+      startedAt: null,
+      completedAt: null,
+    };
+
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(tournament as any);
+    vi.mocked(prisma.tournamentTeam.count).mockImplementation(async () => teams.length as any);
+    vi.mocked(prisma.tournamentTeam.create).mockImplementation(async ({ data }: any) => {
+      teams.push(data.name);
+      return { ...mockTeam, id: `team-${teams.length}`, name: data.name } as any;
+    });
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0 as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockImplementation(async ({ where }: any) => {
+      if (where?.id === 'semi-1') return semiFinalMatch as any;
+      return null as any;
+    });
+    vi.mocked(prisma.tournamentMatch.updateMany).mockImplementation(async ({ where, data }: any) => {
+      if (where?.id === 'semi-1' && semiFinalMatch.status !== 'completed') {
+        semiFinalMatch.status = 'completed';
+        semiFinalMatch.homeScore = data.homeScore;
+        semiFinalMatch.awayScore = data.awayScore;
+        semiFinalMatch.startedAt = data.startedAt;
+        semiFinalMatch.completedAt = data.completedAt;
+        return { count: 1 } as any;
+      }
+      return { count: 0 } as any;
+    });
+
+    const registrationOne = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Capacity Team 1', captainName: 'Captain 1' });
+    const registrationTwo = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Capacity Team 2', captainName: 'Captain 2' });
+    const overCapacityRegistration = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Capacity Team 3', captainName: 'Captain 3' });
+
+    tournament.status = 'in_progress';
+    const bracketGeneration = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({});
+    const semiFinalScoreSubmission = await request(app)
+      .post('/api/tournaments/tournament-1/matches/semi-1/score')
+      .send({ homeScore: 1, awayScore: 0 });
+
+    expect(registrationOne.status).toBe(201);
+    expect(registrationTwo.status).toBe(201);
+    expect(overCapacityRegistration.status).toBe(400);
+    expect(bracketGeneration.status).toBe(200);
+    expect(semiFinalScoreSubmission.status).toBe(200);
+    expect(tournamentService.generateSingleEliminationBrackets).toHaveBeenCalledWith(
+      'tournament-1',
+      expect.objectContaining({
+        randomizeSeeds: false,
+        allowByes: true,
+      })
+    );
+    expect(tournamentService.advanceWinners).toHaveBeenCalledWith('tournament-1', 'semi_finals');
   });
 });
 
