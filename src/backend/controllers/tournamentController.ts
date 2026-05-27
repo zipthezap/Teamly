@@ -40,6 +40,7 @@ import {
   isTerminalTournamentStatus,
 } from '../services/tournamentLifecyclePolicy';
 import { normalizeIdArrayInput, parseEnumInput } from './tournamentRequestValidators';
+import { clearUserPermissionCache } from '../services/permissionService';
 
 // ==================== CONSTANTS ====================
 
@@ -1378,7 +1379,31 @@ export const updateTeam = async (req: Request, res: Response) => {
     }
     updateData.captainEmail = captainEmail || null;
   }
-  if (captainUserId !== undefined) updateData.captainUserId = captainUserId || null;
+  if (captainUserId !== undefined) {
+    // Validate the new captain user when one is being assigned
+    if (captainUserId) {
+      const newCaptainUser = await prisma.user.findUnique({
+        where: { id: captainUserId },
+        select: { id: true, deletedAt: true }
+      });
+      if (!newCaptainUser || newCaptainUser.deletedAt) {
+        throw new BadRequestError('Captain user not found');
+      }
+      // Cannot assign an organizer/co-organizer as captain
+      if (await tournamentService.isOrganizerOrAdmin(tournament!, captainUserId)) {
+        throw new ForbiddenError('Tournament organizers and co-organizers cannot be assigned as team captains');
+      }
+      // Cannot assign someone who is captain of another team in this tournament
+      const conflictingTeam = await prisma.tournamentTeam.findFirst({
+        where: { tournamentId: id, captainUserId, NOT: { id: teamId } },
+        select: { id: true, name: true }
+      });
+      if (conflictingTeam) {
+        throw new BadRequestError('This user is already a team captain in this tournament');
+      }
+    }
+    updateData.captainUserId = captainUserId || null;
+  }
   if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null;
   // Only organizers and admins can change pool assignments and seeding
   if (isOrgOrAdmin) {
@@ -3188,13 +3213,26 @@ export const updatePlayer = async (req: Request, res: Response) => {
     throw new BadRequestError('Roster is locked — player changes are no longer allowed');
   }
 
-  // If newUserId is provided, verify the user exists
+  // If newUserId is provided, verify the user exists and has no role conflicts
   if (newUserId !== undefined && newUserId !== null) {
     const user = await prisma.user.findUnique({
-      where: { id: newUserId }
+      where: { id: newUserId },
+      select: { id: true, deletedAt: true }
     });
-    if (!user) {
+    if (!user || user.deletedAt) {
       throw new BadRequestError('User not found');
+    }
+    // Cannot assign an organizer/co-organizer as a player
+    if (await tournamentService.isOrganizerOrAdmin(tournament, newUserId)) {
+      throw new ForbiddenError('Tournament organizers and co-organizers cannot participate as players');
+    }
+    // Cannot assign someone who is captain of another team in this tournament
+    const captainConflict = await prisma.tournamentTeam.findFirst({
+      where: { tournamentId: id, captainUserId: newUserId, NOT: { id: teamId } },
+      select: { id: true }
+    });
+    if (captainConflict) {
+      throw new BadRequestError('This user is already a team captain in this tournament');
     }
   }
 
@@ -4738,6 +4776,15 @@ export const addAdmin = async (req: Request, res: Response) => {
     throw new BadRequestError('This user already has a team registered in this tournament and cannot be a co-organizer');
   }
 
+  // A registered player in this tournament cannot also be a co-organizer
+  const existingPlayerRecord = await prisma.tournamentPlayer.findFirst({
+    where: { userId: resolvedUserId, team: { tournamentId: id } },
+    select: { id: true }
+  });
+  if (existingPlayerRecord) {
+    throw new BadRequestError('This user is already a registered player in this tournament and cannot be a co-organizer');
+  }
+
   try {
     const adminRole = await prisma.tournamentAdminRole.create({
       data: {
@@ -4750,6 +4797,24 @@ export const addAdmin = async (req: Request, res: Response) => {
         grantedBy: { select: { id: true, name: true } }
       }
     });
+
+    // Invalidate permission cache immediately so the new grant takes effect now
+    await clearUserPermissionCache(resolvedUserId);
+
+    // Notify the newly added co-organizer
+    try {
+      await prisma.tournamentNotification.create({
+        data: {
+          userId: resolvedUserId,
+          tournamentId: id,
+          type: TournamentNotificationType.tournament_updated,
+          params: { tournamentName: tournament!.name, updateType: 'admin_added' },
+          metadata: { grantedBy: userId },
+        },
+      });
+    } catch (notifError) {
+      logger.error('Failed to notify new co-organizer', 'TournamentController', { tournamentId: id, resolvedUserId, error: notifError });
+    }
 
     logger.info('Co-organizer added', 'TournamentController', { tournamentId: id, addedUserId: resolvedUserId, grantedBy: userId });
     res.status(201).json(adminRole);
@@ -4789,6 +4854,24 @@ export const removeAdmin = async (req: Request, res: Response) => {
   ensureResourceExists(adminRole, 'Admin role');
 
   await prisma.tournamentAdminRole.delete({ where: { id: adminRole!.id } });
+
+  // Invalidate permission cache so revocation takes effect immediately
+  await clearUserPermissionCache(adminUserId);
+
+  // Notify the removed co-organizer
+  try {
+    await prisma.tournamentNotification.create({
+      data: {
+        userId: adminUserId,
+        tournamentId: id,
+        type: TournamentNotificationType.tournament_updated,
+        params: { tournamentName: tournament!.name, updateType: 'admin_removed' },
+        metadata: { removedBy: userId },
+      },
+    });
+  } catch (notifError) {
+    logger.error('Failed to notify removed co-organizer', 'TournamentController', { tournamentId: id, adminUserId, error: notifError });
+  }
 
   logger.info('Co-organizer removed', 'TournamentController', { tournamentId: id, removedUserId: adminUserId, removedBy: userId });
   res.json({ message: 'Co-organizer removed successfully' });
@@ -5968,6 +6051,32 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
     await reconcileTournamentLifecycleStatus(id, 'resolve_dispute_score_correction');
   }
 
+  // Notify the disputing team captain about the outcome (non-fatal)
+  try {
+    const disputingTeam = await prisma.tournamentTeam.findUnique({
+      where: { id: result.updatedDispute.disputingTeamId },
+      select: { captainUserId: true, name: true },
+    });
+    if (disputingTeam?.captainUserId) {
+      await prisma.tournamentNotification.create({
+        data: {
+          userId: disputingTeam.captainUserId,
+          tournamentId: id,
+          type: TournamentNotificationType.tournament_updated,
+          params: {
+            tournamentName: tournament.name,
+            teamName: disputingTeam.name,
+            updateType: 'dispute_resolved',
+            resolution: status,
+          },
+          metadata: { disputeId, matchId: dispute.match.id, resolvedBy: userId },
+        },
+      });
+    }
+  } catch (notifError) {
+    logger.error('Failed to notify disputing team of dispute resolution', 'TournamentController', { tournamentId: id, disputeId, error: notifError });
+  }
+
   logger.info('Score dispute resolved', 'TournamentController', {
     tournamentId: id,
     disputeId,
@@ -6564,9 +6673,14 @@ export const checkInViaQrToken = async (req: Request, res: Response) => {
     throw new NotFoundError('Invalid or expired check-in token');
   }
 
+  // Atomic: mark team as checked in and rotate (clear) the token so it cannot be replayed
   const updated = await prisma.tournamentTeam.update({
     where: { id: team.id },
-    data: { checkedIn: true, checkedInAt: team.checkedInAt ?? new Date() },
+    data: {
+      checkedIn: true,
+      checkedInAt: team.checkedInAt ?? new Date(),
+      checkInToken: null,
+    },
     select: { id: true, name: true, checkedIn: true, checkedInAt: true },
   });
 
@@ -6664,14 +6778,32 @@ export const startMatch = async (req: Request, res: Response) => {
     throw new BadRequestError(`Cannot start a match that is already ${match.status}`);
   }
 
+  // Idempotent: if already in_progress, re-fetch from DB for latest state and return
+  if (match.status === MatchStatus.IN_PROGRESS) {
+    const current = await prisma.tournamentMatch.findUnique({ where: { id: match.id } });
+    res.json(current ?? match);
+    return;
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
-    const updatedMatch = await tx.tournamentMatch.update({
-      where: { id: match.id },
+    // Conditional update to prevent duplicate transitions under concurrency
+    const updateResult = await tx.tournamentMatch.updateMany({
+      where: { id: match.id, status: MatchStatus.SCHEDULED },
       data: {
         status: MatchStatus.IN_PROGRESS,
         startedAt: match.startedAt ?? new Date(),
       },
     });
+
+    if (updateResult.count === 0) {
+      // Another request already transitioned the match — fetch and validate current state
+      const current = await tx.tournamentMatch.findUnique({ where: { id: match.id } });
+      if (current && (current.status === MatchStatus.COMPLETED || current.status === MatchStatus.CANCELLED)) {
+        // The match was moved to a terminal state, not started
+        throw new BadRequestError(`Cannot start a match that is already ${current.status}`);
+      }
+      return current;
+    }
 
     if (canStartEarly) {
       await tx.tournament.update({
@@ -6680,7 +6812,7 @@ export const startMatch = async (req: Request, res: Response) => {
       });
     }
 
-    return updatedMatch;
+    return tx.tournamentMatch.findUnique({ where: { id: match.id } });
   });
 
   logger.info('Match started', 'TournamentController', { tournamentId: id, matchId, userId });
@@ -6802,6 +6934,25 @@ export const createMatchIncident = async (req: Request, res: Response) => {
     },
   });
 
+  // Notify organizer of the new incident (non-fatal)
+  try {
+    await prisma.tournamentNotification.create({
+      data: {
+        userId: tournament.organizerId,
+        tournamentId: id,
+        type: TournamentNotificationType.tournament_updated,
+        params: {
+          tournamentName: tournament.name,
+          updateType: 'incident_reported',
+          incidentType: resolvedType,
+        },
+        metadata: { incidentId: incident.id, matchId: match.id, reportedBy: userId },
+      },
+    });
+  } catch (notifError) {
+    logger.error('Failed to notify organizer of match incident', 'TournamentController', { tournamentId: id, incidentId: incident.id, error: notifError });
+  }
+
   logger.info('Match incident reported', 'TournamentController', { tournamentId: id, matchId, incidentId: incident.id, userId });
   res.status(201).json(incident);
 };
@@ -6845,6 +6996,23 @@ export const resolveMatchIncident = async (req: Request, res: Response) => {
       resolvedAt: new Date(),
     },
   });
+
+  // Notify the reporter that their incident has been resolved (non-fatal)
+  if (incident.reportedByUserId && incident.reportedByUserId !== userId) {
+    try {
+      await prisma.tournamentNotification.create({
+        data: {
+          userId: incident.reportedByUserId,
+          tournamentId: id,
+          type: TournamentNotificationType.tournament_updated,
+          params: { tournamentName: tournament.name, updateType: 'incident_resolved', status },
+          metadata: { incidentId: incident.id, resolvedBy: userId },
+        },
+      });
+    } catch (notifError) {
+      logger.error('Failed to notify incident reporter of resolution', 'TournamentController', { tournamentId: id, incidentId, error: notifError });
+    }
+  }
 
   logger.info('Match incident resolved', 'TournamentController', { tournamentId: id, incidentId, status, userId });
   res.json(updated);
