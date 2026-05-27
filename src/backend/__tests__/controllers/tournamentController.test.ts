@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import { createAuthenticatedTestApp } from '../helpers/testApp';
+import { createAuthenticatedTestApp, createTestApp } from '../helpers/testApp';
 
 // ─── All vi.mock calls hoisted before imports ─────────────────────────────────
 
@@ -273,6 +273,7 @@ import { BadRequestError } from '../../utils/errors';
 // ─── Test app ─────────────────────────────────────────────────────────────────
 
 const app = createAuthenticatedTestApp(tournamentRoutes, 'test-user-id', '/api/tournaments');
+const unauthenticatedApp = createTestApp(tournamentRoutes, '/api/tournaments');
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 
@@ -2457,6 +2458,41 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(1);
     expect(res.body[0].user.id).toBe('cap-2');
+  });
+
+  it('returns 403 for private tournaments without authentication', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'organizer-1',
+      isPublic: false,
+    } as any);
+
+    const res = await request(unauthenticatedApp).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(403);
+  });
+
+  it('redacts player email fields for unauthenticated public requests', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'organizer-1',
+      isPublic: true,
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      captainUser: { id: 'captain-1', name: 'Alice Captain' },
+    } as any);
+    vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([
+      {
+        ...mockPlayer,
+        user: { id: 'player-user-1', name: 'Player One' },
+      },
+    ] as any);
+
+    const res = await request(unauthenticatedApp).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body[0].user.email).toBeUndefined();
   });
 });
 

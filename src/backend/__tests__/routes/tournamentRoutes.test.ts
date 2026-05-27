@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createTestApp } from '../helpers/testApp';
 import { Permission } from '../../../shared/types/permissions.types';
 import tournamentRoutes from '../../routes/tournamentRoutes';
+import * as tournamentController from '../../controllers/tournamentController';
 
 const routeSecurityMocks = vi.hoisted(() => ({
   authenticatedLimiter: vi.fn((_: any, __: any, next: any) => next()),
@@ -252,5 +253,32 @@ describe('Tournament Routes', () => {
     routeSecurityMocks.authenticatedLimiter.mockClear();
     await request(app).post('/api/tournament-1/generate-brackets').send({});
     expect(routeSecurityMocks.authenticatedLimiter).toHaveBeenCalled();
+  });
+
+  it('POST /api/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId → 200 and preserves body', async () => {
+    const moveTeamToPoolMock = vi.mocked(tournamentController.moveTeamToPool);
+    moveTeamToPoolMock.mockImplementationOnce((req: any, res: any) =>
+      res.json({ body: req.body, params: req.params })
+    );
+
+    const res = await request(app)
+      .post('/api/tournament-1/pools/pool-a/admin/teams/team-1/move/pool-b')
+      .send({ keep: 'value' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.body).toEqual({ keep: 'value' });
+    expect(res.body.params.targetPoolId).toBe('pool-b');
+  });
+
+  it('POST /api/:id/registration-waitlist/:teamId/promote → 200', async () => {
+    const res = await request(app)
+      .post('/api/tournament-1/registration-waitlist/team-1/promote')
+      .send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/:id/registration-waitlist/me → 200', async () => {
+    const res = await request(app).delete('/api/tournament-1/registration-waitlist/me');
+    expect(res.status).toBe(200);
   });
 });

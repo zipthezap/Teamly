@@ -3455,9 +3455,28 @@ export const addPlayer = async (req: Request, res: Response) => {
  */
 export const getPlayers = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
+  const userId = req.user?.id;
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({
+      where: { id },
+      select: { id: true, organizerId: true, isPublic: true }
+    }),
+    'Tournament'
+  );
+  if (!userId && !tournament.isPublic) {
+    throw new ForbiddenError('You do not have access to this private tournament');
+  }
+  if (userId) {
+    await assertCanViewTournament(tournament, userId);
+  }
+
+  const userSelect = userId
+    ? { id: true, name: true, email: true }
+    : { id: true, name: true };
+
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: id },
-    include: { captainUser: { select: { id: true, name: true, email: true } } }
+    include: { captainUser: { select: userSelect } }
   });
 
   ensureResourceExists(team, 'Team');
@@ -3466,7 +3485,7 @@ export const getPlayers = async (req: Request, res: Response) => {
     where: { teamId },
     include: {
       user: {
-        select: { id: true, name: true, email: true }
+        select: userSelect
       }
     },
     orderBy: { createdAt: 'asc' }
@@ -4216,7 +4235,8 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
 export const moveTeamToPool = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = req.user!.id;
-  const { poolId: targetPoolId } = req.body;
+  const { poolId } = req.body as { poolId?: string | null };
+  const targetPoolId = poolId === undefined ? req.params.targetPoolId ?? null : poolId;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
