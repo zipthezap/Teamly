@@ -76,6 +76,7 @@ const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
 const OVERLAP_GAP_INDICATOR = -1;
 const DEFAULT_FORFEIT_SCORE_FOR = 1;
 const DEFAULT_FORFEIT_SCORE_AGAINST = 0;
+const MAX_MATCH_SCORE = 999;
 const TIMEZONE_IANA_LIKE_REGEX = /^(UTC|[A-Za-z_]+\/[A-Za-z0-9_\-+]+(?:\/[A-Za-z0-9_\-+]+)?)$/;
 type PoolWaitlistPromoterClient = Pick<typeof prisma, 'tournamentPoolWaitlist' | 'tournamentPool' | 'tournamentTeam'>;
 
@@ -112,6 +113,15 @@ const assertTournamentSetupEditable = (
   if (isTournamentEditLocked(tournament)) {
     throw new BadRequestError(message);
   }
+};
+
+const resolveMoveTeamTargetPoolId = (
+  body: unknown,
+  params: { targetPoolId?: string }
+): string | null => {
+  const typedBody = body as { poolId?: string | null };
+  if (typedBody.poolId !== undefined) return typedBody.poolId;
+  return params.targetPoolId ?? null;
 };
 
 const assertTeamPaymentUpdateAllowed = (
@@ -168,6 +178,28 @@ const parseNonNegativeInteger = (value: unknown, fieldName: string): number => {
   if (!Number.isInteger(parsed) || parsed < 0) {
     throw new BadRequestError(`${fieldName} must be a non-negative integer`);
   }
+  return parsed;
+};
+
+const parseMatchScoreInput = (value: unknown, fieldName: string): number => {
+  if (value === null || value === undefined) {
+    throw new BadRequestError(`${fieldName} is required`);
+  }
+  if (typeof value === 'string' && value.trim().length === 0) {
+    throw new BadRequestError(`${fieldName} must be a whole number`);
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) {
+    throw new BadRequestError(`${fieldName} must be a whole number`);
+  }
+  if (parsed < 0) {
+    throw new BadRequestError('Scores cannot be negative');
+  }
+  if (parsed > MAX_MATCH_SCORE) {
+    throw new BadRequestError(`Scores must be ${MAX_MATCH_SCORE} or less`);
+  }
+
   return parsed;
 };
 
@@ -2334,9 +2366,8 @@ export const submitScore = async (req: Request, res: Response) => {
     throw new BadRequestError('Both home and away scores are required');
   }
 
-  if (homeScore < 0 || awayScore < 0) {
-    throw new BadRequestError('Scores cannot be negative');
-  }
+  const parsedHomeScore = parseMatchScoreInput(homeScore, 'homeScore');
+  const parsedAwayScore = parseMatchScoreInput(awayScore, 'awayScore');
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2366,7 +2397,7 @@ export const submitScore = async (req: Request, res: Response) => {
     tournament.format === TournamentFormat.SINGLE_ELIMINATION ||
     tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
   const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
-  if ((isEliminationFormat || isKnockoutStage) && homeScore === awayScore) {
+  if ((isEliminationFormat || isKnockoutStage) && parsedHomeScore === parsedAwayScore) {
     throw new BadRequestError('Draws are not allowed in elimination matches');
   }
 
@@ -2394,8 +2425,8 @@ export const submitScore = async (req: Request, res: Response) => {
   tournamentService.validateSportSpecificScore(
     sportConfig as unknown as Parameters<typeof tournamentService.validateSportSpecificScore>[0],
     detailedScore,
-    homeScore,
-    awayScore
+    parsedHomeScore,
+    parsedAwayScore
   );
 
   // Use a transaction to ensure atomic update of match and standings
@@ -2408,8 +2439,8 @@ export const submitScore = async (req: Request, res: Response) => {
           status: { not: MatchStatus.COMPLETED },
         },
         data: {
-          homeScore,
-          awayScore,
+          homeScore: parsedHomeScore,
+          awayScore: parsedAwayScore,
           detailedScore: detailedScore || undefined,
           status: MatchStatus.COMPLETED,
           // Populate startedAt if not already set (backfill for matches that skipped the in-progress state)
@@ -2480,9 +2511,8 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
     throw new BadRequestError('Both home and away scores are required');
   }
 
-  if (homeScore < 0 || awayScore < 0) {
-    throw new BadRequestError('Scores cannot be negative');
-  }
+  const parsedHomeScore = parseMatchScoreInput(homeScore, 'homeScore');
+  const parsedAwayScore = parseMatchScoreInput(awayScore, 'awayScore');
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2516,7 +2546,7 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
     tournament.format === TournamentFormat.SINGLE_ELIMINATION ||
     tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
   const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
-  if ((isEliminationFormat || isKnockoutStage) && homeScore === awayScore) {
+  if ((isEliminationFormat || isKnockoutStage) && parsedHomeScore === parsedAwayScore) {
     throw new BadRequestError('Draws are not allowed in elimination matches');
   }
 
@@ -2530,8 +2560,8 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
     const updated = await tx.tournamentMatch.update({
       where: { id: matchId },
       data: {
-        homeScore,
-        awayScore,
+        homeScore: parsedHomeScore,
+        awayScore: parsedAwayScore,
         status: MatchStatus.COMPLETED,
         completedAt: match.completedAt ?? new Date(),
       },
@@ -2553,7 +2583,7 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
   await reconcileTournamentLifecycleStatus(id, 'admin_update_score');
 
   logger.info('Match score overridden by admin', 'TournamentController', {
-    tournamentId: id, matchId, homeScore, awayScore, userId,
+    tournamentId: id, matchId, homeScore: parsedHomeScore, awayScore: parsedAwayScore, userId,
   });
 
   res.json(updatedMatch);
@@ -3437,9 +3467,28 @@ export const addPlayer = async (req: Request, res: Response) => {
  */
 export const getPlayers = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
+  const userId = req.user?.id;
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({
+      where: { id },
+      select: { id: true, organizerId: true, isPublic: true }
+    }),
+    'Tournament'
+  );
+  if (!userId && !tournament.isPublic) {
+    throw new ForbiddenError('You do not have access to this private tournament');
+  }
+  if (userId) {
+    await assertCanViewTournament(tournament, userId);
+  }
+
+  const userSelect = userId
+    ? { id: true, name: true, email: true }
+    : { id: true, name: true };
+
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: id },
-    include: { captainUser: { select: { id: true, name: true, email: true } } }
+    include: { captainUser: { select: userSelect } }
   });
 
   ensureResourceExists(team, 'Team');
@@ -3448,7 +3497,7 @@ export const getPlayers = async (req: Request, res: Response) => {
     where: { teamId },
     include: {
       user: {
-        select: { id: true, name: true, email: true }
+        select: userSelect
       }
     },
     orderBy: { createdAt: 'asc' }
@@ -4198,7 +4247,7 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
 export const moveTeamToPool = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = req.user!.id;
-  const { poolId: targetPoolId } = req.body;
+  const targetPoolId = resolveMoveTeamTargetPoolId(req.body, req.params);
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),

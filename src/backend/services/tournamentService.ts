@@ -1858,9 +1858,9 @@ export const buildRosterWithCaptain = (
   team: {
     id: string;
     createdAt: Date;
-    captainUser: { id: string; name: string | null; email: string } | null;
+    captainUser: { id: string; name: string | null; email?: string | null } | null;
   },
-  players: Array<{ user: { id: string; name?: string | null; email?: string } | null; [key: string]: unknown }>
+  players: Array<{ user: { id: string; name?: string | null; email?: string | null } | null; [key: string]: unknown }>
 ): Array<unknown> => {
   if (team.captainUser && !players.some((p) => p.user?.id === team.captainUser!.id)) {
     const captain = team.captainUser;

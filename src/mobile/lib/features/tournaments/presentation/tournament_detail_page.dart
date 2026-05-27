@@ -12,6 +12,7 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
 import 'team_roster_page.dart';
+import 'tournament_status_presentation.dart';
 import 'tournament_status_policy.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
@@ -2818,61 +2819,11 @@ class _StatusChip extends StatelessWidget {
 
   final String status;
 
-  IconData _icon() {
-    switch (status) {
-      case 'completed':
-        return Icons.check_circle_outline;
-      case 'in_progress':
-        return Icons.play_circle_outline;
-      case 'cancelled':
-        return Icons.cancel_outlined;
-      case 'registration':
-        return Icons.app_registration_outlined;
-      case 'registration_closed':
-        return Icons.lock_outline;
-      default:
-        return Icons.edit_note_outlined;
-    }
-  }
-
-  Color _statusColor() {
-    switch (status) {
-      case 'completed':
-        return AppThemeTokens.success;
-      case 'in_progress':
-        return AppThemeTokens.info;
-      case 'cancelled':
-        return AppThemeTokens.error;
-      case 'registration':
-        return AppThemeTokens.warning;
-      case 'registration_closed':
-        return const Color(0xFF757575); // grey[600]
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
-  Color _statusBgColor() {
-    switch (status) {
-      case 'completed':
-        return AppThemeTokens.successBg;
-      case 'in_progress':
-        return AppThemeTokens.infoBg;
-      case 'cancelled':
-        return AppThemeTokens.errorBg;
-      case 'registration':
-        return AppThemeTokens.warningBg;
-      case 'registration_closed':
-        return const Color(0xFFF5F5F5); // grey[100]
-      default:
-        return AppThemeTokens.primaryGlow;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor();
-    final bgColor = _statusBgColor();
+    final statusPresentation = getTournamentStatusPresentation(status: status);
+    final statusColor = statusPresentation.color;
+    final bgColor = statusPresentation.backgroundColor;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -2882,9 +2833,9 @@ class _StatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icon(), size: 12, color: statusColor),
+          Icon(statusPresentation.icon, size: 12, color: statusColor),
           const SizedBox(width: 4),
-          Text(status.replaceAll('_', ' '),
+          Text(statusPresentation.label,
               style: TextStyle(
                   color: statusColor,
                   fontSize: 11,

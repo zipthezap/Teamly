@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
-import { createAuthenticatedTestApp } from '../helpers/testApp';
+import { createAuthenticatedTestApp, createTestApp } from '../helpers/testApp';
 
 // ─── All vi.mock calls hoisted before imports ─────────────────────────────────
 
@@ -273,6 +273,7 @@ import { BadRequestError } from '../../utils/errors';
 // ─── Test app ─────────────────────────────────────────────────────────────────
 
 const app = createAuthenticatedTestApp(tournamentRoutes, 'test-user-id', '/api/tournaments');
+const unauthenticatedApp = createTestApp(tournamentRoutes, '/api/tournaments');
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 
@@ -1572,6 +1573,24 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when scores are not whole numbers', async () => {
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1.5, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('whole number');
+  });
+
+  it('returns 400 when scores exceed the supported limit', async () => {
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1000, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('999 or less');
+  });
+
   it('returns 400 for draw score in elimination format', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
@@ -1790,6 +1809,24 @@ describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore)', (
       .send({ homeScore: 2 });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when admin score overrides are not whole numbers', async () => {
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 0.5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('whole number');
+  });
+
+  it('returns 400 when admin score overrides exceed the supported limit', async () => {
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1000 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('999 or less');
   });
 
   it('returns 403 when user is not organizer or admin', async () => {
@@ -2367,6 +2404,11 @@ describe('POST /api/tournaments/:id/teams/:teamId/players (addPlayer)', () => {
 
 describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   it('returns 200 with players list', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
     vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([mockPlayer] as any);
 
@@ -2385,6 +2427,11 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   });
 
   it('prepends captain to players when captain has no player record', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     const teamWithCaptain = {
       ...mockTeam,
       captainUserId: 'captain-1',
@@ -2405,6 +2452,11 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
   });
 
   it('does not duplicate captain when captain already in players list', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'test-user-id',
+      isPublic: true,
+    } as any);
     const teamWithCaptain = {
       ...mockTeam,
       captainUserId: 'cap-2',
@@ -2421,6 +2473,41 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(1);
     expect(res.body[0].user.id).toBe('cap-2');
+  });
+
+  it('returns 403 for private tournaments without authentication', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'organizer-1',
+      isPublic: false,
+    } as any);
+
+    const res = await request(unauthenticatedApp).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(403);
+  });
+
+  it('redacts player email fields for unauthenticated public requests', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 'tournament-1',
+      organizerId: 'organizer-1',
+      isPublic: true,
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      captainUser: { id: 'captain-1', name: 'Alice Captain' },
+    } as any);
+    vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([
+      {
+        ...mockPlayer,
+        user: { id: 'player-user-1', name: 'Player One' },
+      },
+    ] as any);
+
+    const res = await request(unauthenticatedApp).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(200);
+    expect(res.body[0].user.email).toBeUndefined();
   });
 });
 

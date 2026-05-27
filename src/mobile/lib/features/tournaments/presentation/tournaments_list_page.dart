@@ -8,6 +8,7 @@ import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
+import 'tournament_status_presentation.dart';
 import 'tournament_status_policy.dart';
 import '../state/tournaments_notifier.dart';
 
@@ -188,78 +189,22 @@ class _TournamentCard extends StatelessWidget {
   final TournamentModel tournament;
   final VoidCallback onTap;
 
-  String _formatStatus(TournamentModel t) {
-    final groupMatches =
-        t.matches.where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null)).toList();
+  @override
+  Widget build(BuildContext context) {
+    final t = tournament;
+    final groupMatches = t.matches
+        .where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null))
+        .toList();
     final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
     final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
-    return getTournamentStageLabel(
+    final statusPresentation = getTournamentStatusPresentation(
       status: t.status,
       isFormingKnockoutBrackets: t.format == 'groups_knockout' && allGroupsDone && !hasKnockout,
       registrationStartDate: t.registrationStartDate,
       registrationDeadline: t.registrationDeadline,
     );
-  }
-
-  IconData _statusIcon(String s) {
-    switch (s) {
-      case TournamentLifecycleStatus.registration:
-        return Icons.app_registration_outlined;
-      case TournamentLifecycleStatus.registrationClosed:
-        return Icons.lock_clock_outlined;
-      case TournamentLifecycleStatus.inProgress:
-      case TournamentLifecycleStatus.activeLegacy:
-        return Icons.play_circle_outline;
-      case TournamentLifecycleStatus.completed:
-        return Icons.check_circle_outline;
-      case TournamentLifecycleStatus.cancelled:
-        return Icons.cancel_outlined;
-      default:
-        return Icons.edit_note_outlined;
-    }
-  }
-
-  Color _statusColor(String s) {
-    switch (s) {
-      case TournamentLifecycleStatus.completed:
-        return AppThemeTokens.success;
-      case TournamentLifecycleStatus.inProgress:
-      case TournamentLifecycleStatus.activeLegacy:
-        return AppThemeTokens.info;
-      case TournamentLifecycleStatus.cancelled:
-        return AppThemeTokens.error;
-      case TournamentLifecycleStatus.registration:
-        return AppThemeTokens.warning;
-      case TournamentLifecycleStatus.registrationClosed:
-        return AppThemeTokens.error;
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
-  Color _statusBgColor(String s) {
-    switch (s) {
-      case TournamentLifecycleStatus.completed:
-        return AppThemeTokens.successBg;
-      case TournamentLifecycleStatus.inProgress:
-      case TournamentLifecycleStatus.activeLegacy:
-        return AppThemeTokens.infoBg;
-      case TournamentLifecycleStatus.cancelled:
-        return AppThemeTokens.errorBg;
-      case TournamentLifecycleStatus.registration:
-        return AppThemeTokens.warningBg;
-      case TournamentLifecycleStatus.registrationClosed:
-        return AppThemeTokens.errorBg;
-      default:
-        return AppThemeTokens.primaryGlow;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = tournament;
-    final statusColor = _statusColor(t.status);
-    final statusBgColor = _statusBgColor(t.status);
+    final statusColor = statusPresentation.color;
+    final statusBgColor = statusPresentation.backgroundColor;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -295,13 +240,13 @@ class _TournamentCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _statusIcon(t.status),
+                          statusPresentation.icon,
                           size: 12,
                           color: statusColor,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _formatStatus(t),
+                          statusPresentation.label,
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 11,

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as tournamentController from '../controllers/tournamentController';
-import authMiddleware from '../middleware/auth';
+import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireTournamentPermission, requireTeamPermission } from '../middleware/authorization';
@@ -20,7 +20,12 @@ router.get('/portal/:shareToken', etagMiddleware({ weak: true }), asyncHandler(t
 router.get('/invitations/preview/:inviteToken', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getInvitationDetails));
 
 // Allow anyone to view team players for public discovery (no auth required)
-router.get('/:id/teams/:teamId/players', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayers));
+router.get(
+  '/:id/teams/:teamId/players',
+  optionalAuthMiddleware,
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getPlayers)
+);
 
 // All tournament routes require authentication
 router.use(authMiddleware);
@@ -274,17 +279,13 @@ router.post(
   asyncHandler(tournamentController.registerTeamToPool)
 );
 
-// Admin: move a team from one pool to another (deprecated path — proxied to moveTeamToPool)
+// Admin: move a team from one pool to another (deprecated path; remove after mobile/web migration by 2026-09-30)
 // Prefer PUT /:id/teams/:teamId/pool-move for new clients.
 router.post(
   '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
-  asyncHandler(async (req, res) => {
-    // Re-map URL params to the body shape expected by moveTeamToPool
-    req.body = { ...req.body, poolId: req.params.targetPoolId };
-    return tournamentController.moveTeamToPool(req, res);
-  })
+  asyncHandler(tournamentController.moveTeamToPool)
 );
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',
@@ -474,6 +475,13 @@ router.put(
 router.get('/:id/registration-waitlist', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRegistrationWaitlist));
 router.post('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.joinRegistrationWaitlist));
 router.delete('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.leaveRegistrationWaitlist));
+router.delete('/:id/registration-waitlist/me', noCache, asyncHandler(tournamentController.leaveRegistrationWaitlist));
+router.post(
+  '/:id/registration-waitlist/:teamId/promote',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.promoteFromRegistrationWaitlist)
+);
 router.delete(
   '/:id/registration-waitlist/:teamId',
   noCache,
