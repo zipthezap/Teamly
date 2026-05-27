@@ -177,9 +177,7 @@ class TeamUpResponseModel extends Equatable {
   final String id;
   final String requestId;
   final String message;
-  final String status; // pending, accepted, declined
-  final DateTime createdAt;
-  final String responderId;
+  final String status; // pending, accepted, declined, waitlisted, cancelled
   final String responderName;
   final String? responderPicture;
   final String? requestPositionId;
@@ -255,9 +253,7 @@ class TeamUpApplicationModel extends Equatable {
   final String id;
   final String requestId;
   final String message;
-  final String status; // pending, accepted, declined
-  final DateTime createdAt;
-  final String requestTitle;
+  final String status; // pending, accepted, declined, waitlisted, cancelled
   final String requestSportType;
   final String requestType;
   final String requestStatus;
@@ -351,4 +347,253 @@ class TeamUpCommentModel extends Equatable {
 
   @override
   List<Object?> get props => [id, requestId, createdAt, authorId];
+}
+
+// ---------------------------------------------------------------------------
+// Paginated browse result
+// ---------------------------------------------------------------------------
+
+class TeamUpBrowseResult {
+  const TeamUpBrowseResult({
+    required this.data,
+    required this.hasMore,
+    this.nextCursor,
+    this.total = 0,
+  });
+
+  final List<TeamUpRequestModel> data;
+  final bool hasMore;
+  final String? nextCursor;
+  final int total;
+
+  factory TeamUpBrowseResult.fromJson(dynamic raw) {
+    if (raw is List) {
+      final items = raw
+          .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return TeamUpBrowseResult(data: items, hasMore: false, total: items.length);
+    }
+    final map = raw as Map<String, dynamic>;
+    final pagination = map['pagination'] as Map<String, dynamic>?;
+    final rawItems =
+        map['data'] as List<dynamic>? ?? map['requests'] as List<dynamic>? ?? const [];
+    final items = rawItems
+        .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return TeamUpBrowseResult(
+      data: items,
+      hasMore: pagination?['hasMore'] as bool? ?? false,
+      nextCursor: pagination?['nextCursor'] as String?,
+      total: (pagination?['total'] as num?)?.toInt() ?? items.length,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attendance history
+// ---------------------------------------------------------------------------
+
+class TeamUpAttendanceRecordModel extends Equatable {
+  const TeamUpAttendanceRecordModel({
+    required this.attendanceStatus,
+    required this.createdAt,
+    required this.requestId,
+    required this.requestTitle,
+    required this.requestSportType,
+    this.requestDateTime,
+    this.requestCity,
+  });
+
+  final String attendanceStatus;
+  final DateTime createdAt;
+  final String requestId;
+  final String requestTitle;
+  final String requestSportType;
+  final DateTime? requestDateTime;
+  final String? requestCity;
+
+  factory TeamUpAttendanceRecordModel.fromJson(Map<String, dynamic> json) {
+    final req = json['teamUpRequest'] as Map<String, dynamic>? ?? const {};
+    return TeamUpAttendanceRecordModel(
+      attendanceStatus: json['attendanceStatus'] as String? ?? 'attended',
+      createdAt: _requireParsedDate(json['createdAt'] as String?, 'attendance createdAt'),
+      requestId: req['id'] as String? ?? '',
+      requestTitle: req['title'] as String? ?? '',
+      requestSportType: req['sportType'] as String? ?? 'other',
+      requestDateTime: req['dateTime'] != null
+          ? DateTime.tryParse(req['dateTime'] as String)
+          : null,
+      requestCity: req['city'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [requestId, attendanceStatus, createdAt];
+}
+
+class TeamUpAttendanceHistoryModel {
+  const TeamUpAttendanceHistoryModel({
+    required this.reliabilityScore,
+    required this.totals,
+    required this.history,
+  });
+
+  final double reliabilityScore;
+  final Map<String, int> totals;
+  final List<TeamUpAttendanceRecordModel> history;
+
+  factory TeamUpAttendanceHistoryModel.fromJson(Map<String, dynamic> json) {
+    final rawTotals = json['totals'] as Map<String, dynamic>? ?? {};
+    final rawHistory = json['history'] as List<dynamic>? ?? const [];
+    return TeamUpAttendanceHistoryModel(
+      reliabilityScore: (json['reliabilityScore'] as num?)?.toDouble() ?? 0,
+      totals: rawTotals.map((k, v) => MapEntry(k, (v as num).toInt())),
+      history: rawHistory
+          .map((e) =>
+              TeamUpAttendanceRecordModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Saved search
+// ---------------------------------------------------------------------------
+
+class TeamUpSavedSearchModel extends Equatable {
+  const TeamUpSavedSearchModel({
+    required this.id,
+    required this.name,
+    required this.notifyOnMatch,
+    required this.createdAt,
+    this.sportType,
+    this.requestType,
+    this.skillLevel,
+    this.city,
+    this.country,
+    this.search,
+  });
+
+  final String id;
+  final String name;
+  final bool notifyOnMatch;
+  final DateTime createdAt;
+  final String? sportType;
+  final String? requestType;
+  final String? skillLevel;
+  final String? city;
+  final String? country;
+  final String? search;
+
+  factory TeamUpSavedSearchModel.fromJson(Map<String, dynamic> json) {
+    return TeamUpSavedSearchModel(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      notifyOnMatch: json['notifyOnMatch'] as bool? ?? true,
+      createdAt: _requireParsedDate(json['createdAt'] as String?, 'saved search createdAt'),
+      sportType: json['sportType'] as String?,
+      requestType: json['requestType'] as String?,
+      skillLevel: json['skillLevel'] as String?,
+      city: json['city'] as String?,
+      country: json['country'] as String?,
+      search: json['search'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name, createdAt];
+}
+
+// ---------------------------------------------------------------------------
+// TeamUp analytics
+// ---------------------------------------------------------------------------
+
+class TeamUpAnalyticsFunnelModel {
+  const TeamUpAnalyticsFunnelModel({
+    required this.views,
+    required this.applications,
+    required this.accepted,
+    required this.attended,
+    required this.viewToApply,
+    required this.applyToAccept,
+    required this.acceptToAttend,
+  });
+
+  final int views;
+  final int applications;
+  final int accepted;
+  final int attended;
+  final double viewToApply;
+  final double applyToAccept;
+  final double acceptToAttend;
+
+  factory TeamUpAnalyticsFunnelModel.fromJson(Map<String, dynamic> json) {
+    final conversion = json['conversion'] as Map<String, dynamic>? ?? {};
+    return TeamUpAnalyticsFunnelModel(
+      views: (json['views'] as num?)?.toInt() ?? 0,
+      applications: (json['applications'] as num?)?.toInt() ?? 0,
+      accepted: (json['accepted'] as num?)?.toInt() ?? 0,
+      attended: (json['attended'] as num?)?.toInt() ?? 0,
+      viewToApply: (conversion['viewToApply'] as num?)?.toDouble() ?? 0,
+      applyToAccept: (conversion['applyToAccept'] as num?)?.toDouble() ?? 0,
+      acceptToAttend: (conversion['acceptToAttend'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class TeamUpAnalyticsModel {
+  const TeamUpAnalyticsModel({
+    required this.funnel,
+    required this.averageFillTimeHours,
+  });
+
+  final TeamUpAnalyticsFunnelModel funnel;
+  final double averageFillTimeHours;
+
+  factory TeamUpAnalyticsModel.fromJson(Map<String, dynamic> json) {
+    final fillTime = json['fillTime'] as Map<String, dynamic>? ?? {};
+    return TeamUpAnalyticsModel(
+      funnel: TeamUpAnalyticsFunnelModel.fromJson(
+          json['funnel'] as Map<String, dynamic>? ?? {}),
+      averageFillTimeHours: (fillTime['averageHours'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Replacement suggestion
+// ---------------------------------------------------------------------------
+
+class TeamUpReplacementSuggestionModel extends Equatable {
+  const TeamUpReplacementSuggestionModel({
+    required this.userId,
+    required this.userName,
+    required this.matchScore,
+    required this.reliabilityScore,
+    required this.matchReasons,
+    this.userPicture,
+  });
+
+  final String userId;
+  final String userName;
+  final String? userPicture;
+  final double matchScore;
+  final double reliabilityScore;
+  final List<String> matchReasons;
+
+  factory TeamUpReplacementSuggestionModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>? ?? {};
+    final rawReasons = json['matchReasons'] as List<dynamic>? ?? const [];
+    return TeamUpReplacementSuggestionModel(
+      userId: user['id'] as String? ?? '',
+      userName: user['name'] as String? ?? 'Unknown',
+      userPicture: user['profilePicture'] as String?,
+      matchScore: (json['matchScore'] as num?)?.toDouble() ?? 0,
+      reliabilityScore: (json['reliabilityScore'] as num?)?.toDouble() ?? 0,
+      matchReasons: rawReasons.map((r) => r.toString()).toList(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [userId, matchScore, reliabilityScore];
 }

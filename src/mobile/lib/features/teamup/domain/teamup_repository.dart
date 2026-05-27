@@ -1,7 +1,7 @@
 import '../../../core/models/teamup_model.dart';
 
 abstract class TeamUpRepository {
-  Future<List<TeamUpRequestModel>> getRequests({
+  Future<TeamUpBrowseResult> getRequests({
     String? sportType,
     String? requestType,
     String? skillLevel,
@@ -9,6 +9,7 @@ abstract class TeamUpRepository {
     String? search,
     String? fromDate,
     String? toDate,
+    String? cursor,
   });
   Future<List<TeamUpRequestModel>> getNearbyRequests({
     required double latitude,
@@ -36,4 +37,24 @@ abstract class TeamUpRepository {
   Future<TeamUpCommentModel> addComment(String id, String content);
   Future<void> deleteComment(String requestId, String commentId);
   Future<void> reportRequest(String requestId, String reason);
+
+  // Attendance history
+  Future<TeamUpAttendanceHistoryModel> getAttendanceHistory();
+
+  // Saved searches
+  Future<List<TeamUpSavedSearchModel>> listSavedSearches();
+  Future<TeamUpSavedSearchModel> createSavedSearch(Map<String, dynamic> data);
+  Future<void> deleteSavedSearch(String searchId);
+
+  // Analytics
+  Future<TeamUpAnalyticsModel> getTeamUpAnalytics({String? fromDate, String? toDate});
+
+  // Creator tools
+  Future<void> markAttendance(
+      String requestId, String responseId, String attendanceStatus);
+  Future<void> bulkHandleResponses(
+      String requestId, String action, List<String> responseIds);
+  Future<void> sendReminderNudges(String requestId);
+  Future<List<TeamUpReplacementSuggestionModel>> getReplacementSuggestions(
+      String requestId, {String? requestPositionId});
 }

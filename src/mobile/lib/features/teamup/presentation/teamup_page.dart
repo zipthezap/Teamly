@@ -220,6 +220,8 @@ class _BrowseTab extends ConsumerStatefulWidget {
 }
 
 class _BrowseTabState extends ConsumerState<_BrowseTab> {
+  static const double _scrollLoadMoreThreshold = 300.0;
+
   String _sportFilter = '';
   String _typeFilter = '';
   String _skillFilter = '';
@@ -227,6 +229,28 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   String _searchFilter = '';
   DateTime? _fromDateFilter;
   DateTime? _toDateFilter;
+
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()
+      ..addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - _scrollLoadMoreThreshold) {
+      ref.read(teamUpNotifierProvider.notifier).loadMore();
+    }
+  }
 
   Future<void> _loadWithCurrentFilters() {
     return ref.read(teamUpNotifierProvider.notifier).load(
@@ -371,21 +395,32 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                 );
               }
 
-                return RefreshIndicator(
+              return RefreshIndicator(
                   onRefresh: _loadWithCurrentFilters,
                   child: ListView.builder(
+                  controller: _scrollController,
                   padding:
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    itemCount: requests.length,
-                     itemBuilder: (context, index) =>
-                        _RequestTile(
-                          request: requests[index],
-                          hasApplied:
-                              applicationsByRequest[requests[index].id] != null &&
-                              _isApplicationBlockingReapply(
-                                  applicationsByRequest[requests[index].id]!),
-                          application: applicationsByRequest[requests[index].id],
-                        ),
+                  itemCount: requests.length +
+                      (ref.read(teamUpNotifierProvider.notifier).hasMore
+                          ? 1
+                          : 0),
+                  itemBuilder: (context, index) {
+                    if (index == requests.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    return _RequestTile(
+                           request: requests[index],
+                           hasApplied:
+                               applicationsByRequest[requests[index].id] != null &&
+                               _isApplicationBlockingReapply(
+                                   applicationsByRequest[requests[index].id]!),
+                           application: applicationsByRequest[requests[index].id],
+                         );
+                  },
                  ),
                 );
             },
