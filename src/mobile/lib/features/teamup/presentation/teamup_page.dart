@@ -220,6 +220,8 @@ class _BrowseTab extends ConsumerStatefulWidget {
 }
 
 class _BrowseTabState extends ConsumerState<_BrowseTab> {
+  static const double _scrollLoadMoreThreshold = 300.0;
+
   String _sportFilter = '';
   String _typeFilter = '';
   String _skillFilter = '';
@@ -245,7 +247,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 300) {
+        _scrollController.position.maxScrollExtent - _scrollLoadMoreThreshold) {
       ref.read(teamUpNotifierProvider.notifier).loadMore();
     }
   }
