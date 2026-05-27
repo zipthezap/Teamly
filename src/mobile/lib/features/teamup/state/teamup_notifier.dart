@@ -18,7 +18,7 @@ class NearbyLocationPermissionException implements Exception {
 }
 
 // ---------------------------------------------------------------------------
-// Browse requests (with extended filter support)
+// Browse requests (with extended filter support and cursor pagination)
 // ---------------------------------------------------------------------------
 
 class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
@@ -30,9 +30,17 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
   String? _fromDate;
   String? _toDate;
 
+  String? _nextCursor;
+  bool _hasMore = false;
+  bool _loadingMore = false;
+
+  bool get hasMore => _hasMore;
+
   @override
-  Future<List<TeamUpRequestModel>> build() {
-    return ref.watch(teamUpRepositoryProvider).getRequests(
+  Future<List<TeamUpRequestModel>> build() async {
+    _nextCursor = null;
+    _hasMore = false;
+    final result = await ref.watch(teamUpRepositoryProvider).getRequests(
           sportType: _sportType,
           requestType: _requestType,
           skillLevel: _skillLevel,
@@ -41,6 +49,9 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
           fromDate: _fromDate,
           toDate: _toDate,
         );
+    _nextCursor = result.nextCursor;
+    _hasMore = result.hasMore;
+    return result.data;
   }
 
   Future<void> load({
@@ -59,9 +70,11 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
     _search = search;
     _fromDate = fromDate;
     _toDate = toDate;
+    _nextCursor = null;
+    _hasMore = false;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(teamUpRepositoryProvider).getRequests(
+    state = await AsyncValue.guard(() async {
+      final result = await ref.read(teamUpRepositoryProvider).getRequests(
             sportType: _sportType,
             requestType: _requestType,
             skillLevel: _skillLevel,
@@ -69,8 +82,36 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
             search: _search,
             fromDate: _fromDate,
             toDate: _toDate,
-          ),
-    );
+          );
+      _nextCursor = result.nextCursor;
+      _hasMore = result.hasMore;
+      return result.data;
+    });
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasMore || _nextCursor == null || _loadingMore) return;
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    _loadingMore = true;
+    try {
+      final result = await ref.read(teamUpRepositoryProvider).getRequests(
+            sportType: _sportType,
+            requestType: _requestType,
+            skillLevel: _skillLevel,
+            city: _city,
+            search: _search,
+            fromDate: _fromDate,
+            toDate: _toDate,
+            cursor: _nextCursor,
+          );
+      _nextCursor = result.nextCursor;
+      _hasMore = result.hasMore;
+      state = AsyncData([...current, ...result.data]);
+    } finally {
+      _loadingMore = false;
+    }
   }
 
   Future<void> refresh() => load(
@@ -112,7 +153,9 @@ final nearbyTeamUpRequestsProvider =
 
 final nearbyTeamUpRequestsByCityProvider =
     FutureProvider.family<List<TeamUpRequestModel>, String>((ref, city) async {
-  return ref.watch(teamUpRepositoryProvider).getRequests(city: city);
+  final result =
+      await ref.watch(teamUpRepositoryProvider).getRequests(city: city);
+  return result.data;
 });
 
 // ---------------------------------------------------------------------------
@@ -167,4 +210,43 @@ final teamUpRequestResponsesProvider =
 final teamUpCommentsProvider =
     FutureProvider.family<List<TeamUpCommentModel>, String>((ref, id) async {
   return ref.watch(teamUpRepositoryProvider).getComments(id);
+});
+
+// ---------------------------------------------------------------------------
+// Attendance history
+// ---------------------------------------------------------------------------
+
+final teamUpAttendanceHistoryProvider =
+    FutureProvider<TeamUpAttendanceHistoryModel>((ref) async {
+  return ref.watch(teamUpRepositoryProvider).getAttendanceHistory();
+});
+
+// ---------------------------------------------------------------------------
+// Saved searches
+// ---------------------------------------------------------------------------
+
+final teamUpSavedSearchesProvider =
+    FutureProvider<List<TeamUpSavedSearchModel>>((ref) async {
+  return ref.watch(teamUpRepositoryProvider).listSavedSearches();
+});
+
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+final teamUpAnalyticsProvider =
+    FutureProvider<TeamUpAnalyticsModel>((ref) async {
+  return ref.watch(teamUpRepositoryProvider).getTeamUpAnalytics();
+});
+
+// ---------------------------------------------------------------------------
+// Replacement suggestions for a request
+// ---------------------------------------------------------------------------
+
+final teamUpReplacementSuggestionsProvider =
+    FutureProvider.family<List<TeamUpReplacementSuggestionModel>, String>(
+        (ref, requestId) async {
+  return ref
+      .watch(teamUpRepositoryProvider)
+      .getReplacementSuggestions(requestId);
 });

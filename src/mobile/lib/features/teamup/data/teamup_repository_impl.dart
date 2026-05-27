@@ -11,7 +11,7 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   final Dio _dio;
 
   @override
-  Future<List<TeamUpRequestModel>> getRequests({
+  Future<TeamUpBrowseResult> getRequests({
     String? sportType,
     String? requestType,
     String? skillLevel,
@@ -19,6 +19,7 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
     String? search,
     String? fromDate,
     String? toDate,
+    String? cursor,
   }) async {
     final response = await _dio.get<dynamic>(
       '/teamup',
@@ -32,10 +33,11 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
         if (search != null && search.isNotEmpty) 'search': search,
         if (fromDate != null) 'fromDate': fromDate,
         if (toDate != null) 'toDate': toDate,
+        if (cursor != null) 'cursor': cursor,
         'limit': '50',
       },
     );
-    return _parseRequestList(response.data);
+    return TeamUpBrowseResult.fromJson(response.data);
   }
 
   @override
@@ -194,6 +196,93 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
       '/teamup/$requestId/report',
       data: {'reason': reason},
     );
+  }
+
+  // ── New feature methods ──────────────────────────────────────────────────
+
+  @override
+  Future<TeamUpAttendanceHistoryModel> getAttendanceHistory() async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('/teamup/attendance-history');
+    return TeamUpAttendanceHistoryModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<List<TeamUpSavedSearchModel>> listSavedSearches() async {
+    final response = await _dio.get<dynamic>('/teamup/saved-searches');
+    final data = response.data;
+    final List<dynamic> items = data is List ? data : [];
+    return items
+        .map((e) => TeamUpSavedSearchModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<TeamUpSavedSearchModel> createSavedSearch(
+      Map<String, dynamic> data) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/teamup/saved-searches',
+      data: data,
+    );
+    return TeamUpSavedSearchModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> deleteSavedSearch(String searchId) async {
+    await _dio.delete<void>('/teamup/saved-searches/$searchId');
+  }
+
+  @override
+  Future<TeamUpAnalyticsModel> getTeamUpAnalytics(
+      {String? fromDate, String? toDate}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/teamup/analytics',
+      queryParameters: {
+        if (fromDate != null) 'fromDate': fromDate,
+        if (toDate != null) 'toDate': toDate,
+      },
+    );
+    return TeamUpAnalyticsModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> markAttendance(
+      String requestId, String responseId, String attendanceStatus) async {
+    await _dio.put<void>(
+      '/teamup/$requestId/responses/$responseId/attendance',
+      data: {'attendanceStatus': attendanceStatus},
+    );
+  }
+
+  @override
+  Future<void> bulkHandleResponses(
+      String requestId, String action, List<String> responseIds) async {
+    await _dio.post<void>(
+      '/teamup/$requestId/responses/bulk-handle',
+      data: {'action': action, 'responseIds': responseIds},
+    );
+  }
+
+  @override
+  Future<void> sendReminderNudges(String requestId) async {
+    await _dio.post<void>('/teamup/$requestId/reminders');
+  }
+
+  @override
+  Future<List<TeamUpReplacementSuggestionModel>> getReplacementSuggestions(
+      String requestId, {String? requestPositionId}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/teamup/$requestId/replacements/suggestions',
+      queryParameters: {
+        if (requestPositionId != null) 'requestPositionId': requestPositionId,
+      },
+    );
+    final items =
+        response.data?['data'] as List<dynamic>? ?? const [];
+    return items
+        .map((e) => TeamUpReplacementSuggestionModel.fromJson(
+            e as Map<String, dynamic>))
+        .toList();
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
