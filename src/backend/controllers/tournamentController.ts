@@ -210,6 +210,13 @@ const parseBoolean = (value: unknown, fieldName: string): boolean => {
   return value;
 };
 
+const parsePlayoffSize = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isInteger(value) || ![2, 4, 8, 16].includes(value)) {
+    throw new BadRequestError('playoffSize must be one of 2, 4, 8, or 16');
+  }
+  return value;
+};
+
 const assertValidTournamentTimezone = (value: unknown): string => {
   if (typeof value !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(value.trim())) {
     throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
@@ -2219,12 +2226,37 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
 export const generateBrackets = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { usePoolAssignments, forceGenerate } = req.body;
+  const { usePoolAssignments, forceGenerate, playoffSize, doubleElimination } = req.body;
 
-  const tournament = ensureResourceExists(
+  let tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
     'Tournament'
   );
+
+  const requestedPlayoffSize = playoffSize === undefined ? undefined : parsePlayoffSize(playoffSize);
+  const requestedDoubleElimination =
+    doubleElimination === undefined ? undefined : parseBoolean(doubleElimination, 'doubleElimination');
+
+  if (
+    requestedDoubleElimination !== undefined &&
+    ![
+      TournamentFormat.SINGLE_ELIMINATION,
+      TournamentFormat.GROUPS_KNOCKOUT,
+      TournamentFormat.DOUBLE_ELIMINATION,
+    ].includes(tournament.format as TournamentFormat)
+  ) {
+    throw new BadRequestError('Double elimination is only supported for single elimination or groups + knockout playoffs');
+  }
+
+  if (requestedPlayoffSize !== undefined || requestedDoubleElimination !== undefined) {
+    tournament = await prisma.tournament.update({
+      where: { id },
+      data: {
+        ...(requestedPlayoffSize !== undefined ? { playoffSize: requestedPlayoffSize } : {}),
+        ...(requestedDoubleElimination !== undefined ? { doubleElimination: requestedDoubleElimination } : {}),
+      },
+    });
+  }
 
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can generate brackets');
@@ -2320,15 +2352,28 @@ export const generateBrackets = async (req: Request, res: Response) => {
   let result;
   switch (String(tournament.format)) {
     case TournamentFormat.SINGLE_ELIMINATION:
-      result = usePoolAssignments
-        ? await tournamentService.generateRandomizedSingleEliminationBracketsFromPools(id)
-        : await tournamentService.generateSingleEliminationBrackets(id, {
-            randomizeSeeds: tournament.seedingPolicy === TournamentSeedingPolicy.RANDOM,
-            allowByes: tournament.allowByes !== false,
-          });
+      result =
+        tournament.doubleElimination
+          ? await tournamentService.generateDoubleEliminationBrackets(id, {
+              randomizeSeeds: tournament.seedingPolicy === TournamentSeedingPolicy.RANDOM || usePoolAssignments === true,
+              allowByes: tournament.allowByes !== false,
+              playoffSize: tournament.playoffSize,
+            })
+          : usePoolAssignments
+            ? await tournamentService.generateRandomizedSingleEliminationBracketsFromPools(id)
+            : await tournamentService.generateSingleEliminationBrackets(id, {
+                randomizeSeeds: tournament.seedingPolicy === TournamentSeedingPolicy.RANDOM,
+                allowByes: tournament.allowByes !== false,
+                playoffSize: tournament.playoffSize,
+              });
       break;
     case TournamentFormat.DOUBLE_ELIMINATION:
-      throw new BadRequestError('Double elimination bracket generation is not supported yet');
+      result = await tournamentService.generateDoubleEliminationBrackets(id, {
+        randomizeSeeds: tournament.seedingPolicy === TournamentSeedingPolicy.RANDOM || usePoolAssignments === true,
+        allowByes: tournament.allowByes !== false,
+        playoffSize: tournament.playoffSize,
+      });
+      break;
     case TournamentFormat.ROUND_ROBIN:
       result = await tournamentService.generateRoundRobinBrackets(id);
       break;
@@ -2481,7 +2526,7 @@ export const submitScore = async (req: Request, res: Response) => {
   }
 
   // If this is a knockout stage match, check if we should advance winners
-  if (match.stage && match.stage !== BracketStage.FINALS) {
+  if (match.stage && match.stage !== BracketStage.THIRD_PLACE) {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
 
@@ -2574,7 +2619,7 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
   });
 
   // If knockout stage, attempt to advance winners (idempotent)
-  if (match.stage && match.stage !== BracketStage.FINALS) {
+  if (match.stage && match.stage !== BracketStage.THIRD_PLACE) {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
 
@@ -3426,6 +3471,13 @@ export const addPlayer = async (req: Request, res: Response) => {
     if (existingCaptainTeam) {
       throw new BadRequestError('This user is already a team captain in this tournament');
     }
+    const existingPlayerInTournament = await prisma.tournamentPlayer.findFirst({
+      where: { userId: playerId, team: { tournamentId: id }, NOT: { teamId } },
+      select: { id: true }
+    });
+    if (existingPlayerInTournament) {
+      throw new BadRequestError('This user is already a player in another team in this tournament');
+    }
   }
 
   // Explicitly catch Prisma unique constraint violations (P2002) and return 409
@@ -3570,6 +3622,14 @@ export const updatePlayer = async (req: Request, res: Response) => {
     });
     if (captainConflict) {
       throw new BadRequestError('This user is already a team captain in this tournament');
+    }
+    // Cannot assign someone who is already a player in another team in this tournament
+    const playerConflict = await prisma.tournamentPlayer.findFirst({
+      where: { userId: newUserId, team: { tournamentId: id }, NOT: { id: playerId } },
+      select: { id: true }
+    });
+    if (playerConflict) {
+      throw new BadRequestError('This user is already a player in another team in this tournament');
     }
   }
 
@@ -6506,7 +6566,6 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
 
   if (
     result.correctedMatch?.stage &&
-    result.correctedMatch.stage !== BracketStage.FINALS &&
     result.correctedMatch.stage !== BracketStage.THIRD_PLACE
   ) {
     await tournamentService.advanceWinners(id, result.correctedMatch.stage as BracketStage);

@@ -589,10 +589,12 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<Map<String, dynamic>> generateBrackets(
       String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false}) async {
+      {int? numberOfGroups, int? teamsPerGroup, int? playoffSize, bool? doubleElimination, bool usePoolAssignments = false, bool forceGenerate = false}) async {
     final body = <String, dynamic>{};
     if (numberOfGroups != null) body['numberOfGroups'] = numberOfGroups;
     if (teamsPerGroup != null) body['teamsPerGroup'] = teamsPerGroup;
+    if (playoffSize != null) body['playoffSize'] = playoffSize;
+    if (doubleElimination != null) body['doubleElimination'] = doubleElimination;
     if (usePoolAssignments) body['usePoolAssignments'] = true;
     if (forceGenerate) body['forceGenerate'] = true;
     final response = await _dio.post<Map<String, dynamic>>(

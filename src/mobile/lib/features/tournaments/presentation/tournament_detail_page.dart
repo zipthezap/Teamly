@@ -887,7 +887,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       ),
                   ],
                 ),
-                label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
+                label: Text(
+                  t.format == 'groups_knockout'
+                      ? (t.matches.any(_isKnockoutStageMatch) ? 'Regenerate Brackets' : 'Generate Brackets')
+                      : (t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
+                ),
                 // Allow regeneration while in_progress (backend now supports this).
                 // This whole block is already gated on `isAdmin`, so only organizers
                 // and co-admins ever see it.
@@ -986,9 +990,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   Future<void> _generateBrackets(BuildContext context, TournamentModel tournament) async {
     int? numberOfGroups;
     int? teamsPerGroup;
+    int playoffSize = tournament.playoffSize;
     bool usePoolAssignments = false;
     bool forceGenerate = false;
-    final hasExistingMatches = tournament.matches.isNotEmpty;
+    bool doubleElimination =
+        tournament.format == 'double_elimination' || tournament.doubleElimination;
+    final isEliminationTournament =
+        tournament.format == 'single_elimination' ||
+        tournament.format == 'double_elimination';
+    final hasExistingMatches = tournament.format == 'groups_knockout'
+        ? tournament.matches.any(_isKnockoutStageMatch)
+        : tournament.matches.isNotEmpty;
     final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
     // Payment gate warning
@@ -1108,6 +1120,33 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       'If both are set, "teams per group" takes precedence.',
                       style: TextStyle(fontSize: 11, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                     ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      initialValue: playoffSize,
+                      decoration: const InputDecoration(
+                        labelText: 'Playoff size',
+                        isDense: true,
+                      ),
+                      items: const [2, 4, 8, 16]
+                          .map((size) => DropdownMenuItem<int>(
+                                value: size,
+                                child: Text('$size teams'),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setS(() => playoffSize = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: doubleElimination,
+                      onChanged: (value) => setS(() => doubleElimination = value),
+                      title: const Text('Double elimination'),
+                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                    ),
                   ],
                 ],
               ),
@@ -1213,6 +1252,37 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     subtitle: const Text('Seed teams from existing pools using random draw'),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
+                  if (isEliminationTournament) ...[
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      initialValue: playoffSize,
+                      decoration: const InputDecoration(
+                        labelText: 'Playoff size',
+                        isDense: true,
+                      ),
+                      items: const [2, 4, 8, 16]
+                          .map((size) => DropdownMenuItem<int>(
+                                value: size,
+                                child: Text('$size teams'),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => playoffSize = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: doubleElimination,
+                      onChanged: tournament.format == 'double_elimination'
+                          ? null
+                          : (value) => setDialogState(() => doubleElimination = value),
+                      title: const Text('Double elimination'),
+                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                    ),
+                  ],
                 ],
               ),
               actions: [
@@ -1230,17 +1300,56 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       } else {
         final ok = await showDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text('$generateVerb Brackets'),
-            content: Text(
-              hasExistingMatches
-                  ? 'This will replace the current brackets and matches for all registered teams. Continue?'
-                  : 'This will automatically create matches for all registered teams. Continue?',
+          builder: (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) => AlertDialog(
+              title: Text('$generateVerb Brackets'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasExistingMatches
+                        ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                        : 'This will automatically create matches for all registered teams. Continue?',
+                  ),
+                  if (isEliminationTournament) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: playoffSize,
+                      decoration: const InputDecoration(
+                        labelText: 'Playoff size',
+                        isDense: true,
+                      ),
+                      items: const [2, 4, 8, 16]
+                          .map((size) => DropdownMenuItem<int>(
+                                value: size,
+                                child: Text('$size teams'),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => playoffSize = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: doubleElimination,
+                      onChanged: tournament.format == 'double_elimination'
+                          ? null
+                          : (value) => setDialogState(() => doubleElimination = value),
+                      title: const Text('Double elimination'),
+                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+              ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
-            ],
           ),
         );
         if (ok != true || !context.mounted) return;
@@ -1252,6 +1361,14 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         tournament.id,
         numberOfGroups: numberOfGroups,
         teamsPerGroup: teamsPerGroup,
+        playoffSize:
+            (isEliminationTournament || tournament.format == 'groups_knockout')
+                ? playoffSize
+                : null,
+        doubleElimination:
+            (isEliminationTournament || tournament.format == 'groups_knockout')
+                ? doubleElimination
+                : null,
         usePoolAssignments: usePoolAssignments,
         forceGenerate: forceGenerate,
       );
@@ -1479,25 +1596,66 @@ class _KnockoutBracketButton extends ConsumerWidget {
   Future<void> _generate(BuildContext context, WidgetRef ref) async {
     final t = tournament;
     final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    var playoffSize = t.playoffSize;
+    var doubleElimination = t.doubleElimination;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Generate Knockout Bracket'),
-        content: Text(
-          hasKnockout
-              ? 'This will regenerate the knockout bracket based on current group standings. Continue?'
-              : 'This will generate the knockout bracket from current group standings. Continue?',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Generate Knockout Bracket'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasKnockout
+                    ? 'This will regenerate the knockout bracket based on current group standings. Continue?'
+                    : 'This will generate the knockout bracket from current group standings. Continue?',
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: playoffSize,
+                decoration: const InputDecoration(
+                  labelText: 'Playoff size',
+                  isDense: true,
+                ),
+                items: const [2, 4, 8, 16]
+                    .map((size) => DropdownMenuItem<int>(
+                          value: size,
+                          child: Text('$size teams'),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => playoffSize = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: doubleElimination,
+                onChanged: (value) => setDialogState(() => doubleElimination = value),
+                title: const Text('Double elimination'),
+                subtitle: const Text('Create a losers bracket for playoff matches'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
-        ],
       ),
     );
     if (ok != true || !context.mounted) return;
 
     try {
-      await ref.read(tournamentRepositoryProvider).generateBrackets(t.id);
+      await ref.read(tournamentRepositoryProvider).generateBrackets(
+            t.id,
+            playoffSize: playoffSize,
+            doubleElimination: doubleElimination,
+          );
       onRefresh();
       if (context.mounted) {
         ScaffoldMessenger.of(context)

@@ -133,7 +133,7 @@ abstract class MatchRepository {
 
   // Bracket generation
   Future<Map<String, dynamic>> generateBrackets(String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false});
+      {int? numberOfGroups, int? teamsPerGroup, int? playoffSize, bool? doubleElimination, bool usePoolAssignments = false, bool forceGenerate = false});
 
   /// Generate group-stage matches (groups_knockout only, post-registration-close).
   Future<Map<String, dynamic>> generateGroupMatches(String tournamentId,

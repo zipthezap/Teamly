@@ -226,6 +226,7 @@ vi.mock('../../services/tournamentService', () => ({
   canManageTeamInvitations: vi.fn().mockResolvedValue(true),
   computeAutoStatus: vi.fn(() => null),
   generateSingleEliminationBrackets: vi.fn().mockResolvedValue({ count: 4 }),
+  generateDoubleEliminationBrackets: vi.fn().mockResolvedValue({ count: 7 }),
   generateRandomizedSingleEliminationBracketsFromPools: vi.fn().mockResolvedValue({ count: 4 }),
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
@@ -1264,18 +1265,23 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
     });
   });
 
-  it('returns 400 for double_elimination until explicitly supported', async () => {
+  it('returns 200 for double_elimination generation', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       format: 'double_elimination',
     } as any);
     vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(tournamentService.generateDoubleEliminationBrackets).mockResolvedValue({ count: 7 });
 
     const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Double elimination');
-    expect(tournamentService.generateSingleEliminationBrackets).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(vi.mocked(tournamentService.generateDoubleEliminationBrackets)).toHaveBeenCalledWith(
+      'tournament-1',
+      expect.objectContaining({
+        playoffSize: mockTournament.playoffSize,
+      })
+    );
   });
 
   it('returns 404 when tournament not found', async () => {
@@ -2400,6 +2406,24 @@ describe('POST /api/tournaments/:id/teams/:teamId/players (addPlayer)', () => {
 
     expect(res.status).toBe(404);
   });
+  it('returns 400 when userId is already a player in another team in this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst)
+      .mockResolvedValueOnce(mockTeam as any)  // team exists
+      .mockResolvedValueOnce(null);             // no captain conflict
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)              // requester is allowed
+      .mockResolvedValueOnce(false);            // player is not an organizer/admin
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'player-user-1' } as any);
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce({ id: 'existing-player' } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/team-1/players')
+      .send({ playerName: 'John Doe', userId: 'player-user-1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/already a player in another team/i);
+  });
 });
 
 describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
@@ -2536,6 +2560,25 @@ describe('PUT /api/tournaments/:id/teams/:teamId/players/:playerId (updatePlayer
       .send({ playerName: 'Jane Doe' });
 
     expect(res.status).toBe(404);
+  });
+  it('returns 400 when new userId is already a player in another team in this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst)
+      .mockResolvedValueOnce(mockTeam as any)  // team exists
+      .mockResolvedValueOnce(null);             // no captain conflict
+    vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin)
+      .mockResolvedValueOnce(true)              // requester is allowed
+      .mockResolvedValueOnce(false);            // new user is not an organizer/admin
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'player-user-2', deletedAt: null } as any);
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce({ id: 'other-player' } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/players/player-1')
+      .send({ userId: 'player-user-2' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/already a player in another team/i);
   });
 });
 
