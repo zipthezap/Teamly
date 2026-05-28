@@ -8,6 +8,7 @@ import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
+import 'tournament_match_utils.dart';
 import 'tournament_status_presentation.dart';
 import 'tournament_status_policy.dart';
 import '../state/tournaments_notifier.dart';
@@ -192,10 +193,8 @@ class _TournamentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tournament;
-    final groupMatches = t.matches
-        .where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null))
-        .toList();
-    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final groupMatches = t.matches.where(isGroupStageMatch).toList();
+    final hasKnockout = t.matches.any(isKnockoutStageMatch);
     final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
     final statusPresentation = getTournamentStatusPresentation(
       status: t.status,
