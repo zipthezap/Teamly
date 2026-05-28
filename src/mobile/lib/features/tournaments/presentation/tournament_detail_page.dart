@@ -541,85 +541,80 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(14),
+                color: AppThemeTokens.card(context),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .outlineVariant
-                      .withValues(alpha: 0.85),
+                  color: AppThemeTokens.border(context),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
+                                .withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Icon(
-                            Icons.shield_rounded,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 18,
+                          child: Text(
+                            'MY TEAM',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'My Team',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                team.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isCaptain
-                                    ? 'You are managing this roster.'
-                                    : 'You are registered on this roster.',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
+                        const Spacer(),
+                        Icon(
+                          Icons.shield_rounded,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
+                    const SizedBox(height: 10),
+                    Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isCaptain
+                          ? 'You are managing this roster.'
+                          : 'You are registered on this roster.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         _TeamCardStatChip(
                           icon: team.isPaid
@@ -673,60 +668,66 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       ),
                     ],
                     if (isCaptain) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          FilledButton.icon(
-                            icon: const Icon(Icons.group_outlined, size: 16),
-                            label: const Text('Manage Roster'),
-                            onPressed: () => context.push(
-                              '/tournaments/${t.id}/teams/${team.id}/roster',
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.group_outlined, size: 18),
+                          label: const Text('Manage Roster'),
+                          onPressed: () => context.push(
+                            '/tournaments/${t.id}/teams/${team.id}/roster',
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              minimumSize: const Size(0, 38),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
                             ),
                           ),
-                          if (t.status == 'registration' || t.status == 'draft')
-                            OutlinedButton.icon(
-                              icon: const Icon(
-                                Icons.exit_to_app_outlined,
-                                size: 16,
-                              ),
-                              label: const Text('Unregister'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.error,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                side: BorderSide(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .error
-                                      .withValues(alpha: 0.35),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              onPressed: () => _confirmUnregister(
-                                context,
-                                t.id,
-                                onRefresh,
-                              ),
-                            ),
-                        ],
+                        ),
                       ),
+                      if (t.status == 'registration' || t.status == 'draft') ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(
+                              Icons.exit_to_app_outlined,
+                              size: 16,
+                            ),
+                            label: const Text('Unregister'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.error,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              side: BorderSide(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .error
+                                    .withValues(alpha: 0.35),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            onPressed: () => _confirmUnregister(
+                              context,
+                              t.id,
+                              onRefresh,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -750,6 +751,40 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             for (final pool in t.pools)
               _PoolCard(pool: pool, isAdmin: isAdmin, tournament: t),
           ] else ...[
+            if (t.teams.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Teams can be registered before categories are created. Categories and pools can be added later.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const UiSectionTitle('Teams'),
             const SizedBox(height: 8),
             if (t.teams.isEmpty)
