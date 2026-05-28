@@ -10,17 +10,24 @@ export class ApiError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
   public readonly code?: string;
+  /** Identifies which request field(s) caused the error, for client-side highlighting */
+  public readonly field?: string;
+  public readonly fields?: string[];
 
   constructor(
     message: string,
     statusCode: number = 500,
     isOperational: boolean = true,
-    code?: string
+    code?: string,
+    field?: string,
+    fields?: string[]
   ) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
     this.code = code;
+    this.field = field;
+    this.fields = fields;
     this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);
   }
@@ -30,8 +37,8 @@ export class ApiError extends Error {
  * 400 Bad Request
  */
 export class BadRequestError extends ApiError {
-  constructor(message: string = 'Bad Request', code?: string) {
-    super(message, 400, true, code);
+  constructor(message: string = 'Bad Request', code?: string, field?: string, fields?: string[]) {
+    super(message, 400, true, code, field, fields);
   }
 }
 

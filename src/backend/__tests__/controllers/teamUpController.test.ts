@@ -489,21 +489,13 @@ describe('TeamUpController', () => {
   });
 
   describe('PUT /api/teamup/:id requestType update', () => {
-    it('allows updating requestType to looking_for_play', async () => {
-      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
-        ...mockTeamUpRequest,
-        creatorId: 'test-user-id',
-      } as any);
-      vi.mocked(prisma.teamUpRequest.update).mockResolvedValueOnce({
-        ...mockTeamUpRequest,
-        requestType: 'looking_for_play',
-      } as any);
-
+    it('rejects updating requestType (immutable field)', async () => {
       const res = await request(app)
         .put('/api/teamup/teamup-1')
         .send({ requestType: 'looking_for_play' });
 
-      expect([200, 403, 404]).toContain(res.status);
+      // Guard fires at 400 if user owns the request; 403 if not authorized first
+      expect([400, 403]).toContain(res.status);
     });
 
     it('rejects invalid requestType values', async () => {

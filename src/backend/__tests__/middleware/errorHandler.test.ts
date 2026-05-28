@@ -207,7 +207,7 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('A record with this email already exists');
+      expect(apiError.message).toBe('A record with these details already exists');
       expect(apiError.statusCode).toBe(409);
       expect(apiError.code).toBe('DUPLICATE_RECORD');
     });
@@ -304,7 +304,7 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('Database request error');
+      expect(apiError.message).toBe('Database error');
       expect(apiError.statusCode).toBe(500);
       expect(apiError.code).toBe('DATABASE_REQUEST_ERROR');
     });
@@ -317,9 +317,25 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('Database operation failed');
+      expect(apiError.message).toBe('Database error');
       expect(apiError.statusCode).toBe(500);
       expect(apiError.code).toBe('DATABASE_ERROR');
+    });
+
+    it('should handle P2014 relation violation', () => {
+      const prismaError = { code: 'P2014' };
+      const apiError = prismaErrorHandler(prismaError);
+      expect(apiError.message).toBe('Operation violates a required relation');
+      expect(apiError.statusCode).toBe(400);
+      expect(apiError.code).toBe('REQUIRED_RELATION_VIOLATION');
+    });
+
+    it('should handle P2023 invalid value', () => {
+      const prismaError = { code: 'P2023' };
+      const apiError = prismaErrorHandler(prismaError);
+      expect(apiError.message).toBe('Invalid value provided for database field');
+      expect(apiError.statusCode).toBe(400);
+      expect(apiError.code).toBe('INVALID_DATABASE_VALUE');
     });
 
     it('should handle P2002 with non-array target', () => {
@@ -330,7 +346,7 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('A record with this field already exists');
+      expect(apiError.message).toBe('A record with these details already exists');
       expect(apiError.statusCode).toBe(409);
     });
 
@@ -341,7 +357,7 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('A record with this field already exists');
+      expect(apiError.message).toBe('A record with these details already exists');
       expect(apiError.statusCode).toBe(409);
     });
   });
@@ -365,7 +381,7 @@ describe('Error Handler Middleware', () => {
 
       expect(statusMock).toHaveBeenCalledWith(409);
       expect(jsonMock).toHaveBeenCalledWith({
-        error: 'A record with this email already exists',
+        error: 'A record with these details already exists',
         code: 'DUPLICATE_RECORD',
       });
     });

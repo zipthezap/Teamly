@@ -24,6 +24,8 @@ class RegisterTeamPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
+  static const int _minTeamNameLength = 2;
+  static const int _maxTeamNameLength = 100;
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   String? _selectedPoolId;
@@ -142,7 +144,13 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         controller: _nameCtrl,
                         decoration: const InputDecoration(labelText: 'Team name *', prefixIcon: Icon(Icons.shield_outlined)),
                         textCapitalization: TextCapitalization.words,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) {
+                          final value = v?.trim() ?? '';
+                          if (value.isEmpty) return 'Required';
+                          if (value.length < _minTeamNameLength) return 'Must be at least $_minTeamNameLength characters';
+                          if (value.length > _maxTeamNameLength) return 'Must be at most $_maxTeamNameLength characters';
+                          return null;
+                        },
                       ),
                       if (_categories.isEmpty) ...[
                         const SizedBox(height: 16),

@@ -9,6 +9,8 @@ import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/erro
 import * as groupService from '../../services/groupService';
 import { txGroupBan, txAuditLog } from '../../utils/prismaExtended';
 
+const MAX_BAN_REASON_LENGTH = 500;
+
 export const getGroupMembers = async (req: Request, res: Response) => {
   const { id } = req.params;
   
@@ -65,6 +67,18 @@ export const getGroupMembers = async (req: Request, res: Response) => {
 
 export const removeMember = async (req: Request, res: Response) => {
   const { id, memberId } = req.params;
+  const { reason } = req.body ?? {};
+
+  // Validate optional reason field
+  if (reason !== undefined && reason !== null && typeof reason === 'string') {
+    if (reason.length > MAX_BAN_REASON_LENGTH) {
+      throw new BadRequestError(
+        `reason must not exceed ${MAX_BAN_REASON_LENGTH} characters`,
+        'MAX_LENGTH_EXCEEDED',
+        'reason'
+      );
+    }
+  }
 
   const canRemove = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_REMOVE_MEMBERS);
   
@@ -90,18 +104,28 @@ export const removeMember = async (req: Request, res: Response) => {
   if (!memberToRemove) {
     throw new NotFoundError('Member not found');
   }
-  
-  if (memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
-    throw new ForbiddenError('Admins cannot remove themselves from the group.');
+
+  // Cannot ban yourself
+  if (memberToRemove.userId === req.user!.id) {
+    throw new BadRequestError('You cannot ban yourself from the group');
   }
 
-  // Get group name for notification
+  if (memberToRemove.role === 'admin') {
+    // Cannot ban an admin unless you are the group creator
+    const group = await prisma.group.findUnique({
+      where: { id },
+      select: { creatorId: true, name: true }
+    });
+    if (!group || group.creatorId !== req.user!.id) {
+      throw new ForbiddenError('Only the group creator can remove admins');
+    }
+  }
+
+  // Get group name for notification (fetch if not already retrieved)
   const group = await prisma.group.findUnique({
     where: { id },
     select: { name: true }
   });
-
-  // Use transaction to ensure atomicity
   await prisma.$transaction(async (tx) => {
     await tx.groupMember.delete({
       where: { id: memberId }
@@ -272,6 +296,15 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 
     if (!memberToUpdate) {
       throw new NotFoundError('Member not found in this group');
+    }
+
+    // Prevent promoting/demoting the group creator
+    const groupRecord = await tx.group.findUnique({
+      where: { id },
+      select: { creatorId: true }
+    });
+    if (groupRecord && memberToUpdate.userId === groupRecord.creatorId) {
+      throw new ForbiddenError('The group creator\'s role cannot be changed');
     }
 
     // Check if trying to demote the last admin

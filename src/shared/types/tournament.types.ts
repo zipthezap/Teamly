@@ -81,6 +81,15 @@ export enum TournamentContingencyMode {
   SUSPENDED = 'suspended',
 }
 
+export const VALID_PLAYOFF_SIZES = [2, 4, 8, 16] as const;
+export const VALID_TIEBREAKER_RULES = [
+  'goal_difference',
+  'goals_for',
+  'goals_against',
+  'wins',
+  'head_to_head',
+] as const;
+
 // Type definitions for detailed scoring
 export interface SetScore {
   home: number;

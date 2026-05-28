@@ -7,7 +7,13 @@ import * as teamUpNotificationService from '../../services/teamUpNotificationSer
 
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { parseCoordinates } from '../../utils/validation';
+import { guardImmutableFields } from '../../utils/guardImmutableFields';
 import { computeRoleFitForApplication } from './_helpers';
+
+/** Max open requests a single user may have for the same sportType simultaneously */
+const MAX_OPEN_REQUESTS_PER_SPORT = 5;
+/** Max days in the future that expiresAt / dateTime may be set */
+const MAX_EVENT_HORIZON_DAYS = 90;
 
 type TeamUpRequestType = teamUpService.TeamUpRequestType;
 
@@ -78,11 +84,36 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       throw new BadRequestError('Invalid dateTime format');
     }
     if (eventDate <= new Date()) {
-      throw new BadRequestError('dateTime must be in the future');
+      throw new BadRequestError('dateTime must be in the future', 'DATE_MUST_BE_FUTURE', 'dateTime');
+    }
+    // Cap dateTime at MAX_EVENT_HORIZON_DAYS days from now
+    const maxDate = new Date(Date.now() + MAX_EVENT_HORIZON_DAYS * 24 * 60 * 60 * 1000);
+    if (eventDate > maxDate) {
+      throw new BadRequestError(
+        `dateTime must be within ${MAX_EVENT_HORIZON_DAYS} days from now`,
+        'DATE_TOO_FAR',
+        'dateTime'
+      );
     }
   } else {
     // looking_for_play without explicit date: default availability window is 30 days
     eventDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Per-user rate check: limit simultaneous open requests for the same sport type
+  const openCountForSport = await prisma.teamUpRequest.count({
+    where: {
+      creatorId: req.user!.id,
+      sportType: sanitized.sportType!,
+      status: 'open',
+    },
+  });
+  if (openCountForSport >= MAX_OPEN_REQUESTS_PER_SPORT) {
+    throw new BadRequestError(
+      `You already have ${MAX_OPEN_REQUESTS_PER_SPORT} open requests for this sport type. Close or cancel some before creating more.`,
+      'RATE_LIMIT_EXCEEDED',
+      'sportType'
+    );
   }
 
   // Validate playersNeeded if provided (or derive from positions)
@@ -95,6 +126,25 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     (playersNeeded !== undefined && playersNeeded !== null ? parseInt(playersNeeded, 10) : 1);
   if (players < 1) {
     throw new BadRequestError('playersNeeded must be at least 1');
+  }
+
+  // skillLevel consistency check: if request-level skillLevel is given alongside positions,
+  // it must not be 'any' when all positions share a more specific level (and vice-versa).
+  const parsedSkillLevel = teamUpService.parseSkillLevel(sanitized.skillLevel ?? null, 'skillLevel');
+  if (parsedSkillLevel && parsedPositions.length > 0) {
+    const positionSkills = parsedPositions
+      .map((p) => p.skillLevelRequired)
+      .filter((s): s is string => Boolean(s));
+    const allSameSpecificSkill = positionSkills.length === parsedPositions.length &&
+      new Set(positionSkills).size === 1 &&
+      positionSkills[0] !== parsedSkillLevel;
+    if (allSameSpecificSkill) {
+      throw new BadRequestError(
+        `Request skillLevel (${parsedSkillLevel}) does not match the uniform position skill (${positionSkills[0]}). Either align them or leave the request-level skillLevel unset.`,
+        'SKILL_LEVEL_MISMATCH',
+        'skillLevel'
+      );
+    }
   }
 
   // Set expiration to 1 hour after the session time (or 30 days for availability windows)
@@ -209,6 +259,29 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
   const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
+  // Validate enum filter values — return 400 rather than silently ignoring
+  if (skillLevel && !teamUpService.VALID_SKILL_LEVELS.includes(skillLevel as teamUpService.TeamUpSkillLevel)) {
+    throw new BadRequestError(
+      `skillLevel must be one of: ${teamUpService.VALID_SKILL_LEVELS.join(', ')}`,
+      'INVALID_ENUM_VALUE',
+      'skillLevel'
+    );
+  }
+  if (preferredSkillLevel && !teamUpService.VALID_SKILL_LEVELS.includes(preferredSkillLevel as teamUpService.TeamUpSkillLevel)) {
+    throw new BadRequestError(
+      `preferredSkillLevel must be one of: ${teamUpService.VALID_SKILL_LEVELS.join(', ')}`,
+      'INVALID_ENUM_VALUE',
+      'preferredSkillLevel'
+    );
+  }
+  if (requestType && !teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
+    throw new BadRequestError(
+      `requestType must be one of: ${teamUpService.VALID_REQUEST_TYPES.join(', ')}`,
+      'INVALID_ENUM_VALUE',
+      'requestType'
+    );
+  }
+
   // Build where clause - optimized to use composite indexes
   const where: Record<string, unknown> = {
     status: status as string  // First part of composite index
@@ -219,10 +292,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
 
   // Filter by request type (need_players or looking_for_play)
-  if (
-    requestType &&
-    teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
-  ) {
+  if (requestType) {
     where.requestType = requestType as string;
   }
 
@@ -661,12 +731,15 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   });
 
   if (!teamUpRequest) {
-    throw new NotFoundError('TeamUp request not found');
+    throw new NotFoundError(`TeamUp request ${id} not found`);
   }
 
   if (teamUpRequest.creatorId !== req.user!.id) {
     throw new ForbiddenError('Only the creator can update this request');
   }
+
+  // Block changes to fields that are immutable after creation
+  guardImmutableFields(req.body, ['sportType', 'requestType', 'creatorId']);
 
   // Sanitize text inputs
   const sanitized = teamUpService.sanitizeTeamUpData({

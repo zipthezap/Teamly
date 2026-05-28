@@ -44,10 +44,31 @@ export const isTerminalTournamentStatus = (status: string): boolean =>
 
 export const canTransitionTournamentStatus = (
   fromStatus: TournamentStatus,
-  toStatus: TournamentStatus
+  toStatus: TournamentStatus,
+  context?: {
+    hasMatches?: boolean;
+    hasIncompleteMatches?: boolean;
+    hasConfirmedPayments?: boolean;
+    hasRefundPolicy?: boolean;
+  }
 ): boolean => {
   if (fromStatus === toStatus) return true;
-  return TOURNAMENT_ALLOWED_TRANSITIONS[fromStatus]?.includes(toStatus) ?? false;
+  const isAllowedByMatrix = TOURNAMENT_ALLOWED_TRANSITIONS[fromStatus]?.includes(toStatus) ?? false;
+  if (!isAllowedByMatrix) return false;
+  if (toStatus === TournamentStatus.IN_PROGRESS && context?.hasMatches === false) {
+    return false;
+  }
+  if (toStatus === TournamentStatus.COMPLETED && context?.hasIncompleteMatches === true) {
+    return false;
+  }
+  if (
+    toStatus === TournamentStatus.CANCELLED &&
+    context?.hasConfirmedPayments === true &&
+    context?.hasRefundPolicy === false
+  ) {
+    return false;
+  }
+  return true;
 };
 
 export const canPerformTournamentLifecycleAction = (

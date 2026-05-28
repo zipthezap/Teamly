@@ -1239,19 +1239,26 @@ List<TournamentMatchModel> _buildProjectedKnockoutMatches(TournamentModel tourna
     0,
     (maxSoFar, rows) => rows.length > maxSoFar ? rows.length : maxSoFar,
   );
+  // Build the seeded list by pool-rank position first, then by performance
+  // within each rank tier. This matches the backend seeding logic:
+  // all pool-winners are seeded before runners-up, etc., and within the
+  // same pool rank the better-performing team gets the higher seed.
   for (int position = 0; position < maxPerGroup; position++) {
+    final sameTierQualifiers = <_ProjectedQualifier>[];
     for (final groupName in orderedGroups) {
       final rows = qualifiersByGroup[groupName]!;
       if (position < rows.length) {
-        rankedQualifiers.add(rows[position]);
+        sameTierQualifiers.add(rows[position]);
       }
     }
+    sameTierQualifiers.sort(_compareProjectedQualifier);
+    rankedQualifiers.addAll(sameTierQualifiers);
   }
 
   final qualifierCount = _projectedQualifierCount(rankedQualifiers.length);
   if (qualifierCount == 0) return const [];
-  final seeded = rankedQualifiers.take(qualifierCount).toList()
-    ..sort(_compareProjectedQualifier);
+  // rankedQualifiers is already in correct seeding order (best overall = index 0).
+  final seeded = rankedQualifiers.take(qualifierCount).toList();
 
   final stage = _initialKnockoutStage(qualifierCount);
   if (stage == null) return const [];

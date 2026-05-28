@@ -44,6 +44,25 @@ describe('tournamentLifecyclePolicy', () => {
       expect(canTransitionTournamentStatus(TournamentStatus.CANCELLED, TournamentStatus.DRAFT)).toBe(false);
       expect(canTransitionTournamentStatus(TournamentStatus.DRAFT, TournamentStatus.COMPLETED)).toBe(false);
     });
+
+    it('applies context-aware transition guards', () => {
+      expect(
+        canTransitionTournamentStatus(TournamentStatus.REGISTRATION_CLOSED, TournamentStatus.IN_PROGRESS, {
+          hasMatches: false,
+        })
+      ).toBe(false);
+      expect(
+        canTransitionTournamentStatus(TournamentStatus.IN_PROGRESS, TournamentStatus.COMPLETED, {
+          hasIncompleteMatches: true,
+        })
+      ).toBe(false);
+      expect(
+        canTransitionTournamentStatus(TournamentStatus.IN_PROGRESS, TournamentStatus.CANCELLED, {
+          hasConfirmedPayments: true,
+          hasRefundPolicy: false,
+        })
+      ).toBe(false);
+    });
   });
 
   describe('isTerminalTournamentStatus', () => {

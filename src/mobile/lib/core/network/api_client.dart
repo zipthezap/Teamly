@@ -190,12 +190,34 @@ final dioProvider = Provider<Dio>((ref) {
         // one), so here we only translate errors into AppException.
         final status = error.response?.statusCode;
         final message = _extractErrorMessage(error);
+        final data = error.response?.data;
+        final field = data is Map<String, dynamic> ? data['field']?.toString() : null;
+
+        AppException mappedError;
+        if (status == 400) {
+          mappedError = ValidationException(message, statusCode: status, field: field);
+        } else if (status == 401 || status == 403) {
+          mappedError = AuthException(message, statusCode: status);
+        } else if (status == 409) {
+          mappedError = ConflictException(message, statusCode: status);
+        } else if (status == 429) {
+          mappedError = NetworkException('Too many requests. Please wait and try again.', statusCode: status);
+        } else if (status != null && status >= 500) {
+          mappedError = ServerException(message, statusCode: status);
+        } else if (
+            error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout ||
+            error.type == DioExceptionType.receiveTimeout) {
+          mappedError = NetworkException('No internet connection or request timeout. Please try again.');
+        } else {
+          mappedError = AppException(message, statusCode: status);
+        }
 
         handler.reject(
           DioException(
             requestOptions: error.requestOptions,
             response: error.response,
-            error: AppException(message, statusCode: status),
+            error: mappedError,
             type: error.type,
           ),
         );

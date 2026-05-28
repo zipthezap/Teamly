@@ -4,117 +4,130 @@ import { Request, Response } from 'express';
 import * as sessionService from '../services/sessionService';
 import { SportType } from '../../shared/types/event.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
-import { logger } from '../utils/logger';
 
 // Create session request (any group member can create, admins approve)
 export const createEventRequest = async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
-  try {
-    const { 
-      groupId, title, description, sessionType, location, startTime, endTime, maxPlayers,
-      voteDeadline, voteThreshold 
-    } = req.body;
+  const { 
+    groupId, title, description, sessionType, location, startTime, endTime, maxPlayers,
+    voteDeadline, voteThreshold 
+  } = req.body;
 
-    if (!groupId || !title || !sessionType || !startTime) {
-      throw new BadRequestError('groupId, title, sessionType, and startTime are required');
+  if (!groupId || !title || !sessionType || !startTime) {
+    throw new BadRequestError('groupId, title, sessionType, and startTime are required');
+  }
+
+  // Sanitize text inputs
+  const sanitized = sessionService.sanitizeSessionData({
+    title,
+    description,
+    sessionType,
+    location
+  });
+
+  // Validate sanitized required fields are not empty
+  if (!sanitized.title || !sanitized.sessionType) {
+    throw new BadRequestError('Title and session type cannot be empty or whitespace-only');
+  }
+
+  // Validate description length
+  if (sanitized.description && sanitized.description.length > 2000) {
+    throw new BadRequestError('description must not exceed 2000 characters', 'MAX_LENGTH_EXCEEDED', 'description');
+  }
+
+  // Validate dates
+  const startDate = new Date(startTime);
+  if (isNaN(startDate.getTime())) {
+    throw new BadRequestError('Invalid startTime format');
+  }
+
+  let endDate = null;
+  if (endTime) {
+    endDate = new Date(endTime);
+    if (isNaN(endDate.getTime())) {
+      throw new BadRequestError('Invalid endTime format');
     }
-
-    // Sanitize text inputs
-    const sanitized = sessionService.sanitizeSessionData({
-      title,
-      description,
-      sessionType,
-      location
-    });
-
-    // Validate sanitized required fields are not empty
-    if (!sanitized.title || !sanitized.sessionType) {
-      throw new BadRequestError('Title and session type cannot be empty or whitespace-only');
+    if (endDate <= startDate) {
+      throw new BadRequestError('endTime must be after startTime');
     }
+  }
 
-    // Validate dates
-    const startDate = new Date(startTime);
-    if (isNaN(startDate.getTime())) {
-      throw new BadRequestError('Invalid startTime format');
+  // Validate vote deadline if provided
+  let deadlineDate = null;
+  if (voteDeadline) {
+    const deadlineValidation = validateVoteDeadline(voteDeadline, startTime);
+    if (!deadlineValidation.isValid) {
+      throw new BadRequestError(deadlineValidation.error);
     }
-
-    let endDate = null;
-    if (endTime) {
-      endDate = new Date(endTime);
-      if (isNaN(endDate.getTime())) {
-        throw new BadRequestError('Invalid endTime format');
-      }
-      if (endDate <= startDate) {
-        throw new BadRequestError('endTime must be after startTime');
-      }
+    // Ensure voteDeadline is at least 15 minutes in the future
+    const deadlineParsed = new Date(voteDeadline);
+    const minDeadline = new Date(Date.now() + 15 * 60 * 1000);
+    if (deadlineParsed < minDeadline) {
+      throw new BadRequestError(
+        'voteDeadline must be at least 15 minutes in the future',
+        'VOTE_DEADLINE_TOO_SOON',
+        'voteDeadline'
+      );
     }
+    deadlineDate = deadlineParsed;
+  }
 
-    // Validate vote deadline if provided
-    let deadlineDate = null;
-    if (voteDeadline) {
-      const deadlineValidation = validateVoteDeadline(voteDeadline, startTime);
-      if (!deadlineValidation.isValid) {
-        throw new BadRequestError(deadlineValidation.error);
-      }
-      deadlineDate = new Date(voteDeadline);
+  // Validate vote threshold if provided
+  let threshold = 0.5; // Default 50%
+  if (voteThreshold !== undefined) {
+    const numericThreshold = Number(voteThreshold);
+    if (isNaN(numericThreshold)) {
+      throw new BadRequestError('voteThreshold must be a number', 'INVALID_TYPE', 'voteThreshold');
     }
-
-    // Validate vote threshold if provided
-    let threshold = 0.5; // Default 50%
-    if (voteThreshold !== undefined) {
-      const thresholdValidation = validateVoteThreshold(voteThreshold);
-      if (!thresholdValidation.isValid) {
-        throw new BadRequestError(thresholdValidation.error);
-      }
-      threshold = parseFloat(voteThreshold);
+    const thresholdValidation = validateVoteThreshold(numericThreshold);
+    if (!thresholdValidation.isValid) {
+      throw new BadRequestError(thresholdValidation.error);
     }
+    threshold = numericThreshold;
+  }
 
-    // Check if user is a member of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: groupId,
-        userId: req.user!.id
-      }
-    });
-
-    if (!membership) {
-      throw new ForbiddenError('Only group members can create session requests');
+  // Check if user is a member of the group
+  const membership = await prisma.groupMember.findFirst({
+    where: {
+      groupId: groupId,
+      userId: req.user!.id
     }
+  });
 
-    const eventRequest = await prisma.sessionRequest.create({
-      data: {
-        groupId,
-        creatorId: req.user!.id,
-        title: sanitized.title!,
-        description: sanitized.description,
-        eventType: sanitized.sessionType!,
-        location: sanitized.location,
-        startTime: startDate,
-        endTime: endDate,
-        maxPlayers,
-        status: 'voting',
-        voteDeadline: deadlineDate,
-        voteThreshold: threshold
+  if (!membership) {
+    throw new ForbiddenError('Only group members can create session requests');
+  }
+
+  const eventRequest = await prisma.sessionRequest.create({
+    data: {
+      groupId,
+      creatorId: req.user!.id,
+      title: sanitized.title!,
+      description: sanitized.description,
+      eventType: sanitized.sessionType!,
+      location: sanitized.location,
+      startTime: startDate,
+      endTime: endDate,
+      maxPlayers,
+      status: 'voting',
+      voteDeadline: deadlineDate,
+      voteThreshold: threshold
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true, email: true }
       },
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true }
-        },
-        votes: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true }
-            }
+      votes: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
           }
         }
       }
-    });
+    }
+  });
 
-    res.status(201).json(eventRequest);
-  } catch (error) {
-    logger.error('Failed to create session request', 'eventRequestController', { error });
-    return res.status(500).json({ error: 'Failed to create session request' });
-  }
+  res.status(201).json(eventRequest);
 };
 
 // Get session requests for a group

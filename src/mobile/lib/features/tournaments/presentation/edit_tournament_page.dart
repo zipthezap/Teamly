@@ -29,6 +29,10 @@ class EditTournamentPage extends ConsumerStatefulWidget {
 }
 
 class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
+  static const int _minTournamentNameLength = 2;
+  static const int _maxTournamentNameLength = 100;
+  static const int _minDescriptionLength = 10;
+  static const int _maxDescriptionLength = 2000;
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -226,7 +230,13 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Tournament name *', prefixIcon: Icon(Icons.emoji_events_outlined)),
               textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return 'Required';
+                if (value.length < _minTournamentNameLength) return 'Must be at least $_minTournamentNameLength characters';
+                if (value.length > _maxTournamentNameLength) return 'Must be at most $_maxTournamentNameLength characters';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -254,12 +264,27 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
               controller: _descCtrl,
               decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true),
               maxLines: 3,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return null;
+                if (value.length < _minDescriptionLength) return 'Description must be at least $_minDescriptionLength characters';
+                if (value.length > _maxDescriptionLength) return 'Description must be at most $_maxDescriptionLength characters';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _maxTeamsCtrl,
               decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)),
               keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                final n = int.tryParse(v.trim());
+                if (n == null) return 'Must be a number';
+                if (n < 2) return 'At least 2 teams required';
+                if (n > 1000) return 'Max 1,000 teams';
+                return null;
+              },
             ),
             const SizedBox(height: 24),
             UiSectionTitle('Dates'),

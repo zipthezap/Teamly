@@ -2439,7 +2439,11 @@ export const syncTournamentAutoStatus = async <T extends {
   if (
     !canTransitionTournamentStatus(
       tournament.status as TournamentStatus,
-      nextStatus as TournamentStatus
+      nextStatus as TournamentStatus,
+      {
+        hasMatches: matchCount > 0,
+        hasIncompleteMatches: incompleteMatchCount > 0,
+      }
     )
   ) {
     logger.warn('Skipping invalid lifecycle transition', 'TournamentService', {
