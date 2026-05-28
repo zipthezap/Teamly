@@ -6,6 +6,7 @@ import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_match_utils.dart';
 
 const _kAccentBracket = Color(0xFFFF9800);
 const double _kMatchW = 160.0;
@@ -114,9 +115,7 @@ class _GroupsKnockoutView extends StatelessWidget {
       }
     }
 
-    final knockoutMatches = tournament.matches
-        .where((m) => m.stage != null && m.stage != 'group_stage')
-        .toList();
+    final knockoutMatches = tournament.matches.where(isKnockoutStageMatch).toList();
 
     if (knockoutMatches.isNotEmpty) {
       final byCategory = <String, List<TournamentMatchModel>>{};
@@ -175,9 +174,7 @@ class _GroupsKnockoutView extends StatelessWidget {
     // No knockout matches yet — this view should not normally be reached because
     // the Brackets tab is hidden until knockout matches exist.  Show a
     // descriptive placeholder in case it is navigated to directly.
-    final groupMatches = tournament.matches
-        .where((m) => m.stage == 'group_stage' || m.groupName != null)
-        .toList();
+    final groupMatches = tournament.matches.where(isGroupStageMatch).toList();
     final allGroupMatchesCompleted =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
     return ListView(

@@ -12,30 +12,11 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
 import 'team_roster_page.dart';
+import 'tournament_match_utils.dart';
 import 'tournament_status_presentation.dart';
 import 'tournament_status_policy.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
-
-/// Returns true for matches that belong to the group (round-robin) stage.
-/// Checks both the `stage` field (preferred, set by current backend) and the
-/// legacy `groupName` field (for matches created by older backend versions).
-bool _isGroupStageMatch(TournamentMatchModel m) {
-  return m.stage == 'group_stage' || (m.stage == null && m.groupName != null);
-}
-
-bool _isKnockoutStageMatch(TournamentMatchModel m) {
-  return m.stage != null && m.stage != 'group_stage';
-}
-
-bool _isFormingKnockoutBrackets(TournamentModel tournament) {
-  if (tournament.format != 'groups_knockout') return false;
-  final groupMatches = tournament.matches.where(_isGroupStageMatch).toList();
-  if (groupMatches.isEmpty) return false;
-  final hasKnockout = tournament.matches.any(_isKnockoutStageMatch);
-  final allGroupsDone = groupMatches.every((m) => m.status == 'completed');
-  return allGroupsDone && !hasKnockout;
-}
 
 bool _isTournamentStarted(TournamentModel tournament) {
   return isTournamentStartedStatus(tournament.status) ||
@@ -47,7 +28,7 @@ bool _isTournamentStarted(TournamentModel tournament) {
 String _statusStageLabel(TournamentModel tournament) {
   return getTournamentStageLabel(
     status: tournament.status,
-    isFormingKnockoutBrackets: _isFormingKnockoutBrackets(tournament),
+    isFormingKnockoutBrackets: isFormingKnockoutBrackets(tournament),
     registrationStartDate: tournament.registrationStartDate,
     registrationDeadline: tournament.registrationDeadline,
   );
@@ -123,12 +104,11 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
 
         // Show Groups tab whenever there are any group-stage matches, or when
         // the tournament has started (for other formats).
-        final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+        final hasGroupMatches = t.matches.any(isGroupStageMatch);
         final hasGroupsTab = isStarted || hasGroupMatches;
 
         // Brackets tab: only shown when actual knockout matches exist (not just group stage).
-        final hasKnockoutMatches = t.matches.any(
-            (m) => m.stage != null && m.stage != 'group_stage');
+        final hasKnockoutMatches = t.matches.any(isKnockoutStageMatch);
         // For non-groups_knockout formats show Brackets whenever there are matches.
         final isGroupsKnockout = t.format == 'groups_knockout';
         final hasBrackets = isGroupsKnockout
@@ -969,7 +949,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         tournament.format == 'single_elimination' ||
         tournament.format == 'double_elimination';
     final hasExistingMatches = tournament.format == 'groups_knockout'
-        ? tournament.matches.any(_isKnockoutStageMatch)
+        ? tournament.matches.any(isKnockoutStageMatch)
         : tournament.matches.isNotEmpty;
     final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
@@ -1386,7 +1366,7 @@ class _GroupMatchesButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
     final canGenerate = t.status == 'registration_closed';
-    final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+    final hasGroupMatches = t.matches.any(isGroupStageMatch);
     final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
 
     return OutlinedButton.icon(
@@ -1551,10 +1531,10 @@ class _KnockoutBracketButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    final groupMatches = t.matches.where(_isGroupStageMatch).toList();
+    final groupMatches = t.matches.where(isGroupStageMatch).toList();
     final allGroupDone =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
-    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final hasKnockout = t.matches.any(isKnockoutStageMatch);
 
     return OutlinedButton.icon(
       icon: const Icon(Icons.emoji_events_outlined, size: 16),
@@ -1565,7 +1545,7 @@ class _KnockoutBracketButton extends ConsumerWidget {
 
   Future<void> _generate(BuildContext context, WidgetRef ref) async {
     final t = tournament;
-    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final hasKnockout = t.matches.any(isKnockoutStageMatch);
     var playoffSize = t.playoffSize;
     var doubleElimination = t.doubleElimination;
     final ok = await showDialog<bool>(
