@@ -1515,7 +1515,18 @@ export const cancelTournament = async (req: Request, res: Response) => {
 export const addTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber, waiverAccepted } = req.body;
+  const {
+    name,
+    captainName,
+    captainEmail,
+    captainUserId,
+    poolId,
+    categoryId,
+    poolNumber,
+    poolName,
+    seedNumber,
+    waiverAccepted,
+  } = req.body;
 
   isRequired(name, 'Team name');
   if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
@@ -1537,6 +1548,40 @@ export const addTeam = async (req: Request, res: Response) => {
 
   if (tournament!.requireWaiverForRegistration && waiverAccepted !== true) {
     throw new BadRequestError('This tournament requires waiver acceptance before registration');
+  }
+
+  const categoryCount = await prisma.tournamentCategory.count({
+    where: { tournamentId: id },
+  });
+  const hasCategories = categoryCount > 0;
+
+  let selectedCategory: { id: string; name: string } | null = null;
+  if (categoryId) {
+    selectedCategory = await prisma.tournamentCategory.findFirst({
+      where: { id: categoryId, tournamentId: id },
+      select: { id: true, name: true },
+    });
+    if (!selectedCategory) {
+      throw new NotFoundError('Category not found');
+    }
+  }
+
+  if (hasCategories && !selectedCategory) {
+    throw new BadRequestError('Category selection is required for this tournament');
+  }
+
+  let validatedPool: { id: string; name: string; categoryId: string | null } | null = null;
+  if (poolId) {
+    validatedPool = await prisma.tournamentPool.findFirst({
+      where: { id: poolId, tournamentId: id },
+      select: { id: true, name: true, categoryId: true },
+    });
+    if (!validatedPool) {
+      throw new NotFoundError('Pool not found');
+    }
+    if (selectedCategory && validatedPool.categoryId && validatedPool.categoryId !== selectedCategory.id) {
+      throw new BadRequestError('Selected pool does not belong to selected category');
+    }
   }
 
   // If a captainUserId is provided, verify the user exists and is not an organizer or admin
@@ -1567,8 +1612,9 @@ export const addTeam = async (req: Request, res: Response) => {
         captainEmail,
         captainUserId: captainUserId || undefined,
         tournamentId: id,
+        poolId: validatedPool?.id ?? undefined,
+        poolName: validatedPool?.name ?? ((selectedCategory?.name ?? poolName) || undefined),
         poolNumber: poolNumber || undefined,
-        poolName: poolName || undefined,
         seedNumber: seedNumber || undefined,
         waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
         waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
@@ -5314,6 +5360,10 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
 
   // Allow selecting both a category and a specific pool. If both are provided
   // ensure the selected pool belongs to the selected category.
+  const categoryCount = await prisma.tournamentCategory.count({
+    where: { tournamentId: id },
+  });
+  const hasCategories = categoryCount > 0;
 
   let selectedCategory: { id: string; name: string } | null = null;
   if (categoryId) {
@@ -5324,6 +5374,9 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     if (!selectedCategory) {
       throw new NotFoundError('Category not found');
     }
+  }
+  if (hasCategories && !selectedCategory) {
+    throw new BadRequestError('Category selection is required for this tournament');
   }
 
   let validatedPool: { id: string; categoryId?: string | null } | null = null;
@@ -5405,7 +5458,7 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
           tournamentId: id,
           captainUserId: userId,
           ...(selectedCategory && !validatedPool
-            ? { categoryId: selectedCategory.id, poolName: selectedCategory.name }
+            ? { poolName: selectedCategory.name }
             : {}),
           waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
           waiverAcceptedByUserId: waiverAccepted ? userId : undefined,

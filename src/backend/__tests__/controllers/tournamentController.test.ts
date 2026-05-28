@@ -1108,6 +1108,23 @@ describe('POST /api/tournaments/:id/teams (addTeam)', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 when categories exist and addTeam request omits categoryId', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'draft',
+      teams: [],
+      maxTeams: null,
+    } as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams')
+      .send({ name: 'Team Alpha', captainName: 'Alice' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Category selection is required');
+  });
 });
 
 describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
@@ -3031,10 +3048,11 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     );
   });
 
-  it('returns 201 when registering without a pool (no category needed)', async () => {
+  it('returns 201 when registering without a pool when tournament has no categories', async () => {
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(0 as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
 
@@ -3059,54 +3077,56 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category A' } as any);
     vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, id: 'new-team', captainUser: null } as any);
-    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({ ...mockTeam, id: 'new-team', categoryId: 'cat-1', captainUser: null } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', categoryId: 'cat-1' });
 
-    // categoryId is validated (category looked up) and applied to the team in the create call
+    // categoryId is validated and applied as poolName hint when no pool is selected
     expect(res.status).toBe(201);
     expect(prisma.tournamentCategory.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ id: 'cat-1', tournamentId: 'tournament-1' }) })
     );
     expect(prisma.tournamentTeam.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ categoryId: 'cat-1' }) })
+      expect.objectContaining({ data: expect.objectContaining({ poolName: 'Category A' }) })
     );
-    expect(res.body.categoryId).toBe('cat-1');
+    expect(res.body.categoryId).toBeUndefined();
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category 1' } as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
-      .send({ name: 'New Team', poolId: 'missing-pool' });
+      .send({ name: 'New Team', categoryId: 'cat-1', poolId: 'missing-pool' });
 
     expect(res.status).toBe(404);
     expect(res.body.error).toContain('Pool not found');
   });
 
-  it('categoryId alongside poolId is silently ignored (poolId takes precedence)', async () => {
+  it('returns 404 when poolId is invalid even when categoryId is provided', async () => {
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category 1' } as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
-    // pool not found causes 404 — categoryId is just ignored
     vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', poolId: 'pool-1', categoryId: 'cat-1' });
 
-    // categoryId is silently ignored; poolId validation still runs
     expect(res.status).toBe(404);
   });
 
@@ -3114,10 +3134,11 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue({ id: 'pool-1', name: 'Pool 1', tournamentId: 'tournament-1', categoryId: 'cat-1', maxTeams: 4, teams: [] } as any);
     vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category 1' } as any);
-    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, id: 'new-team', poolId: 'pool-1', categoryId: 'cat-1' } as any);
+    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, id: 'new-team', poolId: 'pool-1' } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
@@ -3125,7 +3146,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
 
     expect(res.status).toBe(201);
     expect(res.body.team.poolId).toBe('pool-1');
-    expect(res.body.categoryId).toBe('cat-1');
+    expect(res.body.categoryId).toBeUndefined();
   });
 
   it('returns 400 when tournament is not in registration status', async () => {
@@ -3182,6 +3203,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(1 as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     // Category not found for this tournament
     vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue(null);
@@ -3192,6 +3214,20 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
 
     expect(res.status).toBe(404);
     expect(res.body.error).toContain('Category not found');
+  });
+
+  it('returns 400 when categories exist and category is not selected', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentCategory.count).mockResolvedValue(2 as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Category selection is required');
   });
 
   it('returns 403 when the tournament organizer attempts to self-register', async () => {

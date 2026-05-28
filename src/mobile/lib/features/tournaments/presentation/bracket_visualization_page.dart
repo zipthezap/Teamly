@@ -100,11 +100,72 @@ class _GroupsKnockoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final poolCategoryMap = <String, String>{};
+    for (final pool in tournament.pools) {
+      if (pool.categoryName != null) {
+        poolCategoryMap[pool.id] = pool.categoryName!;
+      }
+    }
+
+    final teamCategoryMap = <String, String>{};
+    for (final team in tournament.teams) {
+      if (team.poolId != null && poolCategoryMap.containsKey(team.poolId)) {
+        teamCategoryMap[team.id] = poolCategoryMap[team.poolId!]!;
+      }
+    }
+
     final knockoutMatches = tournament.matches
         .where((m) => m.stage != null && m.stage != 'group_stage')
         .toList();
 
     if (knockoutMatches.isNotEmpty) {
+      final byCategory = <String, List<TournamentMatchModel>>{};
+      for (final match in knockoutMatches) {
+        final category = match.teamAId != null && teamCategoryMap.containsKey(match.teamAId)
+            ? teamCategoryMap[match.teamAId]!
+            : (match.teamBId != null && teamCategoryMap.containsKey(match.teamBId)
+                ? teamCategoryMap[match.teamBId]!
+                : 'Open');
+        byCategory.putIfAbsent(category, () => []).add(match);
+      }
+
+      if (byCategory.length > 1) {
+        final categoryOrder = {
+          for (final category in tournament.categories) category.name: category.sortOrder,
+        };
+        final tabs = byCategory.keys.toList()
+          ..sort((a, b) {
+            final sortA = categoryOrder[a] ?? 999;
+            final sortB = categoryOrder[b] ?? 999;
+            if (sortA != sortB) return sortA.compareTo(sortB);
+            return a.compareTo(b);
+          });
+
+        return DefaultTabController(
+          length: tabs.length,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: tabs.map((category) => Tab(text: category)).toList(),
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: tabs
+                      .map((category) => _KnockoutBracketView(
+                            matches: byCategory[category]!,
+                            useGroupsKnockoutLabels: true,
+                          ))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       return _KnockoutBracketView(
         matches: knockoutMatches,
         useGroupsKnockoutLabels: true,
