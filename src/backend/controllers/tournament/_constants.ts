@@ -1,6 +1,4 @@
 import {
-  MATCH_INCIDENT_STATUSES,
-  MATCH_INCIDENT_TYPES,
   TournamentContingencyMode,
   TournamentPaymentTransactionStatus,
   TournamentSeedingPolicy,
@@ -38,5 +36,3 @@ export const DEFAULT_FORFEIT_SCORE_FOR = 1;
 export const DEFAULT_FORFEIT_SCORE_AGAINST = 0;
 export const MAX_MATCH_SCORE = 999;
 export const TIMEZONE_IANA_LIKE_REGEX = /^(UTC|[A-Za-z_]+\/[A-Za-z0-9_\-+]+(?:\/[A-Za-z0-9_\-+]+)?)$/;
-export const TOURNAMENT_INCIDENT_STATUSES = MATCH_INCIDENT_STATUSES;
-export const TOURNAMENT_INCIDENT_TYPES = MATCH_INCIDENT_TYPES;

@@ -26,7 +26,6 @@ import {
   TOURNAMENT_PAYMENT_STATUSES,
   TournamentPaymentTransactionStatus,
   TournamentSeedingPolicy,
-  TournamentContingencyMode,
   MatchIncidentType,
   MatchIncidentStatus,
   MATCH_INCIDENT_TYPES,
