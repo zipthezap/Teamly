@@ -1022,10 +1022,17 @@ const assignLoserRouting = async (
 ) => {
   if (sourceMatches.length === 0 || destinationMatches.length === 0) return;
 
+  const sourcesPerDestination = Math.max(1, sourceMatches.length / destinationMatches.length);
+
   const updates = sourceMatches.map((match, index) =>
     prisma.tournamentMatch.update({
       where: { id: match.id },
-      data: { loserGoesToMatchId: destinationMatches[Math.min(index, destinationMatches.length - 1)]?.id ?? null },
+      data: {
+        loserGoesToMatchId:
+          destinationMatches[
+            Math.min(Math.floor(index / sourcesPerDestination), destinationMatches.length - 1)
+          ]?.id ?? null,
+      },
     })
   );
 
@@ -1054,7 +1061,7 @@ const groupMatchesByRound = (matches: KnockoutMatchRecord[], bracketSide: Bracke
 };
 
 const advanceDoubleElimination = async (tournamentId: string) => {
-  while (true) {
+  for (let guard = 0; guard < 16; guard++) {
     const matches = (await prisma.tournamentMatch.findMany({
       where: {
         tournamentId,
@@ -1117,7 +1124,7 @@ const advanceDoubleElimination = async (tournamentId: string) => {
 
       if (loserRoundNumber % 2 === 0) {
         const survivorRound = loserRounds.get(loserRoundNumber - 1) ?? [];
-        const sourceWinnerRound = winnerRounds.get(loserRoundNumber / 2 + 1) ?? [];
+        const sourceWinnerRound = winnerRounds.get(Math.floor(loserRoundNumber / 2) + 1) ?? [];
         if (!isCompleteRound(survivorRound) || !isCompleteRound(sourceWinnerRound)) continue;
 
         const participants = buildInterleavedLoserRoundParticipants(
