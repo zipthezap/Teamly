@@ -26,6 +26,7 @@ import {
   generateRandomizedSingleEliminationBracketsFromPools,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
+  generateKnockoutFromStandings,
   sortStandingsByTiebreakerRules,
   advanceWinners,
 } from '../../services/tournamentService';
@@ -776,6 +777,121 @@ describe('Tournament Service', () => {
       await expect(generateGroupsKnockoutBrackets('tournament-1', 4)).rejects.toThrow(
         'At least 8 teams are required for 4 groups'
       );
+    });
+
+    describe('generateKnockoutFromStandings', () => {
+      it('generates separate knockout trees per category for groups_knockout standings', async () => {
+        vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+          tiebreakerRules: ['goal_difference'],
+          seedingPolicy: 'manual',
+          playoffSize: 4,
+          doubleElimination: false,
+        } as unknown);
+
+        vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValueOnce([
+          {
+            teamId: 'cat-a-1',
+            groupName: 'A1',
+            points: 9,
+            wins: 3,
+            goalsFor: 8,
+            goalsAgainst: 2,
+            team: { poolName: 'Pool A1', pool: { categoryId: 'cat-a', category: { id: 'cat-a', name: 'Elite', sortOrder: 0 } } },
+          },
+          {
+            teamId: 'cat-a-2',
+            groupName: 'A1',
+            points: 6,
+            wins: 2,
+            goalsFor: 6,
+            goalsAgainst: 3,
+            team: { poolName: 'Pool A1', pool: { categoryId: 'cat-a', category: { id: 'cat-a', name: 'Elite', sortOrder: 0 } } },
+          },
+          {
+            teamId: 'cat-b-1',
+            groupName: 'B1',
+            points: 9,
+            wins: 3,
+            goalsFor: 7,
+            goalsAgainst: 2,
+            team: { poolName: 'Pool B1', pool: { categoryId: 'cat-b', category: { id: 'cat-b', name: 'Open', sortOrder: 1 } } },
+          },
+          {
+            teamId: 'cat-b-2',
+            groupName: 'B1',
+            points: 6,
+            wins: 2,
+            goalsFor: 5,
+            goalsAgainst: 3,
+            team: { poolName: 'Pool B1', pool: { categoryId: 'cat-b', category: { id: 'cat-b', name: 'Open', sortOrder: 1 } } },
+          },
+        ] as unknown);
+        vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+        const result = await generateKnockoutFromStandings('tournament-1');
+
+        expect(result.count).toBe(2);
+        const payload = vi.mocked(prisma.tournamentMatch.createMany).mock.calls[0][0] as {
+          data: Array<{ homeTeamId: string; awayTeamId: string | null }>;
+        };
+        expect(payload.data).toHaveLength(2);
+        expect(payload.data.every((match) =>
+          (match.homeTeamId.startsWith('cat-a') && (match.awayTeamId ?? '').startsWith('cat-a')) ||
+          (match.homeTeamId.startsWith('cat-b') && (match.awayTeamId ?? '').startsWith('cat-b'))
+        )).toBe(true);
+      });
+
+      it('rejects double elimination when multiple categories are present', async () => {
+        vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+          tiebreakerRules: ['goal_difference'],
+          seedingPolicy: 'manual',
+          playoffSize: 4,
+          doubleElimination: true,
+        } as unknown);
+
+        vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValueOnce([
+          {
+            teamId: 'cat-a-1',
+            groupName: 'A1',
+            points: 9,
+            wins: 3,
+            goalsFor: 8,
+            goalsAgainst: 2,
+            team: { poolName: 'Pool A1', pool: { categoryId: 'cat-a', category: { id: 'cat-a', name: 'Elite', sortOrder: 0 } } },
+          },
+          {
+            teamId: 'cat-a-2',
+            groupName: 'A1',
+            points: 6,
+            wins: 2,
+            goalsFor: 6,
+            goalsAgainst: 3,
+            team: { poolName: 'Pool A1', pool: { categoryId: 'cat-a', category: { id: 'cat-a', name: 'Elite', sortOrder: 0 } } },
+          },
+          {
+            teamId: 'cat-b-1',
+            groupName: 'B1',
+            points: 9,
+            wins: 3,
+            goalsFor: 7,
+            goalsAgainst: 2,
+            team: { poolName: 'Pool B1', pool: { categoryId: 'cat-b', category: { id: 'cat-b', name: 'Open', sortOrder: 1 } } },
+          },
+          {
+            teamId: 'cat-b-2',
+            groupName: 'B1',
+            points: 6,
+            wins: 2,
+            goalsFor: 5,
+            goalsAgainst: 3,
+            team: { poolName: 'Pool B1', pool: { categoryId: 'cat-b', category: { id: 'cat-b', name: 'Open', sortOrder: 1 } } },
+          },
+        ] as unknown);
+
+        await expect(generateKnockoutFromStandings('tournament-1')).rejects.toThrow(
+          'Double elimination tournaments with multiple categories are not currently supported.'
+        );
+      });
     });
 
     it('should use default number of groups if not specified', async () => {

@@ -6,6 +6,9 @@ import 'package:teamly_mobile/features/tournaments/presentation/bracket_visualiz
 TournamentModel _buildTournament(
   List<TournamentMatchModel> matches, {
   List<TournamentStandingModel> standings = const [],
+  List<TournamentTeamModel> teams = const [],
+  List<TournamentPoolModel> pools = const [],
+  List<TournamentCategoryModel> categories = const [],
 }) {
   return TournamentModel(
     id: 'tournament-1',
@@ -17,6 +20,9 @@ TournamentModel _buildTournament(
     creatorId: 'user-1',
     matches: matches,
     standings: standings,
+    teams: teams,
+    pools: pools,
+    categories: categories,
   );
 }
 
@@ -173,5 +179,58 @@ void main() {
     expect(find.text('Semifinals'), findsOneWidget);
     expect(find.text('Finals'), findsOneWidget);
     expect(find.text('Seed 1'), findsWidgets);
+  });
+
+  testWidgets('groups knockout renders category tabs when playoff matches span multiple categories',
+      (tester) async {
+    final tournament = _buildTournament([
+      const TournamentMatchModel(
+        id: 'elite-match',
+        tournamentId: 'tournament-1',
+        round: 'Playoffs',
+        status: 'scheduled',
+        stage: 'semi_finals',
+        roundNumber: 1,
+        matchOrder: 1,
+        teamAId: 'team-elite-1',
+        teamBId: 'team-elite-2',
+        teamAName: 'Elite One',
+        teamBName: 'Elite Two',
+      ),
+      const TournamentMatchModel(
+        id: 'open-match',
+        tournamentId: 'tournament-1',
+        round: 'Playoffs',
+        status: 'scheduled',
+        stage: 'semi_finals',
+        roundNumber: 1,
+        matchOrder: 1,
+        teamAId: 'team-open-1',
+        teamBId: 'team-open-2',
+        teamAName: 'Open One',
+        teamBName: 'Open Two',
+      ),
+    ], teams: const [
+      TournamentTeamModel(id: 'team-elite-1', name: 'Elite One', tournamentId: 'tournament-1', poolId: 'pool-elite'),
+      TournamentTeamModel(id: 'team-elite-2', name: 'Elite Two', tournamentId: 'tournament-1', poolId: 'pool-elite'),
+      TournamentTeamModel(id: 'team-open-1', name: 'Open One', tournamentId: 'tournament-1', poolId: 'pool-open'),
+      TournamentTeamModel(id: 'team-open-2', name: 'Open Two', tournamentId: 'tournament-1', poolId: 'pool-open'),
+    ], pools: const [
+      TournamentPoolModel(id: 'pool-elite', name: 'Elite Pool', maxTeams: 4, tournamentId: 'tournament-1', categoryId: 'cat-elite', categoryName: 'Elite'),
+      TournamentPoolModel(id: 'pool-open', name: 'Open Pool', maxTeams: 4, tournamentId: 'tournament-1', categoryId: 'cat-open', categoryName: 'Open'),
+    ], categories: const [
+      TournamentCategoryModel(id: 'cat-elite', name: 'Elite', tournamentId: 'tournament-1', sortOrder: 0),
+      TournamentCategoryModel(id: 'cat-open', name: 'Open', tournamentId: 'tournament-1', sortOrder: 1),
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TournamentBracketView(tournament: tournament)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Elite'), findsWidgets);
+    expect(find.text('Open'), findsWidgets);
   });
 }

@@ -18,6 +18,66 @@ const prisma = new PrismaClient({ adapter });
 
 const bcrypt = require('bcryptjs');
 
+async function validateTournamentSeedIntegrity(tournamentIds) {
+  const tournaments = await prisma.tournament.findMany({
+    where: { id: { in: tournamentIds } },
+    select: {
+      id: true,
+      name: true,
+      organizerId: true,
+      categories: { select: { id: true } },
+      adminRoles: { select: { userId: true } },
+      teams: {
+        select: {
+          id: true,
+          poolId: true,
+          pool: { select: { categoryId: true } },
+          captainUserId: true,
+          players: { select: { userId: true } },
+        },
+      },
+    },
+  });
+
+  for (const tournament of tournaments) {
+    if (tournament.categories.length === 0) {
+      throw new Error(`Seed integrity failed: "${tournament.name}" has no categories.`);
+    }
+
+    const restrictedUsers = new Set([
+      tournament.organizerId,
+      ...tournament.adminRoles.map((role) => role.userId),
+    ]);
+
+    const invalidCaptain = tournament.teams.find(
+      (team) => team.captainUserId && restrictedUsers.has(team.captainUserId)
+    );
+    if (invalidCaptain) {
+      throw new Error(
+        `Seed integrity failed: organizer/admin is captain in "${tournament.name}" (team ${invalidCaptain.id}).`
+      );
+    }
+
+    const invalidPlayer = tournament.teams.find((team) =>
+      team.players.some((player) => player.userId && restrictedUsers.has(player.userId))
+    );
+    if (invalidPlayer) {
+      throw new Error(
+        `Seed integrity failed: organizer/admin is player in "${tournament.name}" (team ${invalidPlayer.id}).`
+      );
+    }
+
+    const uncategorizedTeams = tournament.teams.filter(
+      (team) => !team.poolId || !team.pool?.categoryId
+    );
+    if (uncategorizedTeams.length > 0) {
+      throw new Error(
+        `Seed integrity failed: ${uncategorizedTeams.length} team(s) in "${tournament.name}" are not assigned to a categorized pool.`
+      );
+    }
+  }
+}
+
 async function main() {
   // Check if seeding is needed (skip if Alice exists)
   const existingAlice = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });
@@ -1788,9 +1848,8 @@ async function main() {
     create: {
       id: 'seed-player-1',
       teamId: 'seed-team-1a-0',
-      userId: user1.id,
-      playerName: 'Alice',
-      playerEmail: user1.email
+      playerName: 'Alice Guest',
+      playerEmail: 'alice.guest@example.com'
     }
   });
 
@@ -1811,9 +1870,8 @@ async function main() {
     create: {
       id: 'seed-player-3',
       teamId: 'seed-team-1b-0',
-      userId: user2.id,
-      playerName: 'Bob',
-      playerEmail: user2.email
+      playerName: 'Bob Guest',
+      playerEmail: 'bob.guest@example.com'
     }
   });
 
@@ -2120,7 +2178,7 @@ async function main() {
       name: 'Serena Sisters',
       captainName: 'Venus Williams',
       captainEmail: 'venus@tennis.com',
-      captainUserId: user4.id,
+      captainUserId: null,
       seedNumber: 1,
       tournamentId: tournament3.id,
       poolId: pool3B.id,
@@ -2156,7 +2214,7 @@ async function main() {
       name: 'Young Guns 2',
       captainName: 'Teen Captain 2',
       captainEmail: 'teen2@tennis.com',
-      captainUserId: user3.id,
+      captainUserId: null,
       tournamentId: tournament3.id,
       poolId: pool3D.id,
       poolNumber: 4,
@@ -2366,22 +2424,21 @@ async function main() {
   console.log('Created Montreal tournament with 4 pools and 2 categories');
 
   // Create teams for Pool A (Elite Division) - 4 teams (FULL)
-  // team-4a-0 is captained by alice (user1) so she can submit scores directly
   const teamNamesPool4A = [
     'Montreal Canadiens Jr', 'Quebec Nordiques Legacy', 'Ottawa Senators Elite', 'Toronto Maple Leafs Youth'
   ];
   const pool4ATeams = [];
   for (let i = 0; i < teamNamesPool4A.length; i++) {
-    const isCaptainAlice = i === 0;
+    const isCaptainAlice = false;
     const team = await prisma.tournamentTeam.upsert({
       where: { id: `seed-team-4a-${i}` },
-      update: isCaptainAlice ? { captainUserId: user1.id, captainName: user1.name, captainEmail: user1.email } : {},
+      update: {},
       create: {
         id: `seed-team-4a-${i}`,
         name: teamNamesPool4A[i],
-        captainName: isCaptainAlice ? user1.name : `Captain ${teamNamesPool4A[i]}`,
-        captainEmail: isCaptainAlice ? user1.email : `captain.elite.${i}@montreal.hockey`,
-        captainUserId: isCaptainAlice ? user1.id : null,
+        captainName: `Captain ${teamNamesPool4A[i]}`,
+        captainEmail: `captain.elite.${i}@montreal.hockey`,
+        captainUserId: null,
         tournamentId: tournament4.id,
         poolId: pool4A.id,
         poolNumber: 1,
@@ -2474,9 +2531,8 @@ async function main() {
     create: {
       id: 'seed-player-4-1',
       teamId: pool4ATeams[0].id,
-      userId: user1.id,
-      playerName: 'Alice',
-      playerEmail: user1.email
+      playerName: 'Alice Guest',
+      playerEmail: 'alice.guest@montreal.hockey'
     }
   });
 
@@ -2497,9 +2553,8 @@ async function main() {
     create: {
       id: 'seed-player-4-3',
       teamId: pool4ATeams[0].id,
-      userId: user3.id,
-      playerName: 'Charlie',
-      playerEmail: user3.email
+      playerName: 'Charlie Guest',
+      playerEmail: 'charlie.guest@montreal.hockey'
     }
   });
 
@@ -2895,6 +2950,13 @@ async function main() {
       createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
     }
   });
+
+  await validateTournamentSeedIntegrity([
+    tournament1.id,
+    tournament2.id,
+    tournament3.id,
+    tournament4.id,
+  ]);
 
   console.log('\n========================================');
   console.log('Seeding completed successfully!');
