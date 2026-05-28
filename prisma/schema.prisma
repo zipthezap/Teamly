@@ -1038,6 +1038,12 @@ enum BracketStage {
   finals
 }
 
+enum BracketSide {
+  winners
+  losers
+  grand_final
+}
+
 enum TournamentSeedingPolicy {
   manual
   random
@@ -1121,6 +1127,8 @@ model Tournament {
   allowRescheduleAfterStart        Boolean   @default(false)
   seedingPolicy                    TournamentSeedingPolicy @default(manual)
   seedsLockedAt                    DateTime?
+  playoffSize                      Int       @default(8)
+  doubleElimination                Boolean   @default(false)
   enableThirdPlaceMatch            Boolean   @default(true)
   enableConsolationBracket         Boolean   @default(false)
   allowByes                        Boolean   @default(true)
@@ -1230,8 +1238,8 @@ model TournamentMatch {
   
   homeTeamId   String
   homeTeam     TournamentTeam @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  awayTeamId   String
-  awayTeam     TournamentTeam @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId   String?
+  awayTeam     TournamentTeam? @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
   
   // Referee assignment - team that will officiate this match
   refereeTeamId String?
@@ -1249,8 +1257,13 @@ model TournamentMatch {
   detailedScore Json?
   
   stage        BracketStage?
+  bracketSide  BracketSide?
   roundNumber  Int?      // For round-robin or group stages
   groupName    String?   // For group stages (e.g., "Group A")
+  isBye        Boolean   @default(false)
+  loserGoesToMatchId String?
+  loserGoesToMatch   TournamentMatch?  @relation("LoserMatchRouting", fields: [loserGoesToMatchId], references: [id], onDelete: SetNull)
+  loserSourceMatches TournamentMatch[] @relation("LoserMatchRouting")
   
   // Manual bracket management
   isManuallyCreated Boolean @default(false) // Track if match was manually created
@@ -1275,6 +1288,7 @@ model TournamentMatch {
   @@index([scorekeeperUserId])
   @@index([status])
   @@index([stage])
+  @@index([bracketSide])
   @@index([matchOrder])
   @@index([courtId])
   @@index([courtId, scheduledAt])

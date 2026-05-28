@@ -53,10 +53,13 @@ vi.mock('../../config/database', () => ({
       create: vi.fn(),
     },
     tournamentMatch: {
+      create: vi.fn(),
       createMany: vi.fn(),
+      update: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       count: vi.fn(),
+      deleteMany: vi.fn(),
     },
     tournamentStanding: {
       findMany: vi.fn(),
@@ -497,7 +500,7 @@ describe('Tournament Service', () => {
           expect.objectContaining({
             tournamentId: 'tournament-1',
             homeTeamId: 'team-1',
-            awayTeamId: 'team-2',
+            awayTeamId: 'team-8',
             stage: BracketStage.QUARTER_FINALS,
             status: MatchStatus.SCHEDULED,
           }),
@@ -558,7 +561,7 @@ describe('Tournament Service', () => {
       });
     });
 
-    it('should generate preliminary round with deterministic bye handling for odd team count', async () => {
+    it('should generate explicit bye matches for odd team count', async () => {
       const teams = Array.from({ length: 5 }, (_, i) => ({
         id: `team-${i + 1}`,
         name: `Team ${i + 1}`,
@@ -566,22 +569,31 @@ describe('Tournament Service', () => {
       }));
 
       vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 1 } as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 4 } as unknown);
 
       const result = await generateSingleEliminationBrackets('tournament-1');
 
       expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
-        data: [
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            tournamentId: 'tournament-1',
+            homeTeamId: 'team-1',
+            awayTeamId: null,
+            stage: BracketStage.QUARTER_FINALS,
+            status: MatchStatus.COMPLETED,
+            isBye: true,
+          }),
           expect.objectContaining({
             tournamentId: 'tournament-1',
             homeTeamId: 'team-4',
             awayTeamId: 'team-5',
             stage: BracketStage.QUARTER_FINALS,
             status: MatchStatus.SCHEDULED,
+            isBye: false,
           }),
-        ],
+        ]),
       });
-      expect(result.count).toBe(1);
+      expect(result.count).toBe(4);
     });
   });
 
@@ -848,7 +860,11 @@ describe('Tournament Service', () => {
     it('seeds the initial knockout round for groups knockout after all group matches complete', async () => {
       vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
         format: TournamentFormat.GROUPS_KNOCKOUT,
+      } as unknown).mockResolvedValueOnce({
         tiebreakerRules: ['goal_difference', 'goals_for'],
+        seedingPolicy: 'manual',
+        playoffSize: 16,
+        doubleElimination: false,
       } as unknown);
       vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
         {
