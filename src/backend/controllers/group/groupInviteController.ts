@@ -172,8 +172,12 @@ export const bulkInviteMembers = async (req: Request, res: Response) => {
   // Validate each email format
   const invalidEmails = emails.filter((e: unknown) => typeof e !== 'string' || !isValidEmail(e));
   if (invalidEmails.length > 0) {
+    const displayInvalid = invalidEmails
+      .map((e: unknown) => (typeof e === 'string' ? e : String(e)))
+      .slice(0, 5)
+      .join(', ');
     throw new BadRequestError(
-      `Invalid email format(s): ${(invalidEmails as string[]).slice(0, 5).join(', ')}`,
+      `Invalid email format(s): ${displayInvalid}`,
       'INVALID_FORMAT',
       'emails'
     );

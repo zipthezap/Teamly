@@ -67,6 +67,9 @@ function validateSessionDuration(startTime: unknown, endTime: unknown) {
   const end = new Date(endTime as string);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
   const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+  if (durationHours <= 0) {
+    throw new BadRequestError('endTime must be after startTime', 'INVALID_DATE_RANGE', 'endTime');
+  }
   if (durationHours > MAX_SESSION_DURATION_HOURS) {
     throw new BadRequestError(
       `Session duration must not exceed ${MAX_SESSION_DURATION_HOURS} hours`,
@@ -639,7 +642,6 @@ export const updateEvent = async (req: Request, res: Response) => {
     if (parsedMaxPlayers < totalIncludingWaitlisted) {
       throw new BadRequestError(`Max players cannot be lower than confirmed and waitlisted participants (${totalIncludingWaitlisted})`);
     }
-    // Warn-level: if lower than total including waitlist, proceed (waitlisted are already past capacity)
   }
 
   // Parse coordinates once if both are provided
