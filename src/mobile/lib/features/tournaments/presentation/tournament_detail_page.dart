@@ -1367,14 +1367,41 @@ class _GroupMatchesButton extends ConsumerWidget {
     final t = tournament;
     final canGenerate = t.status == 'registration_closed';
     final hasGroupMatches = t.matches.any(isGroupStageMatch);
-    final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
+    final label = !canGenerate && hasGroupMatches
+        ? 'Group Matches Generated'
+        : hasGroupMatches
+            ? 'Regenerate Group Matches'
+            : 'Generate Group Matches';
+    final helperText = canGenerate
+        ? null
+        : hasGroupMatches
+            ? 'Pool play is already generated. Finish scores in Matches, then generate the knockout bracket.'
+            : 'Group matches can only be generated while registration is closed.';
 
-    return OutlinedButton.icon(
-      icon: const Icon(Icons.table_chart_outlined, size: 16),
-      label: Text(label),
-      onPressed: canGenerate
-          ? () => _generate(context, ref)
-          : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.table_chart_outlined, size: 16),
+          label: Text(label),
+          onPressed: canGenerate
+              ? () => _generate(context, ref)
+              : null,
+        ),
+        if (helperText != null) ...[
+          const SizedBox(height: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: Text(
+              helperText,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1532,14 +1559,44 @@ class _KnockoutBracketButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
     final groupMatches = t.matches.where(isGroupStageMatch).toList();
-    final allGroupDone =
-        groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+    final completedGroupCount =
+        groupMatches.where((m) => m.status == 'completed').length;
+    final remainingGroupCount = groupMatches.length - completedGroupCount;
+    final allGroupDone = groupMatches.isNotEmpty && remainingGroupCount == 0;
     final hasKnockout = t.matches.any(isKnockoutStageMatch);
+    final label = allGroupDone
+        ? (hasKnockout ? 'Regenerate Knockout' : 'Generate Knockout Bracket')
+        : groupMatches.isEmpty
+            ? 'Generate Group Matches First'
+            : 'Complete $remainingGroupCount Group Match${remainingGroupCount == 1 ? '' : 'es'} First';
+    final helperText = allGroupDone
+        ? null
+        : groupMatches.isEmpty
+            ? 'Create the group-stage schedule first so standings can seed the playoffs.'
+            : '$completedGroupCount/${groupMatches.length} group matches completed. Finish the remaining scores in Matches to unlock playoff generation.';
 
-    return OutlinedButton.icon(
-      icon: const Icon(Icons.emoji_events_outlined, size: 16),
-      label: Text(hasKnockout ? 'Regenerate Knockout' : 'Generate Knockout Bracket'),
-      onPressed: allGroupDone ? () => _generate(context, ref) : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.emoji_events_outlined, size: 16),
+          label: Text(label),
+          onPressed: allGroupDone ? () => _generate(context, ref) : null,
+        ),
+        if (helperText != null) ...[
+          const SizedBox(height: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: Text(
+              helperText,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
