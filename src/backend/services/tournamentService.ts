@@ -303,7 +303,7 @@ const buildKnockoutMatchesFromQualifiedTeams = (
   playoffSize?: number | null,
   bracketSide: BracketSide = BracketSide.WINNERS,
   roundNumber: number = 1
-) => {
+): Prisma.TournamentMatchCreateManyInput[] => {
   const entrantCount = resolvePlayoffEntrantCount(qualifiedTeams.length, playoffSize);
   if (entrantCount < 2) return [];
 
@@ -311,16 +311,17 @@ const buildKnockoutMatchesFromQualifiedTeams = (
   const fieldSize = resolvePlayoffFieldSize(entrantCount);
   const stage = firstKnockoutStageForSize(fieldSize);
   const seedPairs = seededPairOrder(fieldSize);
+  const matches: Prisma.TournamentMatchCreateManyInput[] = [];
 
-  return seedPairs.flatMap(([leftIndex, rightIndex], index) => {
+  seedPairs.forEach(([leftIndex, rightIndex], index) => {
     const leftTeam = seededTeams[leftIndex]?.teamId ?? null;
     const rightTeam = seededTeams[rightIndex]?.teamId ?? null;
 
-    if (!leftTeam && !rightTeam) return [];
+    if (!leftTeam && !rightTeam) return;
     if (!leftTeam || !rightTeam) {
       const advancingTeamId = leftTeam ?? rightTeam;
-      if (!advancingTeamId) return [];
-      return [{
+      if (!advancingTeamId) return;
+      matches.push({
         tournamentId,
         homeTeamId: advancingTeamId,
         awayTeamId: null,
@@ -333,10 +334,11 @@ const buildKnockoutMatchesFromQualifiedTeams = (
         homeScore: 1,
         awayScore: 0,
         completedAt: new Date(),
-      }];
+      });
+      return;
     }
 
-    return [{
+    matches.push({
       tournamentId,
       homeTeamId: leftTeam,
       awayTeamId: rightTeam,
@@ -346,8 +348,10 @@ const buildKnockoutMatchesFromQualifiedTeams = (
       matchOrder: index + 1,
       status: MatchStatus.SCHEDULED,
       isBye: false,
-    }];
+    });
   });
+
+  return matches;
 };
 
 /**
@@ -812,7 +816,7 @@ const buildSingleEliminationMatches = (
   tournamentId: string,
   teams: Array<{ id: string }>,
   playoffSize?: number | null
-) => {
+): Prisma.TournamentMatchCreateManyInput[] => {
   if (teams.length < 2) {
     throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
@@ -949,12 +953,13 @@ const buildRoundMatches = (
 ): KnockoutMatchCreateInput[] => {
   if (participants.length === 0) return [];
 
-  return participants.flatMap((participantId, index, source) => {
-    if (index % 2 === 1) return [];
+  const matches: KnockoutMatchCreateInput[] = [];
+  participants.forEach((participantId, index, source) => {
+    if (index % 2 === 1) return;
 
     const opponentId = source[index + 1] ?? null;
     if (opponentId == null) {
-      return [{
+      matches.push({
         tournamentId,
         homeTeamId: participantId,
         awayTeamId: null,
@@ -967,10 +972,11 @@ const buildRoundMatches = (
         homeScore: 1,
         awayScore: 0,
         completedAt: new Date(),
-      }];
+      });
+      return;
     }
 
-    return [{
+    matches.push({
       tournamentId,
       homeTeamId: participantId,
       awayTeamId: opponentId,
@@ -980,8 +986,10 @@ const buildRoundMatches = (
       matchOrder: index / 2 + 1,
       status: MatchStatus.SCHEDULED,
       isBye: false,
-    }];
+    });
   });
+
+  return matches;
 };
 
 const buildInterleavedLoserRoundParticipants = (survivors: string[], freshLosers: string[]): string[] => {

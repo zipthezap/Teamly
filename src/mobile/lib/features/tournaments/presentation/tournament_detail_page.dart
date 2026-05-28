@@ -998,7 +998,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     final isEliminationTournament =
         tournament.format == 'single_elimination' ||
         tournament.format == 'double_elimination';
-    final hasExistingMatches = tournament.matches.isNotEmpty;
+    final hasExistingMatches = tournament.format == 'groups_knockout'
+        ? tournament.matches.any(_isKnockoutStageMatch)
+        : tournament.matches.isNotEmpty;
     final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
     // Payment gate warning

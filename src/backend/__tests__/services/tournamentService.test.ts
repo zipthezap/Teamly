@@ -992,29 +992,64 @@ describe('Tournament Service', () => {
     it('includes first-stage bye teams when advancing winners', async () => {
       vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
         {
-          id: 'm1',
+          id: 'qf-1',
           tournamentId: 'tournament-1',
           stage: BracketStage.QUARTER_FINALS,
           status: MatchStatus.COMPLETED,
-          homeTeamId: 'team-4',
-          awayTeamId: 'team-5',
+          homeTeamId: 'team-1',
+          awayTeamId: null,
+          isBye: true,
           homeScore: 1,
           awayScore: 0,
           roundNumber: 1,
           matchOrder: 1,
           createdAt: new Date('2025-01-10'),
         },
+        {
+          id: 'qf-2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-4',
+          awayTeamId: 'team-5',
+          isBye: false,
+          homeScore: 1,
+          awayScore: 0,
+          roundNumber: 1,
+          matchOrder: 2,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: 'qf-3',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-2',
+          awayTeamId: null,
+          isBye: true,
+          homeScore: 1,
+          awayScore: 0,
+          roundNumber: 1,
+          matchOrder: 3,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: 'qf-4',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-3',
+          awayTeamId: null,
+          isBye: true,
+          homeScore: 1,
+          awayScore: 0,
+          roundNumber: 1,
+          matchOrder: 4,
+          createdAt: new Date('2025-01-10'),
+        },
       ] as unknown);
       vi.mocked(prisma.tournamentMatch.count)
-        .mockResolvedValueOnce(0) // no next stage yet
-        .mockResolvedValueOnce(0); // no previous stage matches
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
-        { id: 'team-1', createdAt: new Date('2025-01-01') },
-        { id: 'team-2', createdAt: new Date('2025-01-02') },
-        { id: 'team-3', createdAt: new Date('2025-01-03') },
-        { id: 'team-4', createdAt: new Date('2025-01-04') },
-        { id: 'team-5', createdAt: new Date('2025-01-05') },
-      ] as unknown);
+        .mockResolvedValueOnce(0);
       vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
 
       await advanceWinners('tournament-1', BracketStage.QUARTER_FINALS);
@@ -1024,12 +1059,12 @@ describe('Tournament Service', () => {
           expect.objectContaining({
             stage: BracketStage.SEMI_FINALS,
             homeTeamId: 'team-1',
-            awayTeamId: 'team-2',
+            awayTeamId: 'team-4',
           }),
           expect.objectContaining({
             stage: BracketStage.SEMI_FINALS,
-            homeTeamId: 'team-3',
-            awayTeamId: 'team-4',
+            homeTeamId: 'team-2',
+            awayTeamId: 'team-3',
           }),
         ],
       });
