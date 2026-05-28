@@ -31,10 +31,10 @@ export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
 }
 
-const tournamentNotificationTypeValues = new Set<string>(Object.values(TournamentNotificationType));
+const prismaTournamentNotificationTypeValues = new Set<string>(Object.values(PrismaTournamentNotificationType));
 
 function toPrismaTournamentNotificationType(value: string): PrismaTournamentNotificationType | null {
-  if (!tournamentNotificationTypeValues.has(value)) {
+  if (!prismaTournamentNotificationTypeValues.has(value)) {
     return null;
   }
   return value as PrismaTournamentNotificationType;
@@ -205,7 +205,10 @@ export const getUserNotifications = async (
     ? (Object.values(TeamUpNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
     : [];
   const matchingTournamentTypes = normalizedSearch
-    ? (Object.values(TournamentNotificationType) as PrismaTournamentNotificationType[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    ? Object.values(TournamentNotificationType)
+        .filter((value) => value.toLowerCase().includes(normalizedSearch))
+        .map((value) => toPrismaTournamentNotificationType(value))
+        .filter((value): value is PrismaTournamentNotificationType => value !== null)
     : [];
 
   const appendCursorAndClause = <T extends { AND?: unknown }>(

@@ -14,7 +14,6 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { Request, Response } from 'express';
 import { Prisma, TournamentNotificationType as PrismaTournamentNotificationType } from '@prisma/client';
 import prisma from '../config/database';
@@ -24,6 +23,11 @@ import { validateEmail, isRequired, ValidationError, sanitizeString } from '../u
 import { BadRequestError, UnauthorizedError } from '../utils/errors';
 import { sendEmail } from '../utils/emailService';
 import * as authService from '../services/authService';
+
+const toJsonObject = (value: Prisma.JsonValue | null): Prisma.JsonObject | undefined =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Prisma.JsonObject)
+    : undefined;
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Cache-Control', 'no-store');
@@ -95,10 +99,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           // If the invite was for a tournament, create a TournamentNotification for the user
           if (finalInvite.inviterType === 'tournament') {
             // `metadata` is stored as JSON; cast to a flexible object for type-safe access
-            const metadata =
-              finalInvite.metadata && typeof finalInvite.metadata === 'object' && !Array.isArray(finalInvite.metadata)
-                ? (finalInvite.metadata as Prisma.JsonObject)
-                : undefined;
+            const metadata = toJsonObject(finalInvite.metadata);
             const rawTeamId = metadata?.teamId ?? metadata?.team_id;
             const teamId = typeof rawTeamId === 'string' ? rawTeamId : undefined;
             let teamName: string | undefined;
@@ -115,7 +116,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
               data: {
                 tournamentId: tournamentId,
                 userId: user.id,
-                type: TournamentNotificationType.team_invited as unknown as PrismaTournamentNotificationType,
+                type: PrismaTournamentNotificationType.team_invited,
                 params: { teamName, inviterId: finalInvite.inviterId, inviteId: finalInvite.id },
                 metadata: { inviteLogId: finalInvite.id }
               }

@@ -60,9 +60,16 @@ interface TournamentNotificationInput extends BaseNotificationInput {
   type: TournamentNotificationType;
 }
 
+const prismaTournamentNotificationTypeValues = new Set<string>(
+  Object.values(PrismaTournamentNotificationType)
+);
+
 export class NotificationFactory {
   private static toPrismaTournamentType(type: TournamentNotificationType): PrismaTournamentNotificationType {
-    return type as unknown as PrismaTournamentNotificationType;
+    if (!prismaTournamentNotificationTypeValues.has(type)) {
+      throw new Error(`Unsupported tournament notification type: ${type}`);
+    }
+    return type as PrismaTournamentNotificationType;
   }
 
   /**
