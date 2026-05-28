@@ -27,8 +27,13 @@ const requireJsonContentType = (req: Request, res: Response, next: NextFunction)
     return;
   }
   const contentLengthHeader = req.headers['content-length'];
-  const contentLength = typeof contentLengthHeader === 'string' ? Number(contentLengthHeader) : 0;
-  if (!req.headers['content-type'] && (!Number.isFinite(contentLength) || contentLength === 0)) {
+  const contentLength =
+    typeof contentLengthHeader === 'string' ? Number(contentLengthHeader) : undefined;
+  if (contentLengthHeader !== undefined && (contentLength === undefined || Number.isNaN(contentLength))) {
+    res.status(400).json({ error: 'Invalid Content-Length header' });
+    return;
+  }
+  if (!req.headers['content-type'] && (contentLength === undefined || contentLength === 0)) {
     next();
     return;
   }

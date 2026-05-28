@@ -78,14 +78,14 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       setState(() => _saving = false);
       return;
     }
-    if (_startDate != null && _startDate!.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+    if (_startDate != null && _startDate!.isBefore(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tournament start date cannot be in the past')),
       );
       setState(() => _saving = false);
       return;
     }
-    if (_registrationDeadline != null && _registrationDeadline!.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+    if (_registrationDeadline != null && _registrationDeadline!.isBefore(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration deadline cannot be in the past')),
       );
