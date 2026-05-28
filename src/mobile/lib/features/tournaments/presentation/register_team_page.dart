@@ -147,7 +147,9 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                       if (_categories.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
-                          value: _selectedCategoryId,
+                          value: _categories.isNotEmpty
+                              ? (_selectedCategoryId ?? _categories.first.id)
+                              : _selectedCategoryId,
                           decoration: InputDecoration(
                             labelText: _categories.isNotEmpty ? 'Category *' : 'Category',
                             prefixIcon: const Icon(Icons.category_outlined),
@@ -159,6 +161,7 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                               DropdownMenuItem(value: cat.id, child: Text(cat.name)),
                           ],
                           onChanged: (v) {
+                            if (v == null) return;
                             setState(() {
                               _selectedCategoryId = v;
                               // If a pool is selected but no longer belongs to the chosen

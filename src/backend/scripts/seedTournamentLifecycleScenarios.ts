@@ -290,6 +290,55 @@ const cleanupExistingSeeds = async () => {
   ]);
 };
 
+const validateSeedInvariants = async (tournamentIds: string[]) => {
+  const seededTournaments = await prisma.tournament.findMany({
+    where: { id: { in: tournamentIds } },
+    select: {
+      id: true,
+      name: true,
+      organizerId: true,
+      categories: { select: { id: true } },
+      adminRoles: { select: { userId: true } },
+      teams: {
+        select: {
+          id: true,
+          captainUserId: true,
+          players: { select: { userId: true } },
+        },
+      },
+    },
+  });
+
+  for (const tournament of seededTournaments) {
+    if (tournament.categories.length === 0) {
+      throw new Error(`Seed invariant failed: ${tournament.name} has no categories`);
+    }
+
+    const restrictedUsers = new Set([
+      tournament.organizerId,
+      ...tournament.adminRoles.map((role) => role.userId),
+    ]);
+
+    const invalidCaptain = tournament.teams.find(
+      (team) => team.captainUserId && restrictedUsers.has(team.captainUserId)
+    );
+    if (invalidCaptain) {
+      throw new Error(
+        `Seed invariant failed: restricted user is captain in ${tournament.name} (team ${invalidCaptain.id})`
+      );
+    }
+
+    const invalidPlayer = tournament.teams.find((team) =>
+      team.players.some((player) => player.userId && restrictedUsers.has(player.userId))
+    );
+    if (invalidPlayer) {
+      throw new Error(
+        `Seed invariant failed: restricted user is player in ${tournament.name} (team ${invalidPlayer.id})`
+      );
+    }
+  }
+};
+
 const run = async () => {
   await cleanupExistingSeeds();
   const organizer = await createOrGetOrganizer();
@@ -323,55 +372,6 @@ const run = async () => {
       status: fresh?.status,
       groupMatches,
       knockoutMatches,
-    };
-
-    const validateSeedInvariants = async (tournamentIds: string[]) => {
-      const seededTournaments = await prisma.tournament.findMany({
-        where: { id: { in: tournamentIds } },
-        select: {
-          id: true,
-          name: true,
-          organizerId: true,
-          categories: { select: { id: true } },
-          adminRoles: { select: { userId: true } },
-          teams: {
-            select: {
-              id: true,
-              captainUserId: true,
-              players: { select: { userId: true } },
-            },
-          },
-        },
-      });
-
-      for (const tournament of seededTournaments) {
-        if (tournament.categories.length === 0) {
-          throw new Error(`Seed invariant failed: ${tournament.name} has no categories`);
-        }
-
-        const restrictedUsers = new Set([
-          tournament.organizerId,
-          ...tournament.adminRoles.map((role) => role.userId),
-        ]);
-
-        const invalidCaptain = tournament.teams.find(
-          (team) => team.captainUserId && restrictedUsers.has(team.captainUserId)
-        );
-        if (invalidCaptain) {
-          throw new Error(
-            `Seed invariant failed: restricted user is captain in ${tournament.name} (team ${invalidCaptain.id})`
-          );
-        }
-
-        const invalidPlayer = tournament.teams.find((team) =>
-          team.players.some((player) => player.userId && restrictedUsers.has(player.userId))
-        );
-        if (invalidPlayer) {
-          throw new Error(
-            `Seed invariant failed: restricted user is player in ${tournament.name} (team ${invalidPlayer.id})`
-          );
-        }
-      }
     };
   }));
 

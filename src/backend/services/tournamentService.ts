@@ -1552,7 +1552,8 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
     const categoryId = standing.team?.pool?.categoryId;
     const categoryName = standing.team?.pool?.category?.name;
     const poolNameHint = standing.team?.poolName?.trim();
-    const categoryKey = categoryId ?? (poolNameHint ? `pool:${poolNameHint.toLowerCase()}` : '__open__');
+    const categoryKey =
+      categoryId ?? (poolNameHint ? `__pool_name__:${poolNameHint.toLowerCase()}` : '__uncategorized__');
     const categoryLabel = categoryName ?? poolNameHint ?? 'Open';
     const categorySortOrder = standing.team?.pool?.category?.sortOrder ?? Number.MAX_SAFE_INTEGER;
 
@@ -1590,7 +1591,7 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
 
   if (tournament?.doubleElimination && categoryBuckets.length > 1) {
     throw new BadRequestError(
-      'Double elimination with multiple categories is not supported for groups + knockout playoffs.',
+      'Double elimination tournaments with multiple categories are not currently supported.',
       'UNSUPPORTED_DOUBLE_ELIMINATION_MULTI_CATEGORY'
     );
   }

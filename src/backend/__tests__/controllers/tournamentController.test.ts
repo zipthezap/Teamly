@@ -3094,7 +3094,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(prisma.tournamentTeam.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ poolName: 'Category A' }) })
     );
-    expect(res.body.categoryId).toBeUndefined();
+    expect(res.body.categoryId).toBe('cat-1');
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
@@ -3146,7 +3146,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
 
     expect(res.status).toBe(201);
     expect(res.body.team.poolId).toBe('pool-1');
-    expect(res.body.categoryId).toBeUndefined();
+    expect(res.body.categoryId).toBe('cat-1');
   });
 
   it('returns 400 when tournament is not in registration status', async () => {
