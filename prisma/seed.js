@@ -2600,8 +2600,8 @@ async function main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Tournament 4 matches — most group games completed, 2 remaining
-  // Pool A: 5/6 done · Pool B: 5/6 done · Pools C+D: all 6/6 done
+  // Tournament 4 matches — all group games completed and ready for knockout generation
+  // Pools A-D: all 6/6 group matches completed, no knockout bracket generated yet
   // ---------------------------------------------------------------------------
   // baseDate = 3 days ago so completed matches are firmly in the past
   const baseDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
@@ -2614,36 +2614,28 @@ async function main() {
     scheduledAt: h(order * 4), startedAt: h(order * 4), completedAt: h(order * 4 + 1.5),
     matchOrder: order,
   });
-  const mkScheduled = (id, tId, home, away, round, group, order, ref) => ({
-    id, tournamentId: tId, homeTeamId: home, awayTeamId: away,
-    refereeTeamId: ref || null,
-    stage: 'group_stage', roundNumber: round, groupName: group,
-    status: 'scheduled',
-    scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
-    matchOrder: order,
-  });
 
-  // Pool A — 6 round-robin matches, 5 completed, 1 scheduled
+  // Pool A — all 6 round-robin matches completed
   const pool4AMatchDefs = [
     mkCompleted('seed-match-4a-1', tournament4.id, pool4ATeams[0].id, pool4ATeams[1].id, 3, 1, 1, pool4A.name, 1, pool4ATeams[2].id),
     mkCompleted('seed-match-4a-2', tournament4.id, pool4ATeams[2].id, pool4ATeams[3].id, 4, 2, 1, pool4A.name, 2, pool4ATeams[0].id),
     mkCompleted('seed-match-4a-3', tournament4.id, pool4ATeams[0].id, pool4ATeams[2].id, 2, 1, 2, pool4A.name, 3, pool4ATeams[3].id),
     mkCompleted('seed-match-4a-4', tournament4.id, pool4ATeams[1].id, pool4ATeams[3].id, 1, 1, 2, pool4A.name, 4, pool4ATeams[0].id),
     mkCompleted('seed-match-4a-5', tournament4.id, pool4ATeams[0].id, pool4ATeams[3].id, 4, 2, 3, pool4A.name, 5, pool4ATeams[1].id),
-    mkScheduled('seed-match-4a-6', tournament4.id, pool4ATeams[1].id, pool4ATeams[2].id, 3, pool4A.name, 6, pool4ATeams[3].id),
+    mkCompleted('seed-match-4a-6', tournament4.id, pool4ATeams[1].id, pool4ATeams[2].id, 2, 3, 3, pool4A.name, 6, pool4ATeams[3].id),
   ];
   for (const def of pool4AMatchDefs) {
     await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
   }
 
-  // Pool B — 6 round-robin matches, 5 completed, 1 scheduled
+  // Pool B — all 6 round-robin matches completed
   const pool4BMatchDefs = [
     mkCompleted('seed-match-4b-1', tournament4.id, pool4BTeams[0].id, pool4BTeams[1].id, 2, 1, 1, pool4B.name, 1, pool4BTeams[2].id),
     mkCompleted('seed-match-4b-2', tournament4.id, pool4BTeams[2].id, pool4BTeams[3].id, 1, 3, 1, pool4B.name, 2, pool4BTeams[0].id),
     mkCompleted('seed-match-4b-3', tournament4.id, pool4BTeams[0].id, pool4BTeams[2].id, 3, 0, 2, pool4B.name, 3, pool4BTeams[3].id),
     mkCompleted('seed-match-4b-4', tournament4.id, pool4BTeams[1].id, pool4BTeams[3].id, 2, 2, 2, pool4B.name, 4, pool4BTeams[2].id),
     mkCompleted('seed-match-4b-5', tournament4.id, pool4BTeams[0].id, pool4BTeams[3].id, 1, 0, 3, pool4B.name, 5, pool4BTeams[2].id),
-    mkScheduled('seed-match-4b-6', tournament4.id, pool4BTeams[1].id, pool4BTeams[2].id, 3, pool4B.name, 6, pool4BTeams[0].id),
+    mkCompleted('seed-match-4b-6', tournament4.id, pool4BTeams[1].id, pool4BTeams[2].id, 2, 1, 3, pool4B.name, 6, pool4BTeams[0].id),
   ];
   for (const def of pool4BMatchDefs) {
     await prisma.tournamentMatch.upsert({ where: { id: def.id }, update: def, create: def });
@@ -2677,13 +2669,13 @@ async function main() {
 
   // Standings for Pool A
   // Team 0: W3 D0 L0 GF9 GA4 → 9pts
-  // Team 1: W0 D1 L2 GF3 GA7 → 1pt
-  // Team 2: W1 D0 L2 GF6 GA9 → 3pts
+  // Team 1: W0 D1 L2 GF4 GA7 → 1pt
+  // Team 2: W2 D0 L1 GF8 GA6 → 6pts
   // Team 3: W0 D1 L2 GF5 GA9 → 1pt
   const pool4AStandings = [
     { id: 'seed-standing-4a-1', team: pool4ATeams[0], pts: 9,  w: 3, l: 0, d: 0, gf: 9,  ga: 4 },
-    { id: 'seed-standing-4a-2', team: pool4ATeams[1], pts: 1,  w: 0, l: 2, d: 1, gf: 3,  ga: 7 },
-    { id: 'seed-standing-4a-3', team: pool4ATeams[2], pts: 3,  w: 1, l: 2, d: 0, gf: 6,  ga: 9 },
+    { id: 'seed-standing-4a-2', team: pool4ATeams[1], pts: 1,  w: 0, l: 2, d: 1, gf: 4,  ga: 7 },
+    { id: 'seed-standing-4a-3', team: pool4ATeams[2], pts: 6,  w: 2, l: 1, d: 0, gf: 8,  ga: 6 },
     { id: 'seed-standing-4a-4', team: pool4ATeams[3], pts: 1,  w: 0, l: 2, d: 1, gf: 5,  ga: 9 },
   ];
   for (const s of pool4AStandings) {
@@ -2696,14 +2688,14 @@ async function main() {
 
   // Standings for Pool B
   // Team 0: W3 D0 L0 GF6 GA1 → 9pts
-  // Team 1: W0 D1 L2 GF5 GA6 → 1pt
-  // Team 2: W1 D0 L2 GF4 GA8 → 3pts
-  // Team 3: W1 D1 L1 GF5 GA5 → 4pts
+  // Team 1: W1 D1 L1 GF5 GA5 → 4pts
+  // Team 2: W0 D0 L3 GF2 GA8 → 0pts
+  // Team 3: W1 D1 L1 GF5 GA4 → 4pts
   const pool4BStandings = [
     { id: 'seed-standing-4b-1', team: pool4BTeams[0], pts: 9,  w: 3, l: 0, d: 0, gf: 6,  ga: 1 },
-    { id: 'seed-standing-4b-2', team: pool4BTeams[1], pts: 1,  w: 0, l: 2, d: 1, gf: 5,  ga: 6 },
-    { id: 'seed-standing-4b-3', team: pool4BTeams[2], pts: 3,  w: 1, l: 2, d: 0, gf: 4,  ga: 8 },
-    { id: 'seed-standing-4b-4', team: pool4BTeams[3], pts: 4,  w: 1, l: 1, d: 1, gf: 5,  ga: 5 },
+    { id: 'seed-standing-4b-2', team: pool4BTeams[1], pts: 4,  w: 1, l: 1, d: 1, gf: 5,  ga: 5 },
+    { id: 'seed-standing-4b-3', team: pool4BTeams[2], pts: 0,  w: 0, l: 3, d: 0, gf: 2,  ga: 8 },
+    { id: 'seed-standing-4b-4', team: pool4BTeams[3], pts: 4,  w: 1, l: 1, d: 1, gf: 5,  ga: 4 },
   ];
   for (const s of pool4BStandings) {
     await prisma.tournamentStanding.upsert({
@@ -2751,7 +2743,7 @@ async function main() {
     });
   }
 
-  console.log('Created Montreal tournament with 22 completed matches, 2 remaining, and updated standings');
+  console.log('Created Montreal tournament with all group matches completed and standings ready for knockout generation');
 
   // ===========================================================================
   // Tournament 5: Volleyball — registration_closed, teams registered, no pools
