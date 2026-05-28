@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import * as tournamentController from '../controllers/tournamentController';
 import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
@@ -10,6 +11,35 @@ import { etagMiddleware } from '../middleware/etag';
 import { logger } from '../utils/logger';
 
 const router = Router();
+
+const tournamentMutationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many tournament write requests. Please try again shortly.' },
+  skip: () => process.env.NODE_ENV === 'test',
+});
+
+const requireJsonContentType = (req: Request, res: Response, next: NextFunction): void => {
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    next();
+    return;
+  }
+  const contentLengthHeader = req.headers['content-length'];
+  const contentLength = typeof contentLengthHeader === 'string' ? Number(contentLengthHeader) : 0;
+  if (!req.headers['content-type'] && (!Number.isFinite(contentLength) || contentLength === 0)) {
+    next();
+    return;
+  }
+  if (req.is('application/json')) {
+    next();
+    return;
+  }
+  res.status(415).json({ error: 'Content-Type must be application/json' });
+};
+
+router.use(requireJsonContentType);
 
 // Public endpoint - no auth required
 router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
@@ -33,7 +63,7 @@ router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
 // Tournament CRUD
-router.post('/', noCache, asyncHandler(tournamentController.createTournament));
+router.post('/', noCache, tournamentMutationLimiter, asyncHandler(tournamentController.createTournament));
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data; server-side cache (Redis/in-memory) remains active
 router.get('/', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getTournaments));
@@ -61,6 +91,7 @@ router.post(
 router.post(
   '/:id/teams/self-register',
   noCache,
+  tournamentMutationLimiter,
   asyncHandler(tournamentController.selfRegisterTeam)
 );
 router.delete(
@@ -71,6 +102,7 @@ router.delete(
 router.post(
   '/:id/teams',
   noCache,
+  tournamentMutationLimiter,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
   asyncHandler(tournamentController.addTeam)
 );
@@ -192,6 +224,7 @@ router.post(
 router.post(
   '/:id/matches/:matchId/score',
   noCache,
+  tournamentMutationLimiter,
   requireTournamentPermission(Permission.TOURNAMENT_SUBMIT_SCORES),
   asyncHandler(tournamentController.submitScore)
 );

@@ -95,6 +95,14 @@ export const prismaErrorHandler = (err: unknown): ApiError => {
     return new ApiError('Related record not found', 400, true, 'INVALID_REFERENCE');
   }
 
+  if (errorCode === 'P2014') {
+    return new ApiError('Operation violates a required relation', 400, true, 'REQUIRED_RELATION_VIOLATION');
+  }
+
+  if (errorCode === 'P2023' || errorCode === 'P2006') {
+    return new ApiError('Invalid value provided for database field', 400, true, 'INVALID_DATABASE_VALUE');
+  }
+
   // Handle Prisma record not found
   if (errorCode === 'P2025') {
     return new ApiError('Record not found', 404, true, 'NOT_FOUND');
@@ -122,9 +130,9 @@ export const prismaErrorHandler = (err: unknown): ApiError => {
 
   // Handle Prisma known request errors
   if (errorName === 'PrismaClientKnownRequestError') {
-    return new ApiError('Database request error', 500, false, 'DATABASE_REQUEST_ERROR');
+    return new ApiError('Database error', 500, false, 'DATABASE_REQUEST_ERROR');
   }
 
   // Default to internal server error for unknown Prisma errors
-  return new ApiError('Database operation failed', 500, false, 'DATABASE_ERROR');
+  return new ApiError('Database error', 500, false, 'DATABASE_ERROR');
 };

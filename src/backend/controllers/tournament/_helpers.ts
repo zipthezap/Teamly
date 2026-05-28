@@ -1,5 +1,6 @@
 import { BadRequestError } from '../../utils/errors';
 import { MAX_MATCH_SCORE, TIMEZONE_IANA_LIKE_REGEX, TIME_24H_HH_MM_REGEX } from './_constants';
+import { VALID_PLAYOFF_SIZES } from '../../../shared/types/tournament.types';
 
 export const parseTimeToMinutes = (time: string): number => {
   const match = TIME_24H_HH_MM_REGEX.exec(time);
@@ -47,10 +48,27 @@ export const parseBoolean = (value: unknown, fieldName: string): boolean => {
 };
 
 export const parsePlayoffSize = (value: unknown): number => {
-  if (typeof value !== 'number' || !Number.isInteger(value) || ![2, 4, 8, 16].includes(value)) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    !(VALID_PLAYOFF_SIZES as readonly number[]).includes(value)
+  ) {
     throw new BadRequestError('playoffSize must be one of 2, 4, 8, or 16');
   }
   return value;
+};
+
+export const parseIntegerInRange = (
+  value: unknown,
+  fieldName: string,
+  min: number,
+  max: number
+): number => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new BadRequestError(`${fieldName} must be an integer between ${min} and ${max}`);
+  }
+  return parsed;
 };
 
 export const assertValidTournamentTimezone = (value: unknown): string => {

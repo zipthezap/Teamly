@@ -304,7 +304,7 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('Database request error');
+      expect(apiError.message).toBe('Database error');
       expect(apiError.statusCode).toBe(500);
       expect(apiError.code).toBe('DATABASE_REQUEST_ERROR');
     });
@@ -317,9 +317,25 @@ describe('Error Handler Middleware', () => {
 
       const apiError = prismaErrorHandler(prismaError);
 
-      expect(apiError.message).toBe('Database operation failed');
+      expect(apiError.message).toBe('Database error');
       expect(apiError.statusCode).toBe(500);
       expect(apiError.code).toBe('DATABASE_ERROR');
+    });
+
+    it('should handle P2014 relation violation', () => {
+      const prismaError = { code: 'P2014' };
+      const apiError = prismaErrorHandler(prismaError);
+      expect(apiError.message).toBe('Operation violates a required relation');
+      expect(apiError.statusCode).toBe(400);
+      expect(apiError.code).toBe('REQUIRED_RELATION_VIOLATION');
+    });
+
+    it('should handle P2023 invalid value', () => {
+      const prismaError = { code: 'P2023' };
+      const apiError = prismaErrorHandler(prismaError);
+      expect(apiError.message).toBe('Invalid value provided for database field');
+      expect(apiError.statusCode).toBe(400);
+      expect(apiError.code).toBe('INVALID_DATABASE_VALUE');
     });
 
     it('should handle P2002 with non-array target', () => {
