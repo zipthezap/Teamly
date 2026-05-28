@@ -2551,8 +2551,8 @@ async function main() {
     create: {
       id: 'seed-player-4-2',
       teamId: pool4ATeams[0].id,
-      playerName: 'Marc Johnson',
-      playerEmail: 'marc.johnson@montreal.hockey'
+      playerName: 'Diana',
+      playerEmail: 'diana@example.com'
     }
   });
 

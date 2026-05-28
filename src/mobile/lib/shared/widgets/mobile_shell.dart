@@ -101,6 +101,13 @@ class MobileShell extends ConsumerWidget {
                 ? null
                 : () => context.push('/notifications'),
           ),
+          IconButton(
+            tooltip: 'Profile',
+            onPressed: currentPath == '/profile'
+                ? null
+                : () => context.go('/profile'),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
           if (actions != null) ...actions!,
           const SizedBox(width: 4),
         ],

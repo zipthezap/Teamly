@@ -27,6 +27,8 @@ class AdminManagementPage extends ConsumerStatefulWidget {
 class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
   List<TournamentAdminModel> _admins = [];
   String _tournamentStatus = 'draft';
+  String? _organizerName;
+  String? _organizerEmail;
   bool _loading = true;
   String? _error;
 
@@ -44,9 +46,17 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
         ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
       ]);
       if (mounted) {
+        final tournament = results[1] as TournamentModel;
+        final admins = results[0] as List<TournamentAdminModel>;
         setState(() {
-          _admins = results[0] as List<TournamentAdminModel>;
-          _tournamentStatus = (results[1] as TournamentModel).status;
+          // Organizer is an implicit owner role and cannot be removed through
+          // co-organizer management, so never show them as a removable admin.
+          _admins = admins
+              .where((admin) => admin.userId != tournament.creatorId)
+              .toList();
+          _tournamentStatus = tournament.status;
+          _organizerName = tournament.organizerName;
+          _organizerEmail = tournament.organizerEmail;
           _loading = false;
         });
       }
@@ -125,27 +135,66 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
               ? ErrorDisplay(message: _error!, onRetry: _load)
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: _admins.isEmpty
-                      ? const UiEmptyState(icon: Icons.supervisor_account_outlined, message: 'No co-organizers yet. Add one to delegate admin rights.')
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _admins.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (ctx, i) {
-                            final admin = _admins[i];
-                            return ListTile(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      ListTile(
+                        tileColor: AppThemeTokens.card(context),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppThemeTokens.radiusMd),
+                          side: BorderSide(color: AppThemeTokens.border(context)),
+                        ),
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.workspace_premium_outlined),
+                        ),
+                        title: Text(_organizerName ?? 'Tournament Organizer'),
+                        subtitle: Text(_organizerEmail ?? 'Owner role'),
+                        trailing: const UiStatusBadge(
+                          label: 'Organizer',
+                          status: UiStatusType.info,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_admins.isEmpty)
+                        const UiEmptyState(
+                          icon: Icons.supervisor_account_outlined,
+                          message:
+                              'No co-organizers yet. Add one to delegate admin rights.',
+                        )
+                      else
+                        ..._admins.map((admin) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
                               tileColor: AppThemeTokens.card(context),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd), side: BorderSide(color: AppThemeTokens.border(context))),
-                              leading: const CircleAvatar(child: Icon(Icons.manage_accounts_outlined)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppThemeTokens.radiusMd,
+                                ),
+                                side: BorderSide(
+                                  color: AppThemeTokens.border(context),
+                                ),
+                              ),
+                              leading: const CircleAvatar(
+                                child: Icon(Icons.manage_accounts_outlined),
+                              ),
                               title: Text(admin.userName),
                               subtitle: Text(admin.userEmail),
                               trailing: IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                                onPressed: canManageAdmins ? () => _removeAdmin(admin) : null,
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red,
+                                ),
+                                onPressed: canManageAdmins
+                                    ? () => _removeAdmin(admin)
+                                    : null,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
                 ),
     );
   }

@@ -550,8 +550,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
+      leadingWidth: 52,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: _AppBarIconButton(
+          icon: Icons.arrow_back_rounded,
+          onTap: () {
+            if (_editing) {
+              setState(() => _editing = false);
+              return;
+            }
+
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+
+            context.go('/dashboard');
+          },
+        ),
+      ),
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -664,10 +683,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           color: isDark ? const Color(0xFF0D1B2E) : Colors.white, width: 2.5),
                     ),
                     child: _uploadingPicture
-                        ? const Padding(
+                      ? Padding(
                             padding: EdgeInsets.all(8),
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: isDark
+                            ? Colors.white
+                            : AppThemeTokens.primary400),
                           )
                         : const Icon(Icons.camera_alt_rounded,
                             size: 16, color: Colors.white),
@@ -866,21 +888,23 @@ class _AppBarIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // The profile AppBar is transparent and always floats over the dark hero,
-    // so the icon container uses dark-mode colors to remain visible.
+    final buttonBg = isDark
+        ? AppThemeTokens.darkCardElevated.withValues(alpha: 0.72)
+        : AppThemeTokens.lightCard.withValues(alpha: 0.9);
+    final buttonBorder = isDark
+        ? AppThemeTokens.darkBorder
+        : AppThemeTokens.lightBorder;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: (isDark ? AppThemeTokens.darkCard : const Color(0xFF1C2535))
-              .withValues(alpha: 0.7),
+          color: buttonBg,
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-          border: Border.all(
-              color: isDark ? AppThemeTokens.darkBorder : const Color(0xFF2A3548)),
+          border: Border.all(color: buttonBorder),
         ),
-        child: Icon(icon, size: 18, color: AppThemeTokens.darkText),
+        child: Icon(icon, size: 18, color: AppThemeTokens.text(context)),
       ),
     );
   }
