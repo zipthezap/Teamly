@@ -16,12 +16,25 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 
+type DashboardUpcomingEventType = 'session' | 'teamup' | 'tournament';
+
+type DashboardUpcomingEvent = {
+  id: string;
+  title: string;
+  startTime: Date;
+  eventType: DashboardUpcomingEventType;
+  contextName: string;
+};
+
+const MAX_UPCOMING_EVENTS_PER_TYPE = 10;
+const MAX_UPCOMING_EVENTS_TOTAL = 5;
+
 export const getDashboard = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const now = new Date();
 
-  const [upcomingSessions, groups, notificationStats] = await Promise.all([
-    // Top 5 upcoming sessions the user is hosting or participating in.
+  const [upcomingSessions, upcomingTeamUps, upcomingTournaments, groups, notificationStats] = await Promise.all([
+    // Upcoming sessions the user is hosting or participating in.
     prisma.session.findMany({
       where: {
         archived: false,
@@ -50,7 +63,58 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
         },
       },
       orderBy: { startTime: 'asc' },
-      take: 5,
+      take: MAX_UPCOMING_EVENTS_PER_TYPE,
+    }),
+
+    // Upcoming TeamUps the user is hosting or participating in.
+    prisma.teamUpRequest.findMany({
+      where: {
+        dateTime: { gte: now },
+        status: { in: ['open', 'filled'] },
+        OR: [
+          { creatorId: userId },
+          {
+            responses: {
+              some: {
+                userId,
+                status: { notIn: ['declined', 'cancelled'] },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        dateTime: true,
+        locationName: true,
+        city: true,
+      },
+      orderBy: { dateTime: 'asc' },
+      take: MAX_UPCOMING_EVENTS_PER_TYPE,
+    }),
+
+    // Upcoming tournaments the user is hosting or participating in.
+    prisma.tournament.findMany({
+      where: {
+        startDate: { gte: now },
+        status: { notIn: ['completed', 'cancelled'] },
+        OR: [
+          { organizerId: userId },
+          { teams: { some: { captainUserId: userId } } },
+          { teams: { some: { players: { some: { userId } } } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        locationName: true,
+        city: true,
+        group: { select: { name: true } },
+      },
+      orderBy: { startDate: 'asc' },
+      take: MAX_UPCOMING_EVENTS_PER_TYPE,
     }),
 
     // User's groups (most recent first, max 5)
@@ -99,13 +163,44 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
     profilePicture: picture,
   }));
 
+  const upcomingEvents: DashboardUpcomingEvent[] = [
+    ...upcomingSessions.map((session) => ({
+      id: session.id,
+      title: session.title,
+      startTime: session.startTime,
+      eventType: 'session' as const,
+      contextName: session.group.name,
+    })),
+    ...upcomingTeamUps.map((teamUp) => ({
+      id: teamUp.id,
+      title: teamUp.title,
+      startTime: teamUp.dateTime,
+      eventType: 'teamup' as const,
+      contextName: teamUp.locationName ?? teamUp.city ?? '',
+    })),
+    ...upcomingTournaments.map((tournament) => ({
+      id: tournament.id,
+      title: tournament.name,
+      startTime: tournament.startDate,
+      eventType: 'tournament' as const,
+      contextName:
+        tournament.locationName ?? tournament.city ?? tournament.group?.name ?? '',
+    })),
+  ]
+    .sort((a, b) => {
+      const byStart = a.startTime.getTime() - b.startTime.getTime();
+      if (byStart !== 0) return byStart;
+      return a.id.localeCompare(b.id);
+    })
+    .slice(0, MAX_UPCOMING_EVENTS_TOTAL);
+
   res.json({
-    upcomingSessions,
+    upcomingEvents,
     recentGroups,
     unreadNotifications,
     stats: {
       totalSessions,
-      upcomingCount: upcomingSessions.length,
+      upcomingCount: upcomingEvents.length,
       groupCount: groups.length,
     },
   });

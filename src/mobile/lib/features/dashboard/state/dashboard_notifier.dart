@@ -32,7 +32,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardModel> {
     // 401 API call is made.
     if (!authState.isAuthenticated) {
       return Future.value(const DashboardModel(
-        upcomingSessions: [],
+        upcomingEvents: [],
         recentGroups: [],
         unreadNotifications: 0,
         stats: DashboardStats(
