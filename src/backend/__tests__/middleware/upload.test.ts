@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import multer from 'multer';
 
 vi.mock('../../utils/logger', () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -21,8 +20,6 @@ describe('Upload Middleware', () => {
   });
 
   it('uploadProfilePicture handles multer LIMIT_FILE_SIZE error', () => {
-    const _multerError = new multer.MulterError('LIMIT_FILE_SIZE');
-
     // Simulate calling the wrapper with a multer error via the inner handler
     // We test that the middleware is callable and returns a function
     expect(uploadMiddleware.uploadProfilePicture).toBeDefined();
