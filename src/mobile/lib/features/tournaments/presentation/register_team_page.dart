@@ -146,11 +146,34 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                       ),
                       if (_categories.isEmpty) ...[
                         const SizedBox(height: 16),
-                        UiAlert(
-                          icon: Icons.info_outline,
-                          tone: UiAlertTone.warning,
-                          message:
-                              'Categories are required before teams can register. Ask the organizer to create a category first.',
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.warning.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                            border: Border.all(
+                              color: AppThemeTokens.warning.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.info_outline,
+                                size: 18,
+                                color: AppThemeTokens.warning,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Categories are required before teams can register. Ask the organizer to create a category first.',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppThemeTokens.warning,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       if (_categories.isNotEmpty) ...[
