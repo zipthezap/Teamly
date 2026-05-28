@@ -32,6 +32,11 @@ async function validateTournamentSeedIntegrity(tournamentIds) {
           id: true,
           poolId: true,
           pool: { select: { categoryId: true } },
+          waitlistEntries: {
+            select: {
+              pool: { select: { categoryId: true } },
+            },
+          },
           captainUserId: true,
           players: { select: { userId: true } },
         },
@@ -67,9 +72,13 @@ async function validateTournamentSeedIntegrity(tournamentIds) {
       );
     }
 
-    const uncategorizedTeams = tournament.teams.filter(
-      (team) => !team.poolId || !team.pool?.categoryId
-    );
+    const uncategorizedTeams = tournament.teams.filter((team) => {
+      const hasCategorizedPool = !!team.poolId && !!team.pool?.categoryId;
+      const hasCategorizedWaitlistPool = team.waitlistEntries.some(
+        (entry) => !!entry.pool?.categoryId
+      );
+      return !hasCategorizedPool && !hasCategorizedWaitlistPool;
+    });
     if (uncategorizedTeams.length > 0) {
       throw new Error(
         `Seed integrity failed: ${uncategorizedTeams.length} team(s) in "${tournament.name}" are not assigned to a categorized pool.`
