@@ -442,3 +442,45 @@ export function parsePaginationParams(
   
   return { limit: parsedLimit, offset: parsedOffset };
 }
+
+/**
+ * Validates an array of items with a per-item validator, collecting all errors.
+ * Returns all violations at once rather than stopping on the first.
+ * @param items The array to validate
+ * @param fieldName Name of the array field (for error messages)
+ * @param itemValidator A function that validates a single item (may throw ValidationError)
+ * @param maxLength Maximum allowed array length
+ * @throws ValidationError with all violations combined if any are found
+ */
+export function validateArray<T>(
+  items: T[],
+  fieldName: string,
+  itemValidator: (item: T, index: number) => void,
+  maxLength?: number
+): void {
+  if (maxLength !== undefined && items.length > maxLength) {
+    throw new ValidationError(
+      `${fieldName} must not exceed ${maxLength} items`,
+      fieldName,
+      'ARRAY_TOO_LONG'
+    );
+  }
+
+  const errors: string[] = [];
+  for (let i = 0; i < items.length; i++) {
+    try {
+      itemValidator(items[i], i);
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        errors.push(`${fieldName}[${i}]: ${err.message}`);
+      } else if (err instanceof Error) {
+        errors.push(`${fieldName}[${i}]: ${err.message}`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join('; '), fieldName, 'ARRAY_ITEM_INVALID');
+  }
+}
+

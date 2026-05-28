@@ -22,6 +22,62 @@ import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
 import { permissionService } from '../services/permissionService';
 import { Permission } from '../../shared/types/permissions.types';
+import { guardImmutableFields } from '../utils/guardImmutableFields';
+
+const MAX_SESSION_DESCRIPTION_LENGTH = 2000;
+const MAX_SESSION_LOCATION_NAME_LENGTH = 255;
+const MAX_SESSION_DURATION_HOURS = 12;
+const VALID_SESSION_TYPES = Object.values(SportType);
+
+function validateSessionDescription(description: string | undefined | null) {
+  if (description && description.length > MAX_SESSION_DESCRIPTION_LENGTH) {
+    throw new BadRequestError(
+      `description must not exceed ${MAX_SESSION_DESCRIPTION_LENGTH} characters`,
+      'MAX_LENGTH_EXCEEDED',
+      'description'
+    );
+  }
+}
+
+function validateSessionLocationName(locationName: string | undefined | null) {
+  if (locationName && locationName.length > MAX_SESSION_LOCATION_NAME_LENGTH) {
+    throw new BadRequestError(
+      `locationName must not exceed ${MAX_SESSION_LOCATION_NAME_LENGTH} characters`,
+      'MAX_LENGTH_EXCEEDED',
+      'locationName'
+    );
+  }
+}
+
+function validateSessionType(sessionType: unknown) {
+  if (sessionType !== undefined && sessionType !== null && sessionType !== '') {
+    if (!VALID_SESSION_TYPES.includes(sessionType as SportType)) {
+      throw new BadRequestError(
+        `sessionType must be one of: ${VALID_SESSION_TYPES.join(', ')}`,
+        'INVALID_ENUM_VALUE',
+        'sessionType'
+      );
+    }
+  }
+}
+
+function validateSessionDuration(startTime: unknown, endTime: unknown) {
+  if (!startTime || !endTime) return;
+  const start = new Date(startTime as string);
+  const end = new Date(endTime as string);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+  const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+  if (durationHours <= 0) {
+    throw new BadRequestError('endTime must be after startTime', 'INVALID_DATE_RANGE', 'endTime');
+  }
+  if (durationHours > MAX_SESSION_DURATION_HOURS) {
+    throw new BadRequestError(
+      `Session duration must not exceed ${MAX_SESSION_DURATION_HOURS} hours`,
+      'DURATION_TOO_LONG',
+      'endTime'
+    );
+  }
+}
 
 export const createEvent = async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -37,6 +93,9 @@ export const createEvent = async (req: Request, res: Response) => {
   isRequired(sessionType, 'Event type');
   isRequired(startTime, 'Start time');
 
+  // Validate sessionType against enum
+  validateSessionType(sessionType);
+
   // Sanitize text inputs
   const sanitized = sessionService.sanitizeSessionData({
     title,
@@ -49,6 +108,10 @@ export const createEvent = async (req: Request, res: Response) => {
   if (!sanitized.title || !sanitized.sessionType) {
     throw new BadRequestError('Title and session type cannot be empty or whitespace-only');
   }
+
+  validateSessionDescription(sanitized.description);
+  validateSessionLocationName(locationName);
+  validateSessionDuration(startTime, endTime);
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
@@ -477,6 +540,9 @@ export const updateEvent = async (req: Request, res: Response) => {
   const { title, description, sessionType, location, startTime, endTime, maxPlayers, isPublic,
           latitude, longitude, locationName, city, country } = req.body;
 
+  // Block changes to fields that are immutable after session creation
+  guardImmutableFields(req.body, ['groupId', 'creatorId', 'sessionType']);
+
   // Sanitize text inputs
   const sanitized = sessionService.sanitizeSessionData({
     title,
@@ -484,6 +550,18 @@ export const updateEvent = async (req: Request, res: Response) => {
     sessionType,
     location
   });
+
+  validateSessionDescription(sanitized.description);
+  validateSessionLocationName(locationName);
+  validateSessionDuration(startTime, endTime);
+
+  // Validate startTime cannot be in the past
+  if (startTime) {
+    const newStart = new Date(startTime);
+    if (!isNaN(newStart.getTime()) && newStart <= new Date()) {
+      throw new BadRequestError('startTime cannot be set to a past time', 'DATE_MUST_BE_FUTURE', 'startTime');
+    }
+  }
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
@@ -542,6 +620,13 @@ export const updateEvent = async (req: Request, res: Response) => {
       },
     });
 
+    const waitlistedParticipants = await prisma.sessionParticipant.count({
+      where: {
+        sessionId: id,
+        status: SessionParticipantStatus.waitlisted,
+      },
+    });
+
     const confirmedGuests = await prisma.guestParticipant.count({
       where: {
         sessionId: id,
@@ -550,8 +635,12 @@ export const updateEvent = async (req: Request, res: Response) => {
     });
 
     const currentConfirmedTotal = confirmedParticipants + confirmedGuests;
+    const totalIncludingWaitlisted = currentConfirmedTotal + waitlistedParticipants;
     if (parsedMaxPlayers < currentConfirmedTotal) {
       throw new BadRequestError(`Max players cannot be lower than current confirmed participants (${currentConfirmedTotal})`);
+    }
+    if (parsedMaxPlayers < totalIncludingWaitlisted) {
+      throw new BadRequestError(`Max players cannot be lower than confirmed and waitlisted participants (${totalIncludingWaitlisted})`);
     }
   }
 

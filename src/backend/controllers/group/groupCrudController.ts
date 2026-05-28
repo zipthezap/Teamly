@@ -12,7 +12,69 @@ import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { recordSearchQuery } from '../../services/metricsService';
+import { guardImmutableFields } from '../../utils/guardImmutableFields';
 import { THIRTY_DAYS_MS, SEVEN_DAYS_MS, MAX_GROUP_NAME_LENGTH } from './_constants';
+import { SportType } from '../../../shared/types/session.types';
+
+const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_TAG_COUNT = 10;
+const MAX_TAG_LENGTH = 50;
+const VALID_SPORT_TYPES = Object.values(SportType);
+
+function validateGroupDescription(description: string | undefined | null) {
+  if (description && description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new BadRequestError(
+      `description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`,
+      'MAX_LENGTH_EXCEEDED',
+      'description'
+    );
+  }
+}
+
+function validateGroupSportType(sportType: unknown) {
+  if (sportType !== undefined && sportType !== null && sportType !== '') {
+    if (!VALID_SPORT_TYPES.includes(sportType as SportType)) {
+      throw new BadRequestError(
+        `sportType must be one of: ${VALID_SPORT_TYPES.join(', ')}`,
+        'INVALID_ENUM_VALUE',
+        'sportType'
+      );
+    }
+  }
+}
+
+function validateGroupTags(tags: unknown) {
+  if (!Array.isArray(tags)) return;
+  if (tags.length > MAX_TAG_COUNT) {
+    throw new BadRequestError(
+      `tags must contain at most ${MAX_TAG_COUNT} items`,
+      'MAX_LENGTH_EXCEEDED',
+      'tags'
+    );
+  }
+  const seen = new Set<string>();
+  for (const tag of tags) {
+    if (typeof tag !== 'string') {
+      throw new BadRequestError('Each tag must be a string', 'INVALID_TYPE', 'tags');
+    }
+    if (tag.length > MAX_TAG_LENGTH) {
+      throw new BadRequestError(
+        `Each tag must not exceed ${MAX_TAG_LENGTH} characters`,
+        'MAX_LENGTH_EXCEEDED',
+        'tags'
+      );
+    }
+    if (/<[^>]+>/.test(tag)) {
+      throw new BadRequestError('Tags must not contain HTML', 'INVALID_FORMAT', 'tags');
+    }
+    const lower = tag.toLowerCase();
+    if (seen.has(lower)) {
+      throw new BadRequestError(`Duplicate tag: "${tag}"`, 'DUPLICATE_VALUE', 'tags');
+    }
+    seen.add(lower);
+  }
+}
+
 
 export const createGroup = async (req: Request, res: Response) => {
   const { 
@@ -53,6 +115,10 @@ export const createGroup = async (req: Request, res: Response) => {
   if (sanitized.name.length > MAX_GROUP_NAME_LENGTH) {
     throw new BadRequestError(`Group name must not exceed ${MAX_GROUP_NAME_LENGTH} characters`);
   }
+
+  validateGroupDescription(sanitized.description);
+  validateGroupSportType(sportType);
+  validateGroupTags(tags);
 
   // Validate maxMembers if provided
   const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
@@ -462,11 +528,8 @@ export const updateGroup = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only admins and moderators can update the group');
   }
 
-  // Validate maxMembers if provided
-  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
-  if (!maxMembersValidation.valid) {
-    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
-  }
+  // Block changes to fields that are immutable after creation
+  guardImmutableFields(req.body, ['creatorId']);
 
   // Sanitize text inputs
   const sanitized = groupService.sanitizeGroupData({
@@ -477,6 +540,29 @@ export const updateGroup = async (req: Request, res: Response) => {
     country,
     tags
   });
+
+  validateGroupDescription(sanitized.description);
+  validateGroupSportType(sportType);
+  validateGroupTags(tags);
+
+  // Validate maxMembers if provided
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
+  }
+
+  // Prevent lowering maxMembers below the current member count
+  if (maxMembers !== undefined && maxMembers !== null) {
+    const currentMemberCount = await prisma.groupMember.count({ where: { groupId: id } });
+    const newMaxMembers = parseInt(maxMembers as string, 10);
+    if (!isNaN(newMaxMembers) && newMaxMembers < currentMemberCount) {
+      throw new BadRequestError(
+        `maxMembers (${newMaxMembers}) cannot be lower than the current member count (${currentMemberCount})`,
+        'BELOW_MEMBER_COUNT',
+        'maxMembers'
+      );
+    }
+  }
 
   // Validate that coordinates are provided together (not partially)
   const coordCompletenessCheck = groupService.validateCoordinateCompleteness(latitude, longitude);

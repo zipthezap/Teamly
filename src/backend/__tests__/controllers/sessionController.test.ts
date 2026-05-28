@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createAuthenticatedTestApp } from '../helpers/testApp';
+import { NotFoundError, ConflictError, BadRequestError } from '../../utils/errors';
 
 // ─── All vi.mock calls hoisted before imports ─────────────────────────────────
 
@@ -225,7 +226,7 @@ const mockSession = {
   creatorId: 'test-user-id',
   title: 'Test Session',
   description: 'A test session',
-  sessionType: 'soccer',
+  sessionType: 'football',
   location: 'Test Location',
   latitude: null,
   longitude: null,
@@ -341,7 +342,7 @@ describe('POST /api/sessions (createEvent)', () => {
   const validBody = {
     groupId: 'group-1',
     title: 'My Event',
-    sessionType: 'soccer',
+    sessionType: 'football',
     startTime: '2025-12-01T10:00:00Z',
   };
 
@@ -357,7 +358,7 @@ describe('POST /api/sessions (createEvent)', () => {
   it('fails when groupId is missing', async () => {
     const res = await request(app)
       .post('/api/sessions')
-      .send({ title: 'My Event', sessionType: 'soccer', startTime: '2025-12-01T10:00:00Z' });
+      .send({ title: 'My Event', sessionType: 'football', startTime: '2025-12-01T10:00:00Z' });
 
     // isRequired throws a validation.ts ValidationError (extends Error, not ApiError)
     // so errorHandler returns 500 — still an error response, not 2xx
@@ -368,7 +369,7 @@ describe('POST /api/sessions (createEvent)', () => {
   it('fails when title is missing', async () => {
     const res = await request(app)
       .post('/api/sessions')
-      .send({ groupId: 'group-1', sessionType: 'soccer', startTime: '2025-12-01T10:00:00Z' });
+      .send({ groupId: 'group-1', sessionType: 'football', startTime: '2025-12-01T10:00:00Z' });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.body).toHaveProperty('error');
@@ -599,19 +600,19 @@ describe('POST /api/sessions/:id/join (joinEvent)', () => {
   });
 
   it('returns 404 when event not found', async () => {
-    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('EVENT_NOT_FOUND'));
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new NotFoundError('Session nonexistent not found'));
 
     const res = await request(app).post('/api/sessions/nonexistent/join');
 
     expect(res.status).toBe(404);
   });
 
-  it('returns 400 when already joined', async () => {
-    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('ALREADY_JOINED'));
+  it('returns 409 when already joined', async () => {
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new ConflictError('Already joined this session', 'ALREADY_JOINED'));
 
     const res = await request(app).post('/api/sessions/session-1/join');
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
   });
 });
 
@@ -632,7 +633,7 @@ describe('DELETE /api/sessions/:id/leave (leaveEvent)', () => {
   });
 
   it('returns 404 when not a participant', async () => {
-    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('NOT_PARTICIPATING'));
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new NotFoundError('Not a participant of this session'));
 
     const res = await request(app).delete('/api/sessions/session-1/leave');
 
@@ -640,7 +641,7 @@ describe('DELETE /api/sessions/:id/leave (leaveEvent)', () => {
   });
 
   it('returns 404 when event not found', async () => {
-    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('EVENT_NOT_FOUND'));
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(new NotFoundError('Session nonexistent not found'));
 
     const res = await request(app).delete('/api/sessions/nonexistent/leave');
 
@@ -739,7 +740,7 @@ describe('GET /api/sessions/:id/instances (getRecurringEventInstances)', () => {
     const res = await request(app).get('/api/sessions/session-1/instances');
 
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ error: 'Event is not recurring' });
+    expect(res.body).toMatchObject({ error: 'Session is not recurring' });
   });
 
   it('returns 200 with instances for recurring session', async () => {

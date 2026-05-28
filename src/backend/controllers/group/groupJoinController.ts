@@ -6,12 +6,26 @@ import * as permissionService from '../../services/permissionService';
 import * as groupService from '../../services/groupService';
 import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
+import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
 import { groupBan, txAuditLog } from '../../utils/prismaExtended';
+
+const MAX_JOIN_MESSAGE_LENGTH = 500;
 
 // Request to join a public group
 export const requestJoinGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { message } = req.body ?? {};
+
+  // Validate join message length if provided
+  if (message !== undefined && message !== null && typeof message === 'string') {
+    if (message.length > MAX_JOIN_MESSAGE_LENGTH) {
+      throw new BadRequestError(
+        `message must not exceed ${MAX_JOIN_MESSAGE_LENGTH} characters`,
+        'MAX_LENGTH_EXCEEDED',
+        'message'
+      );
+    }
+  }
 
   // Check if group exists and is public
   const group = await prisma.group.findUnique({
@@ -253,6 +267,26 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
   if (joinRequest.status !== 'pending') {
     throw new BadRequestError('Join request already processed');
+  }
+
+  // For approve: check the group still exists and hasn't reached capacity
+  if (action === 'approve') {
+    const groupCheck = await prisma.group.findUnique({
+      where: { id },
+      select: { maxMembers: true, name: true }
+    });
+    if (!groupCheck) {
+      throw new NotFoundError(`Group ${id} not found`);
+    }
+    if (groupCheck.maxMembers !== null) {
+      const currentCount = await prisma.groupMember.count({ where: { groupId: id } });
+      if (currentCount >= groupCheck.maxMembers) {
+        throw new ConflictError(
+          `Group has reached its maximum capacity (${groupCheck.maxMembers} members). Cannot approve this request.`,
+          'GROUP_AT_CAPACITY'
+        );
+      }
+    }
   }
 
   // Update the join request status

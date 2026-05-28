@@ -10,6 +10,8 @@ import { logger } from '../utils/logger';
 interface ErrorResponse {
   error: string;
   code?: string;
+  field?: string;
+  fields?: string[];
   stack?: string;
 }
 
@@ -58,6 +60,12 @@ export const errorHandler = (
     code
   };
 
+  // Include field context when available (from BadRequestError)
+  if (error instanceof ApiError) {
+    if (error.field) response.field = error.field;
+    if (error.fields && error.fields.length > 0) response.fields = error.fields;
+  }
+
   // Include stack trace in development mode
   if (process.env.NODE_ENV === 'development') {
     response.stack = error.stack;
@@ -82,12 +90,11 @@ export const prismaErrorHandler = (err: unknown): ApiError => {
   const error = err as Record<string, unknown>;
   const errorCode = error.code as string;
   const errorName = error.name as string;
-  const errorMeta = error.meta as Record<string, unknown> | undefined;
 
   // Handle Prisma unique constraint violations
   if (errorCode === 'P2002') {
-    const target = (Array.isArray(errorMeta?.target) ? errorMeta.target[0] : 'field') as string;
-    return new ApiError(`A record with this ${target} already exists`, 409, true, 'DUPLICATE_RECORD');
+    // Do NOT expose raw column/field names from Prisma metadata to clients
+    return new ApiError('A record with these details already exists', 409, true, 'DUPLICATE_RECORD');
   }
 
   // Handle Prisma foreign key constraint violations
