@@ -22,6 +22,10 @@ class CreateTournamentPage extends ConsumerStatefulWidget {
 }
 
 class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
+  static const int _minTournamentNameLength = 2;
+  static const int _maxTournamentNameLength = 100;
+  static const int _minDescriptionLength = 10;
+  static const int _maxDescriptionLength = 2000;
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -70,6 +74,20 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
     if (_startDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a tournament start date')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
+    if (_startDate != null && _startDate!.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tournament start date cannot be in the past')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
+    if (_registrationDeadline != null && _registrationDeadline!.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration deadline cannot be in the past')),
       );
       setState(() => _saving = false);
       return;
@@ -178,7 +196,13 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Tournament name *', prefixIcon: Icon(Icons.emoji_events_outlined)),
               textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return 'Required';
+                if (value.length < _minTournamentNameLength) return 'Must be at least $_minTournamentNameLength characters';
+                if (value.length > _maxTournamentNameLength) return 'Must be at most $_maxTournamentNameLength characters';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -202,7 +226,18 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               onChanged: (v) => setState(() => _format = v ?? 'single_elimination'),
             ),
             const SizedBox(height: 16),
-            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true), maxLines: 3),
+            TextFormField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true),
+              maxLines: 3,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) return null;
+                if (value.length < _minDescriptionLength) return 'Description must be at least $_minDescriptionLength characters';
+                if (value.length > _maxDescriptionLength) return 'Description must be at most $_maxDescriptionLength characters';
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             TextFormField(controller: _maxTeamsCtrl, decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)), keyboardType: TextInputType.number,
               validator: (v) {
@@ -296,4 +331,3 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
 // ===========================================================================
 // Pools Management Page
 // ===========================================================================
-

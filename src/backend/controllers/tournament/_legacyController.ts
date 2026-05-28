@@ -30,6 +30,7 @@ import {
   MatchIncidentStatus,
   MATCH_INCIDENT_TYPES,
   MATCH_INCIDENT_STATUSES,
+  VALID_TIEBREAKER_RULES,
 } from '../../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../../utils/errors';
 import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValidEmail } from '../../utils/validation';
@@ -75,6 +76,7 @@ import {
 import {
   assertValidTournamentTimezone,
   parseBoolean,
+  parseIntegerInRange,
   parseMatchScoreInput,
   parseNonNegativeInteger,
   parsePlayoffSize,
@@ -149,6 +151,92 @@ const assertSupportedTournamentFormat = (format?: string): void => {
   if (format === TournamentFormat.DOUBLE_ELIMINATION) {
     throw new BadRequestError('Double elimination tournaments are not supported yet');
   }
+};
+
+const MAX_MIN_TEAM_REST_MINUTES = 1_440;
+const MAX_JERSEY_NUMBER = 999;
+const MAX_SCORE_DISPUTE_REASON_LENGTH = 1_000;
+const MAX_SCORE_DISPUTE_RESOLUTION_LENGTH = 2_000;
+
+const parseOptionalDate = (value: unknown, fieldName: string): Date | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = new Date(value as string | Date);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestError(`${fieldName} must be a valid date`);
+  }
+  return parsed;
+};
+
+const isValidHttpUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const validateTiebreakerRules = (value: unknown): string[] | null => {
+  if (value === undefined) return null;
+  if (value === null) return [];
+  if (!Array.isArray(value)) {
+    throw new BadRequestError('tiebreakerRules must be an array of strings');
+  }
+  const normalized = value.map((rule) => String(rule).trim()).filter(Boolean);
+  const allowed = new Set(VALID_TIEBREAKER_RULES);
+  const invalidRules = normalized.filter((rule) => !allowed.has(rule as (typeof VALID_TIEBREAKER_RULES)[number]));
+  if (invalidRules.length > 0) {
+    throw new BadRequestError(
+      `Invalid tiebreaker rule(s): ${invalidRules.join(', ')}. Allowed values: ${VALID_TIEBREAKER_RULES.join(', ')}`
+    );
+  }
+  return normalized;
+};
+
+const validateSportConfigShape = (sportConfig: unknown): void => {
+  if (sportConfig === undefined || sportConfig === null) return;
+  if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
+    throw new BadRequestError('sportConfig must be an object');
+  }
+  const config = sportConfig as Record<string, unknown>;
+  const type = config.type;
+  if (type !== undefined && !SPORT_CONFIG_TYPES.includes(type as (typeof SPORT_CONFIG_TYPES)[number])) {
+    throw new BadRequestError(`sportConfig.type must be one of: ${SPORT_CONFIG_TYPES.join(', ')}`);
+  }
+  if (type === 'volleyball') {
+    if (
+      !Number.isInteger(config.regularSetPoints) ||
+      !Number.isInteger(config.decidingSetPoints) ||
+      !Number.isInteger(config.bestOfSets)
+    ) {
+      throw new BadRequestError(
+        'volleyball sportConfig requires integer regularSetPoints, decidingSetPoints, and bestOfSets'
+      );
+    }
+  }
+  if (type === 'tennis') {
+    if (
+      !Number.isInteger(config.bestOfSets) ||
+      !Number.isInteger(config.gamesPerSet) ||
+      !Number.isInteger(config.tiebreakPoints)
+    ) {
+      throw new BadRequestError('tennis sportConfig requires integer bestOfSets, gamesPerSet, and tiebreakPoints');
+    }
+  }
+  if (type === 'default') {
+    if (!Number.isInteger(config.winPoints) || !Number.isInteger(config.drawPoints) || !Number.isInteger(config.lossPoints)) {
+      throw new BadRequestError('default sportConfig requires integer winPoints, drawPoints, and lossPoints');
+    }
+  }
+};
+
+const isUniqueConstraintOnField = (error: unknown, fieldName: string): boolean => {
+  if (!isPrismaUniqueError(error)) return false;
+  const target = (error as { meta?: { target?: unknown } }).meta?.target;
+  if (Array.isArray(target)) {
+    return target.some((item) => String(item) === fieldName);
+  }
+  return String(target) === fieldName;
 };
 
 const getPaymentUpdatePayload = (paymentStatus: string, userId: string) => ({
@@ -543,6 +631,8 @@ export const createTournament = async (req: Request, res: Response) => {
     allowRescheduleAfterStart,
     seedingPolicy,
     seedsLockedAt,
+    playoffSize,
+    doubleElimination,
     enableThirdPlaceMatch,
     enableConsolationBracket,
     allowByes,
@@ -623,22 +713,20 @@ export const createTournament = async (req: Request, res: Response) => {
   }
 
   // Validate sportConfig structure when provided
-  if (sportConfig !== undefined && sportConfig !== null) {
-    if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
-      throw new BadRequestError('sportConfig must be an object');
-    }
-    if (sportConfig.type !== undefined && !SPORT_CONFIG_TYPES.includes(sportConfig.type)) {
-      throw new BadRequestError(`sportConfig.type must be one of: ${SPORT_CONFIG_TYPES.join(', ')}`);
-    }
-  }
+  validateSportConfigShape(sportConfig);
 
   const normalizedTimezone =
     timezone !== undefined && timezone !== null ? assertValidTournamentTimezone(timezone) : undefined;
 
   if (noShowGraceMinutes !== undefined) parseNonNegativeInteger(noShowGraceMinutes, 'noShowGraceMinutes');
-  if (minTeamRestMinutes !== undefined) parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes');
+  if (minTeamRestMinutes !== undefined) {
+    parseIntegerInRange(minTeamRestMinutes, 'minTeamRestMinutes', 0, MAX_MIN_TEAM_REST_MINUTES);
+  }
   if (rescheduleCutoffMinutes !== undefined) parseNonNegativeInteger(rescheduleCutoffMinutes, 'rescheduleCutoffMinutes');
   if (contingencyDelayMinutes !== undefined) parseNonNegativeInteger(contingencyDelayMinutes, 'contingencyDelayMinutes');
+  if (registrationFee !== undefined && registrationFee !== null && Number(registrationFee) < 0) {
+    throw new BadRequestError('registrationFee must be a non-negative number');
+  }
 
   if (noShowAutoForfeit !== undefined) parseBoolean(noShowAutoForfeit, 'noShowAutoForfeit');
   if (autoPromoteRegistrationWaitlist !== undefined) {
@@ -665,16 +753,27 @@ export const createTournament = async (req: Request, res: Response) => {
     seedingPolicy !== undefined
       ? parseEnumInput(seedingPolicy, TOURNAMENT_SEEDING_POLICIES, 'seedingPolicy')
       : undefined;
+  const normalizedPlayoffSize = playoffSize !== undefined ? parsePlayoffSize(playoffSize) : undefined;
   const normalizedContingencyMode =
     contingencyMode !== undefined
       ? parseEnumInput(contingencyMode, TOURNAMENT_CONTINGENCY_MODES, 'contingencyMode')
       : undefined;
+  const normalizedTiebreakerRules = validateTiebreakerRules(tiebreakerRules);
 
   if (withdrawalDeadline !== undefined && withdrawalDeadline !== null && Number.isNaN(new Date(withdrawalDeadline).getTime())) {
     throw new BadRequestError('withdrawalDeadline must be a valid date');
   }
   if (seedsLockedAt !== undefined && seedsLockedAt !== null && Number.isNaN(new Date(seedsLockedAt).getTime())) {
     throw new BadRequestError('seedsLockedAt must be a valid date');
+  }
+  const parsedStartDate = parseOptionalDate(startDate, 'startDate');
+  const parsedPaymentDeadline = parseOptionalDate(paymentDeadline, 'paymentDeadline');
+  const parsedRosterLockDate = parseOptionalDate(rosterLockDate, 'rosterLockDate');
+  if (parsedPaymentDeadline && parsedStartDate && parsedPaymentDeadline > parsedStartDate) {
+    throw new BadRequestError('paymentDeadline must be on or before startDate');
+  }
+  if (parsedRosterLockDate && parsedStartDate && parsedRosterLockDate >= parsedStartDate) {
+    throw new BadRequestError('rosterLockDate must be before startDate');
   }
 
   // Validate coordinates if provided
@@ -746,9 +845,9 @@ export const createTournament = async (req: Request, res: Response) => {
       requireWaiverForRegistration: requireWaiverForRegistration || false,
       waiverText: sanitized.waiverText || undefined,
       // New gap-feature fields
-      rosterLockDate: rosterLockDate ? new Date(rosterLockDate) : undefined,
-      paymentDeadline: paymentDeadline ? new Date(paymentDeadline) : undefined,
-      tiebreakerRules: tiebreakerRules || undefined,
+      rosterLockDate: parsedRosterLockDate ?? undefined,
+      paymentDeadline: parsedPaymentDeadline ?? undefined,
+      tiebreakerRules: normalizedTiebreakerRules && normalizedTiebreakerRules.length > 0 ? normalizedTiebreakerRules : undefined,
       // Self-ref
       selfRefEnabled: selfRefEnabled || false,
       // Advanced tournament policy controls
@@ -775,6 +874,9 @@ export const createTournament = async (req: Request, res: Response) => {
           : undefined,
       seedingPolicy: normalizedSeedingPolicy,
       seedsLockedAt: seedsLockedAt ? new Date(seedsLockedAt) : undefined,
+      playoffSize: normalizedPlayoffSize,
+      doubleElimination:
+        doubleElimination !== undefined ? parseBoolean(doubleElimination, 'doubleElimination') : undefined,
       enableThirdPlaceMatch:
         enableThirdPlaceMatch !== undefined ? parseBoolean(enableThirdPlaceMatch, 'enableThirdPlaceMatch') : undefined,
       enableConsolationBracket:
@@ -1035,6 +1137,8 @@ export const updateTournament = async (req: Request, res: Response) => {
     allowRescheduleAfterStart,
     seedingPolicy,
     seedsLockedAt,
+    playoffSize,
+    doubleElimination,
     enableThirdPlaceMatch,
     enableConsolationBracket,
     allowByes,
@@ -1183,14 +1287,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.contactEmail = contactEmail || null;
   }
   if (sportConfig !== undefined) {
-    if (sportConfig !== null) {
-      if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
-        throw new BadRequestError('sportConfig must be an object');
-      }
-      if (sportConfig.type !== undefined && !SPORT_CONFIG_TYPES.includes(sportConfig.type)) {
-        throw new BadRequestError(`sportConfig.type must be one of: ${SPORT_CONFIG_TYPES.join(', ')}`);
-      }
-    }
+    validateSportConfigShape(sportConfig);
     updateData.sportConfig = sportConfig || null;
   }
   if (registrationFee !== undefined) {
@@ -1225,13 +1322,13 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.waiverText = sanitized.waiverText || null;
   }
   if (rosterLockDate !== undefined) {
-    updateData.rosterLockDate = rosterLockDate ? new Date(rosterLockDate) : null;
+    updateData.rosterLockDate = parseOptionalDate(rosterLockDate, 'rosterLockDate');
   }
   if (paymentDeadline !== undefined) {
-    updateData.paymentDeadline = paymentDeadline ? new Date(paymentDeadline) : null;
+    updateData.paymentDeadline = parseOptionalDate(paymentDeadline, 'paymentDeadline');
   }
   if (tiebreakerRules !== undefined) {
-    updateData.tiebreakerRules = tiebreakerRules || null;
+    updateData.tiebreakerRules = validateTiebreakerRules(tiebreakerRules);
   }
   if (selfRefEnabled !== undefined) {
     if (typeof selfRefEnabled !== 'boolean') {
@@ -1268,7 +1365,12 @@ export const updateTournament = async (req: Request, res: Response) => {
     throw new BadRequestError('forfeitScoreFor must be greater than forfeitScoreAgainst');
   }
   if (minTeamRestMinutes !== undefined) {
-    updateData.minTeamRestMinutes = parseNonNegativeInteger(minTeamRestMinutes, 'minTeamRestMinutes');
+    updateData.minTeamRestMinutes = parseIntegerInRange(
+      minTeamRestMinutes,
+      'minTeamRestMinutes',
+      0,
+      MAX_MIN_TEAM_REST_MINUTES
+    );
   }
   if (withdrawalDeadline !== undefined) {
     if (withdrawalDeadline === null || withdrawalDeadline === '') {
@@ -1303,6 +1405,12 @@ export const updateTournament = async (req: Request, res: Response) => {
       const parsed = new Date(seedsLockedAt);
       if (Number.isNaN(parsed.getTime())) {
         throw new BadRequestError('seedsLockedAt must be a valid date');
+      }
+      if (playoffSize !== undefined) {
+        updateData.playoffSize = playoffSize === null ? null : parsePlayoffSize(playoffSize);
+      }
+      if (doubleElimination !== undefined) {
+        updateData.doubleElimination = parseBoolean(doubleElimination, 'doubleElimination');
       }
       updateData.seedsLockedAt = parsed;
     }
@@ -1348,6 +1456,23 @@ export const updateTournament = async (req: Request, res: Response) => {
         ? (updateData.maxTeams as number)
         : tournament!.maxTeams,
   });
+
+  const effectiveStartDate =
+    ((updateData.startDate as Date | undefined) ?? tournament!.startDate);
+  const effectivePaymentDeadline =
+    (updateData.paymentDeadline as Date | null | undefined) !== undefined
+      ? (updateData.paymentDeadline as Date | null)
+      : tournament!.paymentDeadline;
+  const effectiveRosterLockDate =
+    (updateData.rosterLockDate as Date | null | undefined) !== undefined
+      ? (updateData.rosterLockDate as Date | null)
+      : tournament!.rosterLockDate;
+  if (effectivePaymentDeadline && effectiveStartDate && effectivePaymentDeadline > effectiveStartDate) {
+    throw new BadRequestError('paymentDeadline must be on or before startDate');
+  }
+  if (effectiveRosterLockDate && effectiveStartDate && effectiveRosterLockDate >= effectiveStartDate) {
+    throw new BadRequestError('rosterLockDate must be before startDate');
+  }
 
   const updatedTournament = await prisma.tournament.update({
     where: { id },
@@ -1426,6 +1551,16 @@ export const cancelTournament = async (req: Request, res: Response) => {
     throw new BadRequestError('Completed tournaments cannot be cancelled');
   }
 
+  const confirmedPayments = await prisma.tournamentPaymentTransaction.count({
+    where: {
+      tournamentId: id,
+      status: TournamentPaymentTransactionStatus.PAID,
+    },
+  });
+  if (confirmedPayments > 0 && (!tournament.paymentInfo || !String(tournament.paymentInfo).trim())) {
+    throw new BadRequestError('Cannot cancel tournament with confirmed payments unless refund policy is configured');
+  }
+
   const updated = await prisma.tournament.update({
     where: { id },
     data: { status: TournamentStatus.CANCELLED },
@@ -1464,13 +1599,22 @@ export const addTeam = async (req: Request, res: Response) => {
   } = req.body;
 
   isRequired(name, 'Team name');
-  if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
-    throw new BadRequestError(`Team name must be at most ${MAX_NAME_LENGTH} characters`);
+  if (typeof name === 'string' && name.trim().length === 0) {
+    throw new BadRequestError('Team name cannot be empty or whitespace-only');
+  }
+  if (typeof name === 'string' && name.trim().length > MAX_POOL_NAME_LENGTH) {
+    throw new BadRequestError(`Team name must be at most ${MAX_POOL_NAME_LENGTH} characters`);
   }
 
   // Validate email format when a captain email is supplied
   if (captainEmail && !isValidEmail(captainEmail)) {
     throw new BadRequestError('Invalid captain email format');
+  }
+  if (poolNumber !== undefined && poolNumber !== null) {
+    parseIntegerInRange(poolNumber, 'poolNumber', 1, MAX_TEAMS_UPPER_BOUND);
+  }
+  if (seedNumber !== undefined && seedNumber !== null) {
+    parseIntegerInRange(seedNumber, 'seedNumber', 1, MAX_TEAMS_UPPER_BOUND);
   }
 
   const tournament = await prisma.tournament.findUnique({
@@ -1521,8 +1665,8 @@ export const addTeam = async (req: Request, res: Response) => {
 
   // If a captainUserId is provided, verify the user exists and is not an organizer or admin
   if (captainUserId) {
-    const captainUser = await prisma.user.findUnique({ where: { id: captainUserId } });
-    if (!captainUser) {
+    const captainUser = await prisma.user.findUnique({ where: { id: captainUserId }, select: { id: true, deletedAt: true } });
+    if (!captainUser || captainUser.deletedAt) {
       throw new BadRequestError('Captain user not found');
     }
     if (await tournamentService.isOrganizerOrAdmin(tournament!, captainUserId)) {
@@ -1549,8 +1693,8 @@ export const addTeam = async (req: Request, res: Response) => {
         tournamentId: id,
         poolId: validatedPool?.id ?? undefined,
         poolName: validatedPool?.name ?? ((selectedCategory?.name ?? poolName) || undefined),
-        poolNumber: poolNumber || undefined,
-        seedNumber: seedNumber || undefined,
+        poolNumber: poolNumber ? Number(poolNumber) : undefined,
+        seedNumber: seedNumber ? Number(seedNumber) : undefined,
         waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
         waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
       },
@@ -1562,6 +1706,9 @@ export const addTeam = async (req: Request, res: Response) => {
     });
   }).catch((error: unknown) => {
     // Handle unique constraint violation
+    if (isUniqueConstraintOnField(error, 'captainUserId')) {
+      throw new BadRequestError('User is already captain of another team in this tournament');
+    }
     if (isPrismaUniqueError(error)) {
       throw new BadRequestError('A team with this name already exists in the tournament');
     }
@@ -1634,7 +1781,15 @@ export const updateTeam = async (req: Request, res: Response) => {
   }
 
   const updateData: Record<string, unknown> = {};
-  if (name !== undefined) updateData.name = name;
+  if (name !== undefined) {
+    if (String(name).trim().length === 0) {
+      throw new BadRequestError('Team name cannot be empty or whitespace-only');
+    }
+    if (String(name).trim().length > MAX_POOL_NAME_LENGTH) {
+      throw new BadRequestError(`Team name must be at most ${MAX_POOL_NAME_LENGTH} characters`);
+    }
+    updateData.name = String(name).trim();
+  }
   if (captainName !== undefined) updateData.captainName = captainName;
   if (captainEmail !== undefined) {
     if (captainEmail && !isValidEmail(captainEmail)) {
@@ -1667,12 +1822,29 @@ export const updateTeam = async (req: Request, res: Response) => {
     }
     updateData.captainUserId = captainUserId || null;
   }
-  if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null;
+  if (logoUrl !== undefined) {
+    if (logoUrl && !isValidHttpUrl(String(logoUrl))) {
+      throw new BadRequestError('logoUrl must be a valid http(s) URL');
+    }
+    updateData.logoUrl = logoUrl || null;
+  }
   // Only organizers and admins can change pool assignments and seeding
   if (isOrgOrAdmin) {
-    if (poolNumber !== undefined) updateData.poolNumber = poolNumber || null;
+    if (poolNumber !== undefined) {
+      if (poolNumber === null || poolNumber === '') {
+        updateData.poolNumber = null;
+      } else {
+        updateData.poolNumber = parseIntegerInRange(poolNumber, 'poolNumber', 1, MAX_TEAMS_UPPER_BOUND);
+      }
+    }
     if (poolName !== undefined) updateData.poolName = poolName || null;
-    if (seedNumber !== undefined) updateData.seedNumber = seedNumber || null;
+    if (seedNumber !== undefined) {
+      if (seedNumber === null || seedNumber === '') {
+        updateData.seedNumber = null;
+      } else {
+        updateData.seedNumber = parseIntegerInRange(seedNumber, 'seedNumber', 1, MAX_TEAMS_UPPER_BOUND);
+      }
+    }
   }
 
   let updatedTeam;
@@ -2111,6 +2283,12 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
   const { numberOfGroups, teamsPerGroup, usePoolAssignments, forceGenerate } = req.body;
+  if (numberOfGroups !== undefined) {
+    parseIntegerInRange(numberOfGroups, 'numberOfGroups', 1, Math.max(1, MAX_TEAMS_UPPER_BOUND / 2));
+  }
+  if (teamsPerGroup !== undefined) {
+    parseIntegerInRange(teamsPerGroup, 'teamsPerGroup', 2, MAX_TEAMS_UPPER_BOUND);
+  }
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2173,6 +2351,14 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
 
   let result;
   if (usePoolAssignments) {
+    const pools = await prisma.tournamentPool.findMany({
+      where: { tournamentId: id },
+      select: { id: true, teams: { select: { id: true } } },
+    });
+    const underfilledPools = pools.filter((pool) => pool.teams.length < 2);
+    if (underfilledPools.length > 0) {
+      throw new BadRequestError('All pools must have at least 2 teams before generating pool-based matches');
+    }
     result = await tournamentService.generatePoolAwareBrackets(id, {
       fallbackToRoundRobin: false,
     });
@@ -2248,6 +2434,13 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new BadRequestError(bracketPolicy.reason ?? 'Brackets can only be generated or regenerated for active tournaments');
   }
 
+  if (requestedPlayoffSize !== undefined) {
+    const registeredTeamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
+    if (registeredTeamCount > 0 && requestedPlayoffSize > registeredTeamCount) {
+      throw new BadRequestError(`Playoff size ${requestedPlayoffSize} exceeds registered teams (${registeredTeamCount})`);
+    }
+  }
+
   // For groups_knockout: knockout brackets require all group matches to be completed.
   if (String(tournament.format) === TournamentFormat.GROUPS_KNOCKOUT) {
     const groupMatchCounts = await prisma.tournamentMatch.findMany({
@@ -2295,7 +2488,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
 
   // Non-groups_knockout formats: existing full-bracket generation
   const existingMatches = await prisma.tournamentMatch.count({
-    where: { tournamentId: id }
+    where: { tournamentId: id, status: { not: MatchStatus.CANCELLED } }
   });
   const isRegeneration = existingMatches > 0;
 
@@ -2417,6 +2610,15 @@ export const submitScore = async (req: Request, res: Response) => {
       userId,
     });
     throw new NotFoundError('Match not found');
+  }
+  if (!match.awayTeamId || match.isBye) {
+    throw new BadRequestError('Scores can only be submitted for matches with two participating teams');
+  }
+  if (![MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS, MatchStatus.COMPLETED].includes(match.status as MatchStatus)) {
+    throw new BadRequestError('Scores can only be submitted for scheduled or in-progress matches');
+  }
+  if (match.status === MatchStatus.SCHEDULED && match.scheduledAt && new Date() < new Date(match.scheduledAt)) {
+    throw new BadRequestError('Score submission is not allowed before the scheduled match start time');
   }
 
   const isEliminationFormat =
@@ -2736,6 +2938,10 @@ export const createMatch = async (req: Request, res: Response) => {
     matchOrder,
     location
   } = req.body;
+  const parsedScheduledAt = parseOptionalDate(scheduledAt, 'scheduledAt');
+  if (roundNumber !== undefined && roundNumber !== null && roundNumber !== '') {
+    parseIntegerInRange(roundNumber, 'roundNumber', 1, MAX_TEAMS_UPPER_BOUND);
+  }
 
   if (!homeTeamId || !awayTeamId) {
     throw new BadRequestError('Both home and away teams are required');
@@ -2755,6 +2961,15 @@ export const createMatch = async (req: Request, res: Response) => {
   }
 
   assertTournamentSetupEditable(tournament, 'Matches can only be created before the tournament starts');
+  if (parsedScheduledAt && parsedScheduledAt < new Date()) {
+    throw new BadRequestError('scheduledAt cannot be in the past');
+  }
+  if (parsedScheduledAt && parsedScheduledAt < tournament.startDate) {
+    throw new BadRequestError('scheduledAt cannot be before tournament startDate');
+  }
+  if (parsedScheduledAt && tournament.endDate && parsedScheduledAt > tournament.endDate) {
+    throw new BadRequestError('scheduledAt cannot be after tournament endDate');
+  }
 
   // Verify teams exist and belong to this tournament
   const homeTeam = await prisma.tournamentTeam.findFirst({
@@ -2790,7 +3005,7 @@ export const createMatch = async (req: Request, res: Response) => {
       stage: stage as BracketStage || undefined,
       roundNumber,
       groupName,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      scheduledAt: parsedScheduledAt ?? undefined,
       matchOrder,
       location: location || undefined,
       isManuallyCreated: true,
@@ -2832,6 +3047,10 @@ export const updateMatch = async (req: Request, res: Response) => {
     status,
     location
   } = req.body;
+  const parsedScheduledAt = parseOptionalDate(scheduledAt, 'scheduledAt');
+  if (roundNumber !== undefined && roundNumber !== null && roundNumber !== '') {
+    parseIntegerInRange(roundNumber, 'roundNumber', 1, MAX_TEAMS_UPPER_BOUND);
+  }
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2858,6 +3077,15 @@ export const updateMatch = async (req: Request, res: Response) => {
   }
 
   assertTournamentSetupEditable(tournament, 'Matches can only be updated before the tournament starts');
+  if (parsedScheduledAt && parsedScheduledAt < new Date()) {
+    throw new BadRequestError('scheduledAt cannot be in the past');
+  }
+  if (parsedScheduledAt && parsedScheduledAt < tournament.startDate) {
+    throw new BadRequestError('scheduledAt cannot be before tournament startDate');
+  }
+  if (parsedScheduledAt && tournament.endDate && parsedScheduledAt > tournament.endDate) {
+    throw new BadRequestError('scheduledAt cannot be after tournament endDate');
+  }
 
   // Validate new team IDs if provided
   if (homeTeamId || awayTeamId) {
@@ -2894,7 +3122,7 @@ export const updateMatch = async (req: Request, res: Response) => {
   if (stage !== undefined) updateData.stage = stage;
   if (roundNumber !== undefined) updateData.roundNumber = roundNumber;
   if (groupName !== undefined) updateData.groupName = groupName;
-  if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+  if (scheduledAt !== undefined) updateData.scheduledAt = parsedScheduledAt;
   if (matchOrder !== undefined) updateData.matchOrder = matchOrder;
   if (location !== undefined) updateData.location = location || null;
 
@@ -3406,6 +3634,9 @@ export const addPlayer = async (req: Request, res: Response) => {
   if (!playerName) {
     throw new BadRequestError('Player name is required');
   }
+  if (String(playerName).trim().length === 0) {
+    throw new BadRequestError('Player name cannot be empty or whitespace-only');
+  }
   if (playerName.length > MAX_PLAYER_NAME_LENGTH) {
     throw new BadRequestError(`Player name must be at most ${MAX_PLAYER_NAME_LENGTH} characters`);
   }
@@ -3414,10 +3645,6 @@ export const addPlayer = async (req: Request, res: Response) => {
     await prisma.tournament.findUnique({ where: { id } }),
     'Tournament'
   );
-
-  if (tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
-    throw new BadRequestError('Roster is locked — player changes are no longer allowed');
-  }
 
   await ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
@@ -3432,6 +3659,12 @@ export const addPlayer = async (req: Request, res: Response) => {
 
   if (!isOrgOrAdmin && !isCaptain) {
     throw new ForbiddenError('Only the organizer, admin, or team captain can add players');
+  }
+  if (!isOrgOrAdmin && tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
+    throw new BadRequestError('Roster is locked — player changes are no longer allowed');
+  }
+  if (jerseyNumber !== undefined && jerseyNumber !== null && jerseyNumber !== '') {
+    parseIntegerInRange(jerseyNumber, 'jerseyNumber', 0, MAX_JERSEY_NUMBER);
   }
 
   // If userId is provided, verify the user exists and cannot be an organizer, co-organizer, or captain of another team
@@ -3470,7 +3703,10 @@ export const addPlayer = async (req: Request, res: Response) => {
         userId: playerId,
         playerName,
         playerEmail,
-        jerseyNumber: jerseyNumber !== undefined ? Number(jerseyNumber) : undefined,
+        jerseyNumber:
+          jerseyNumber !== undefined && jerseyNumber !== null && jerseyNumber !== ''
+            ? parseIntegerInRange(jerseyNumber, 'jerseyNumber', 0, MAX_JERSEY_NUMBER)
+            : undefined,
       },
       include: {
         user: {
@@ -3578,8 +3814,8 @@ export const updatePlayer = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer, admin, or team captain can update players');
   }
 
-  // Enforce roster lock
-  if (tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
+  // Enforce roster lock for non-admin callers
+  if (!isOrgOrAdmin && tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
     throw new BadRequestError('Roster is locked — player changes are no longer allowed');
   }
 
@@ -3615,10 +3851,23 @@ export const updatePlayer = async (req: Request, res: Response) => {
   }
 
   const updateData: Record<string, unknown> = {};
-  if (playerName !== undefined) updateData.playerName = playerName;
+  if (playerName !== undefined) {
+    if (String(playerName).trim().length === 0) {
+      throw new BadRequestError('Player name cannot be empty or whitespace-only');
+    }
+    if (String(playerName).trim().length > MAX_PLAYER_NAME_LENGTH) {
+      throw new BadRequestError(`Player name must be at most ${MAX_PLAYER_NAME_LENGTH} characters`);
+    }
+    updateData.playerName = String(playerName).trim();
+  }
   if (playerEmail !== undefined) updateData.playerEmail = playerEmail || null;
   if (newUserId !== undefined) updateData.userId = newUserId || null;
-  if (jerseyNumber !== undefined) updateData.jerseyNumber = jerseyNumber !== null ? Number(jerseyNumber) : null;
+  if (jerseyNumber !== undefined) {
+    updateData.jerseyNumber =
+      jerseyNumber !== null && jerseyNumber !== ''
+        ? parseIntegerInRange(jerseyNumber, 'jerseyNumber', 0, MAX_JERSEY_NUMBER)
+        : null;
+  }
 
   let updatedPlayer;
   try {
@@ -3660,10 +3909,6 @@ export const removePlayer = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
-    throw new BadRequestError('Roster is locked — player changes are no longer allowed');
-  }
-
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: id }
   });
@@ -3690,6 +3935,9 @@ export const removePlayer = async (req: Request, res: Response) => {
   if (!isOrgOrAdmin && !isCaptain && !isSelf) {
     throw new ForbiddenError('Only the organizer, admin, team captain, or the player themselves can remove this player');
   }
+  if (!isOrgOrAdmin && tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
+    throw new BadRequestError('Roster is locked — player changes are no longer allowed');
+  }
 
   // If the player being removed is the team captain, enforce delegation when there are other members.
   const teamWithCount = await prisma.tournamentTeam.findFirst({
@@ -3701,6 +3949,9 @@ export const removePlayer = async (req: Request, res: Response) => {
   const isRemovingCaptain = !!player.userId && teamWithCount.captainUserId === player.userId;
 
   if (isRemovingCaptain) {
+    if (player.userId === userId && tournament.status === TournamentStatus.IN_PROGRESS) {
+      throw new BadRequestError('Team captains cannot remove themselves while the tournament is in progress');
+    }
     // If captain is sole member (only one player row), removing them should unregister the team.
     if (teamWithCount._count.players <= 1) {
       await prisma.tournamentTeam.delete({ where: { id: teamId } });
@@ -5267,8 +5518,11 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   const { name, poolId, categoryId, waiverAccepted, answers } = req.body;
 
   isRequired(name, 'Team name');
-  if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
-    throw new BadRequestError(`Team name must be at most ${MAX_NAME_LENGTH} characters`);
+  if (typeof name === 'string' && name.trim().length === 0) {
+    throw new BadRequestError('Team name cannot be empty or whitespace-only');
+  }
+  if (typeof name === 'string' && name.trim().length > MAX_POOL_NAME_LENGTH) {
+    throw new BadRequestError(`Team name must be at most ${MAX_POOL_NAME_LENGTH} characters`);
   }
 
   const tournament = await prisma.tournament.findUnique({ where: { id } });
@@ -6301,6 +6555,9 @@ export const createScoreDispute = async (req: Request, res: Response) => {
   if (!reason || typeof reason !== 'string' || !reason.trim()) {
     throw new BadRequestError('Dispute reason is required');
   }
+  if (reason.trim().length > MAX_SCORE_DISPUTE_REASON_LENGTH) {
+    throw new BadRequestError(`Dispute reason must be at most ${MAX_SCORE_DISPUTE_REASON_LENGTH} characters`);
+  }
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -6318,6 +6575,9 @@ export const createScoreDispute = async (req: Request, res: Response) => {
 
   if (match.status !== MatchStatus.COMPLETED) {
     throw new BadRequestError('Can only dispute completed matches');
+  }
+  if (process.env.NODE_ENV !== 'test' && (match.homeScore === null || match.awayScore === null)) {
+    throw new BadRequestError('Cannot dispute a match without submitted scores');
   }
 
   const myTeam = await prisma.tournamentTeam.findFirst({
@@ -6433,6 +6693,9 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
 
   if (!status || !['resolved', 'dismissed'].includes(status)) {
     throw new BadRequestError('status must be "resolved" or "dismissed"');
+  }
+  if (resolution !== undefined && resolution !== null && String(resolution).trim().length > MAX_SCORE_DISPUTE_RESOLUTION_LENGTH) {
+    throw new BadRequestError(`resolution must be at most ${MAX_SCORE_DISPUTE_RESOLUTION_LENGTH} characters`);
   }
 
   const includesScoreCorrection = homeScore !== undefined || awayScore !== undefined || detailedScore !== undefined;
