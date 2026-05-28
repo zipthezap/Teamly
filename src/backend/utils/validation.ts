@@ -442,3 +442,122 @@ export function parsePaginationParams(
   
   return { limit: parsedLimit, offset: parsedOffset };
 }
+
+/**
+ * Validates an array of items with a per-item validator, collecting all errors.
+ * Returns all violations at once rather than stopping on the first.
+ * @param items The array to validate
+ * @param fieldName Name of the array field (for error messages)
+ * @param itemValidator A function that validates a single item (may throw ValidationError)
+ * @param maxLength Maximum allowed array length
+ * @throws ValidationError with all violations combined if any are found
+ */
+export function validateArray<T>(
+  items: T[],
+  fieldName: string,
+  itemValidator: (item: T, index: number) => void,
+  maxLength?: number
+): void {
+  if (maxLength !== undefined && items.length > maxLength) {
+    throw new ValidationError(
+      `${fieldName} must not exceed ${maxLength} items`,
+      fieldName,
+      'ARRAY_TOO_LONG'
+    );
+  }
+
+  const errors: string[] = [];
+  for (let i = 0; i < items.length; i++) {
+    try {
+      itemValidator(items[i], i);
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        errors.push(`${fieldName}[${i}]: ${err.message}`);
+      } else if (err instanceof Error) {
+        errors.push(`${fieldName}[${i}]: ${err.message}`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join('; '), fieldName, 'ARRAY_ITEM_INVALID');
+  }
+}
+
+/**
+ * Validates a UUID v4 string
+ */
+export function isValidUUID(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+/**
+ * Validates a UUID and throws if invalid
+ */
+export function validateUUID(value: string, fieldName: string): void {
+  if (!isValidUUID(value)) {
+    throw new ValidationError(
+      `${fieldName} must be a valid UUID`,
+      fieldName,
+      'INVALID_UUID'
+    );
+  }
+}
+
+/**
+ * Validates a number range
+ */
+export function validateNumberRange(
+  value: number,
+  fieldName: string,
+  min?: number,
+  max?: number
+): void {
+  if (!isFinite(value)) {
+    throw new ValidationError(`${fieldName} must be a valid number`, fieldName, 'INVALID_NUMBER');
+  }
+  if (min !== undefined && value < min) {
+    throw new ValidationError(`${fieldName} must be at least ${min}`, fieldName, 'NUMBER_TOO_SMALL');
+  }
+  if (max !== undefined && value > max) {
+    throw new ValidationError(`${fieldName} must be at most ${max}`, fieldName, 'NUMBER_TOO_LARGE');
+  }
+}
+
+/**
+ * Validates a date string is a valid ISO date
+ */
+export function validateDate(value: string | Date, fieldName: string): void {
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) {
+    throw new ValidationError(`${fieldName} must be a valid date`, fieldName, 'INVALID_DATE');
+  }
+}
+
+/**
+ * Validates a date string is in the future
+ */
+export function validateFutureDate(value: string | Date, fieldName: string): void {
+  validateDate(value, fieldName);
+  const date = value instanceof Date ? value : new Date(value);
+  if (date <= new Date()) {
+    throw new ValidationError(`${fieldName} must be in the future`, fieldName, 'DATE_MUST_BE_FUTURE');
+  }
+}
+
+/**
+ * Validates an enum value
+ */
+export function validateEnum<T extends string>(
+  value: string,
+  fieldName: string,
+  allowedValues: readonly T[]
+): void {
+  if (!allowedValues.includes(value as T)) {
+    throw new ValidationError(
+      `${fieldName} must be one of: ${allowedValues.join(', ')}`,
+      fieldName,
+      'INVALID_ENUM_VALUE'
+    );
+  }
+}
