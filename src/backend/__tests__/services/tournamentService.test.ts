@@ -1288,6 +1288,30 @@ describe('Tournament Service', () => {
       expect(result).toBe('completed');
     });
 
+    it('keeps groups_knockout tournaments in progress when only group-stage matches are complete', () => {
+      const result = computeAutoStatus({
+        status: 'in_progress',
+        format: 'groups_knockout',
+        startDate: past,
+        hasMatches: true,
+        hasKnockoutMatches: false,
+        hasIncompleteMatches: false,
+      });
+      expect(result).toBeNull();
+    });
+
+    it('completes groups_knockout tournaments after knockout matches are complete', () => {
+      const result = computeAutoStatus({
+        status: 'in_progress',
+        format: 'groups_knockout',
+        startDate: past,
+        hasMatches: true,
+        hasKnockoutMatches: true,
+        hasIncompleteMatches: false,
+      });
+      expect(result).toBe('completed');
+    });
+
     it('returns "in_progress" when startDate passed but there are incomplete matches', () => {
       const result = computeAutoStatus({
         status: 'registration',
