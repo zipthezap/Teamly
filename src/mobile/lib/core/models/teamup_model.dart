@@ -61,6 +61,7 @@ class TeamUpRequestModel extends Equatable {
   final int responseCount;
   final int acceptedCount;
   final int commentCount;
+
   /// Responses embedded in My Requests view (only populated on /my-requests)
   final List<TeamUpResponseModel>? responses;
   final List<TeamUpRequestPositionModel>? positions;
@@ -100,8 +101,7 @@ class TeamUpRequestModel extends Equatable {
       acceptedCount: (json['acceptedCount'] as num?)?.toInt() ?? 0,
       commentCount: (count?['comments'] as num?)?.toInt() ?? 0,
       responses: (json['responses'] as List<dynamic>?)
-          ?.map((e) =>
-              TeamUpResponseModel.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => TeamUpResponseModel.fromJson(e as Map<String, dynamic>))
           .toList(),
       positions: (json['positions'] as List<dynamic>?)
           ?.map((e) =>
@@ -111,7 +111,8 @@ class TeamUpRequestModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, sportType, requestType, status, createdAt, creatorId];
+  List<Object?> get props =>
+      [id, title, sportType, requestType, status, createdAt, creatorId];
 }
 
 class TeamUpRequestPositionModel extends Equatable {
@@ -150,8 +151,15 @@ class TeamUpRequestPositionModel extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, name, slotsNeeded, skillLevelRequired, acceptedCount, slotsAvailable, isOpen];
+  List<Object?> get props => [
+        id,
+        name,
+        slotsNeeded,
+        skillLevelRequired,
+        acceptedCount,
+        slotsAvailable,
+        isOpen
+      ];
 }
 
 class TeamUpResponseModel extends Equatable {
@@ -178,6 +186,8 @@ class TeamUpResponseModel extends Equatable {
   final String requestId;
   final String message;
   final String status; // pending, accepted, declined, waitlisted, cancelled
+  final DateTime createdAt;
+  final String responderId;
   final String responderName;
   final String? responderPicture;
   final String? requestPositionId;
@@ -254,6 +264,8 @@ class TeamUpApplicationModel extends Equatable {
   final String requestId;
   final String message;
   final String status; // pending, accepted, declined, waitlisted, cancelled
+  final DateTime createdAt;
+  final String requestTitle;
   final String requestSportType;
   final String requestType;
   final String requestStatus;
@@ -277,7 +289,8 @@ class TeamUpApplicationModel extends Equatable {
     final requestPosition = json['requestPosition'] as Map<String, dynamic>?;
     return TeamUpApplicationModel(
       id: json['id'] as String,
-      requestId: json['teamUpRequestId'] as String? ?? req?['id'] as String? ?? '',
+      requestId:
+          json['teamUpRequestId'] as String? ?? req?['id'] as String? ?? '',
       message: json['message'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
       createdAt: _requireParsedDate(
@@ -371,12 +384,14 @@ class TeamUpBrowseResult {
       final items = raw
           .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
           .toList();
-      return TeamUpBrowseResult(data: items, hasMore: false, total: items.length);
+      return TeamUpBrowseResult(
+          data: items, hasMore: false, total: items.length);
     }
     final map = raw as Map<String, dynamic>;
     final pagination = map['pagination'] as Map<String, dynamic>?;
-    final rawItems =
-        map['data'] as List<dynamic>? ?? map['requests'] as List<dynamic>? ?? const [];
+    final rawItems = map['data'] as List<dynamic>? ??
+        map['requests'] as List<dynamic>? ??
+        const [];
     final items = rawItems
         .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -416,7 +431,8 @@ class TeamUpAttendanceRecordModel extends Equatable {
     final req = json['teamUpRequest'] as Map<String, dynamic>? ?? const {};
     return TeamUpAttendanceRecordModel(
       attendanceStatus: json['attendanceStatus'] as String? ?? 'attended',
-      createdAt: _requireParsedDate(json['createdAt'] as String?, 'attendance createdAt'),
+      createdAt: _requireParsedDate(
+          json['createdAt'] as String?, 'attendance createdAt'),
       requestId: req['id'] as String? ?? '',
       requestTitle: req['title'] as String? ?? '',
       requestSportType: req['sportType'] as String? ?? 'other',
@@ -490,7 +506,8 @@ class TeamUpSavedSearchModel extends Equatable {
       id: json['id'] as String,
       name: json['name'] as String? ?? '',
       notifyOnMatch: json['notifyOnMatch'] as bool? ?? true,
-      createdAt: _requireParsedDate(json['createdAt'] as String?, 'saved search createdAt'),
+      createdAt: _requireParsedDate(
+          json['createdAt'] as String?, 'saved search createdAt'),
       sportType: json['sportType'] as String?,
       requestType: json['requestType'] as String?,
       skillLevel: json['skillLevel'] as String?,

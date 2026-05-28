@@ -26,7 +26,8 @@ class TournamentAnalyticsPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(tournamentAnalyticsProvider(tournamentId)),
+            onPressed: () =>
+                ref.invalidate(tournamentAnalyticsProvider(tournamentId)),
           ),
         ],
       ),
@@ -91,7 +92,8 @@ class _RegistrationSection extends StatelessWidget {
             _Stat('Checked In', '${registration.checkedIn}',
                 color: AppThemeTokens.success),
             _Stat('No-shows', '${registration.noShows}',
-                color: registration.noShows > 0 ? AppThemeTokens.warning : null),
+                color:
+                    registration.noShows > 0 ? AppThemeTokens.warning : null),
             _Stat('Waiver OK', '${registration.waiverAccepted}',
                 color: AppThemeTokens.info),
           ]),
@@ -185,8 +187,7 @@ class _PaymentsSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _StatGrid(stats: [
-            _Stat('Revenue',
-                '\$${payments.totalRevenue.toStringAsFixed(2)}',
+            _Stat('Revenue', '\$${payments.totalRevenue.toStringAsFixed(2)}',
                 color: AppThemeTokens.success),
             _Stat('Paid Txns', '${payments.transactionsPaid}'),
             _Stat('Refunds', '${payments.transactionsRefunded}',
@@ -302,7 +303,7 @@ class _SectionHeader extends StatelessWidget {
           style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
-              color: AppThemeTokens.textPrimary(context))),
+              color: AppThemeTokens.text(context))),
     ]);
   }
 }
@@ -423,8 +424,7 @@ class _WarningBanner extends StatelessWidget {
         Icon(Icons.warning_amber_rounded, size: 14, color: color),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(message,
-              style: TextStyle(fontSize: 12, color: color)),
+          child: Text(message, style: TextStyle(fontSize: 12, color: color)),
         ),
       ]),
     );

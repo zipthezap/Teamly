@@ -744,7 +744,7 @@ List<_BracketColumn> _buildLoserBracketColumns(List<TournamentMatchModel> matche
         : 'Losers Round ${match.roundNumber ?? 1}';
     byRound.putIfAbsent(label, () => []).add(match);
     roundOrder[label] = match.bracketSide == 'grand_final'
-        ? 10_000 + (match.roundNumber ?? 1)
+      ? 10000 + (match.roundNumber ?? 1)
         : (match.roundNumber ?? 1);
   }
 
