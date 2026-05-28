@@ -111,9 +111,9 @@ class MobileShell extends ConsumerWidget {
             onPressed: currentPath == '/profile'
                 ? null
                 : () => context.push('/profile'),
-            icon: user?.profilePicture != null
+            icon: user != null && user.profilePicture != null
                 ? UserAvatar(
-                    name: user!.name,
+                    name: user.name,
                     imageUrl: user.profilePicture,
                     radius: 14,
                   )
