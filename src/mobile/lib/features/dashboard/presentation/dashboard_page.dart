@@ -115,25 +115,25 @@ class _DashboardContent extends StatelessWidget {
                   value: '${dashboard.stats.upcomingCount}',
                   icon: Icons.upcoming_rounded,
                   color: const Color(0xFF00BCD4),
-                  onTap: () => context.go('/sessions'),
+                  onTap: () => context.go('/discover'),
                 ),
               ),
             ],
           ),
         ),
 
-        // ── Upcoming sessions ──────────────────────────────────────────────
+        // ── Upcoming events ──────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: UiSectionTitle(
-            'Upcoming Sessions',
+            'Upcoming Events',
             trailingLabel: 'See all',
-            onTrailingTap: () => context.go('/sessions'),
+            onTrailingTap: () => context.go('/discover'),
           ),
         ),
         const SizedBox(height: 12),
 
-        if (dashboard.upcomingSessions.isEmpty)
+        if (dashboard.upcomingEvents.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _NoEventsCard(
@@ -141,7 +141,7 @@ class _DashboardContent extends StatelessWidget {
             ),
           )
         else
-          ...dashboard.upcomingSessions.map(
+          ...dashboard.upcomingEvents.map(
             (event) => Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: _EventCard(event: event),
@@ -457,11 +457,11 @@ class _ActionTile extends StatelessWidget {
 
 class _EventCard extends StatelessWidget {
   const _EventCard({required this.event});
-  final dynamic event;
+  final DashboardUpcomingEventModel event;
 
   @override
   Widget build(BuildContext context) {
-    final local = (event.startTime as DateTime).toLocal();
+    final local = event.startTime.toLocal();
     final dayNum = DateFormat('d').format(local);
     final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
     final timeStr = DateFormat.jm().format(local);
@@ -471,7 +471,7 @@ class _EventCard extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
       child: InkWell(
-        onTap: () => context.push('/sessions/${event.id}'),
+        onTap: () => context.push(event.destinationPath),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
@@ -527,7 +527,7 @@ class _EventCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        event.title as String,
+                        event.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -567,7 +567,7 @@ class _EventCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
-                              event.group.name as String,
+                              event.contextName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
