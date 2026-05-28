@@ -16,7 +16,7 @@
 import bcrypt from 'bcryptjs';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma, TournamentNotificationType as PrismaTournamentNotificationType } from '@prisma/client';
 import prisma from '../config/database';
 import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
@@ -115,7 +115,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
               data: {
                 tournamentId: tournamentId,
                 userId: user.id,
-                type: TournamentNotificationType.team_invited as unknown as Prisma.TournamentNotificationType,
+                type: TournamentNotificationType.team_invited as unknown as PrismaTournamentNotificationType,
                 params: { teamName, inviterId: finalInvite.inviterId, inviteId: finalInvite.id },
                 metadata: { inviteLogId: finalInvite.id }
               }

@@ -31,21 +31,21 @@ export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
 }
 
+const tournamentNotificationTypeValues = new Set<string>(Object.values(TournamentNotificationType));
+
+function toPrismaTournamentNotificationType(value: string): PrismaTournamentNotificationType | null {
+  if (!tournamentNotificationTypeValues.has(value)) {
+    return null;
+  }
+  return value as PrismaTournamentNotificationType;
+}
+
 /**
  * Type guard to safely convert Prisma Json to NotificationParams
  */
 function toNotificationParams(params: Prisma.JsonValue | null | undefined): NotificationParams | undefined {
   if (!params || typeof params !== 'object' || Array.isArray(params)) {
     return undefined;
-  }
-
-  const tournamentNotificationTypeValues = new Set<string>(Object.values(TournamentNotificationType));
-
-  function toPrismaTournamentNotificationType(value: string): PrismaTournamentNotificationType | null {
-    if (!tournamentNotificationTypeValues.has(value)) {
-      return null;
-    }
-    return value as PrismaTournamentNotificationType;
   }
   
   const result: NotificationParams = {};
