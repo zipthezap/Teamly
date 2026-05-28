@@ -16,6 +16,7 @@
 import bcrypt from 'bcryptjs';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
@@ -94,8 +95,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           // If the invite was for a tournament, create a TournamentNotification for the user
           if (finalInvite.inviterType === 'tournament') {
             // `metadata` is stored as JSON; cast to a flexible object for type-safe access
-            const metadata = finalInvite.metadata as Record<string, any> | undefined;
-            const teamId = (metadata?.teamId || metadata?.team_id) as string | undefined;
+            const metadata =
+              finalInvite.metadata && typeof finalInvite.metadata === 'object' && !Array.isArray(finalInvite.metadata)
+                ? (finalInvite.metadata as Prisma.JsonObject)
+                : undefined;
+            const rawTeamId = metadata?.teamId ?? metadata?.team_id;
+            const teamId = typeof rawTeamId === 'string' ? rawTeamId : undefined;
             let teamName: string | undefined;
             let tournamentId = finalInvite.entityId;
             if (teamId) {
@@ -110,7 +115,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
               data: {
                 tournamentId: tournamentId,
                 userId: user.id,
-                type: TournamentNotificationType.team_invited as any,
+                type: TournamentNotificationType.team_invited as unknown as Prisma.TournamentNotificationType,
                 params: { teamName, inviterId: finalInvite.inviterId, inviteId: finalInvite.id },
                 metadata: { inviteLogId: finalInvite.id }
               }

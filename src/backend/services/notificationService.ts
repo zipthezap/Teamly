@@ -6,7 +6,7 @@
 import prisma from '../config/database';
 import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
-import { Prisma } from '@prisma/client';
+import { Prisma, TournamentNotificationType as PrismaTournamentNotificationType } from '@prisma/client';
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 
 export interface NotificationMetadata {
@@ -37,6 +37,15 @@ export interface NotificationParams {
 function toNotificationParams(params: Prisma.JsonValue | null | undefined): NotificationParams | undefined {
   if (!params || typeof params !== 'object' || Array.isArray(params)) {
     return undefined;
+  }
+
+  const tournamentNotificationTypeValues = new Set<string>(Object.values(TournamentNotificationType));
+
+  function toPrismaTournamentNotificationType(value: string): PrismaTournamentNotificationType | null {
+    if (!tournamentNotificationTypeValues.has(value)) {
+      return null;
+    }
+    return value as PrismaTournamentNotificationType;
   }
   
   const result: NotificationParams = {};
@@ -196,7 +205,7 @@ export const getUserNotifications = async (
     ? (Object.values(TeamUpNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
     : [];
   const matchingTournamentTypes = normalizedSearch
-    ? (Object.values(TournamentNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    ? (Object.values(TournamentNotificationType) as PrismaTournamentNotificationType[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
     : [];
 
   const appendCursorAndClause = <T extends { AND?: unknown }>(
@@ -358,8 +367,10 @@ export const getUserNotifications = async (
       tournamentWhere.read = false;
     }
     if (type) {
-      // Prisma uses generated enum types; cast here to satisfy types from shared enums
-      tournamentWhere.type = type as any;
+      const tournamentType = toPrismaTournamentNotificationType(type);
+      if (tournamentType) {
+        tournamentWhere.type = tournamentType;
+      }
     }
     if (startDate || endDate) {
       tournamentWhere.createdAt = {};
@@ -367,7 +378,7 @@ export const getUserNotifications = async (
       if (endDate) tournamentWhere.createdAt.lte = endDate;
     }
     if (matchingTournamentTypes.length > 0) {
-      tournamentWhere.type = { in: matchingTournamentTypes as any };
+      tournamentWhere.type = { in: matchingTournamentTypes };
     }
     const tournamentWhereWithCursor = appendCursorAndClause(tournamentWhere);
 
