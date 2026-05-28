@@ -9,7 +9,8 @@ import { logger } from '../utils/logger';
 import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { 
   Prisma, 
-  EmailPreference 
+  EmailPreference,
+  TournamentNotificationType as PrismaTournamentNotificationType,
 } from '@prisma/client';
 import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
@@ -59,7 +60,18 @@ interface TournamentNotificationInput extends BaseNotificationInput {
   type: TournamentNotificationType;
 }
 
+const prismaTournamentNotificationTypeValues = new Set<string>(
+  Object.values(PrismaTournamentNotificationType)
+);
+
 export class NotificationFactory {
+  private static toPrismaTournamentType(type: TournamentNotificationType): PrismaTournamentNotificationType {
+    if (!prismaTournamentNotificationTypeValues.has(type)) {
+      throw new Error(`Unsupported tournament notification type: ${type}`);
+    }
+    return type as PrismaTournamentNotificationType;
+  }
+
   /**
    * Create session notifications for multiple users
    */
@@ -394,19 +406,19 @@ export class NotificationFactory {
         params: params || {},
         metadata: metadata || {}
       });
-    } catch (e) {
+    } catch {
       // swallow logging errors to avoid breaking notification paths
     }
 
     // Deduplicate if window is specified
     let finalUserIds = targetUserIds;
+    const prismaTournamentType = this.toPrismaTournamentType(type);
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
       const existingNotifications = await client.tournamentNotification.findMany({
         where: {
           tournamentId,
-          // Prisma expects the generated enum type; cast to any to bridge shared enum
-          type: type as any,
+          type: prismaTournamentType,
           userId: { in: targetUserIds },
           createdAt: { gte: windowStart }
         },
@@ -423,17 +435,16 @@ export class NotificationFactory {
 
     // Create notifications
     try {
-      const notifications = finalUserIds.map(userId => ({
+      const notifications: Prisma.TournamentNotificationCreateManyInput[] = finalUserIds.map(userId => ({
         tournamentId,
         userId,
-        // Cast to any so Prisma accepts the shared enum value
-        type: type as any,
+        type: prismaTournamentType,
         params: params || {},
         metadata: metadata || {}
       }));
 
       await client.tournamentNotification.createMany({
-        data: notifications as any,
+        data: notifications,
         skipDuplicates: true
       });
 
@@ -446,8 +457,8 @@ export class NotificationFactory {
           params,
           metadata,
         });
-      } catch (e) {
-        logger.error('dispatchPushNotifications failed', 'NotificationFactory', { error: e, tournamentId, type });
+      } catch (error) {
+        logger.error('dispatchPushNotifications failed', 'NotificationFactory', { error, tournamentId, type });
       }
 
       logger.debug(`Created ${finalUserIds.length} tournament notifications`, 'NotificationFactory', {
@@ -463,7 +474,7 @@ export class NotificationFactory {
           created: finalUserIds.length,
           skipped: userIds.length - finalUserIds.length
         });
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
 
       return { 
         created: finalUserIds.length, 

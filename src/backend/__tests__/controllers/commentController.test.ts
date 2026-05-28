@@ -53,7 +53,6 @@ vi.mock('../../utils/notificationHelper', () => ({
 
 import prisma from '../../config/database';
 import commentRoutes from '../../routes/commentRoutes';
-import { NotFoundError } from '../../utils/errors';
 
 const app = createAuthenticatedTestApp(commentRoutes, 'test-user-id', '/api/comments');
 

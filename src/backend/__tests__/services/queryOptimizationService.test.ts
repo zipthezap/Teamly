@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import prisma from '../../config/database';
 
 // Use vi.hoisted to create mocks that can be referenced in vi.mock factories
 const {
@@ -55,7 +54,6 @@ import {
   eventParticipantBatchLoader,
 } from '../../services/queryOptimizationService';
 import { CacheService } from '../../services/cacheService';
-import prisma from '../../config/database';
 
 describe('QueryOptimizationService', () => {
   beforeEach(() => {

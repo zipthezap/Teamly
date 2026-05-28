@@ -26,7 +26,6 @@ import {
   TOURNAMENT_PAYMENT_STATUSES,
   TournamentPaymentTransactionStatus,
   TournamentSeedingPolicy,
-  TournamentContingencyMode,
   MatchIncidentType,
   MatchIncidentStatus,
   MATCH_INCIDENT_TYPES,
@@ -43,41 +42,44 @@ import {
 } from '../../services/tournamentLifecyclePolicy';
 import { normalizeIdArrayInput, parseEnumInput } from '../tournamentRequestValidators';
 import { clearUserPermissionCache } from '../../services/permissionService';
-
-// ==================== CONSTANTS ====================
-
-const INVITATION_EXPIRY_DAYS = 7;
-const MAX_PAGE_SIZE = 100;
-const DEFAULT_PAGE_SIZE = 50;
-const MAX_LOCATION_RADIUS_KM = 100;
-const MAX_LOCATION_FIELD_LENGTH = 100;
-const MAX_NAME_LENGTH = 100;
-const MAX_DESCRIPTION_LENGTH = 2000;
-const MAX_POOL_NAME_LENGTH = 100;
-const MAX_PLAYER_NAME_LENGTH = 100;
-const MAX_TEAMS_UPPER_BOUND = 1000;
-const MAX_BATCH_PAYMENT_TEAMS = 500;
-const DEFAULT_MATCH_DURATION_MINUTES = 60;
-const MAX_MATCH_DURATION_MINUTES = 480;
-const MILLISECONDS_PER_MINUTE = 60_000;
-const MAX_BULK_SHIFT_MINUTES = 1_440;
-const MAX_PAYMENT_METADATA_BYTES = 4096;
-const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
-const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
-const TOURNAMENT_SEEDING_POLICIES = Object.values(TournamentSeedingPolicy);
-const TOURNAMENT_CONTINGENCY_MODES = Object.values(TournamentContingencyMode);
-const SPORT_CONFIG_TYPES = ['default', 'volleyball', 'tennis'] as const;
-const DEFAULT_INCIDENT_SLA_MINUTES = 30;
-const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
-const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in tokens and public share tokens
-// Minimum cool-down window between referee assignments to reduce back-to-back fatigue.
-const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
-const OVERLAP_GAP_INDICATOR = -1;
-const DEFAULT_FORFEIT_SCORE_FOR = 1;
-const DEFAULT_FORFEIT_SCORE_AGAINST = 0;
-const MAX_MATCH_SCORE = 999;
-const TIMEZONE_IANA_LIKE_REGEX = /^(UTC|[A-Za-z_]+\/[A-Za-z0-9_\-+]+(?:\/[A-Za-z0-9_\-+]+)?)$/;
+import {
+  MAX_BATCH_PAYMENT_TEAMS,
+  DEFAULT_FORFEIT_SCORE_AGAINST,
+  DEFAULT_FORFEIT_SCORE_FOR,
+  DEFAULT_INCIDENT_SLA_MINUTES,
+  DEFAULT_MATCH_DURATION_MINUTES,
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_REFEREE_REST_WINDOW_MINUTES,
+  INVITATION_EXPIRY_DAYS,
+  MAX_BULK_SHIFT_MINUTES,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_INCIDENT_DESCRIPTION_LENGTH,
+  MAX_LOCATION_FIELD_LENGTH,
+  MAX_LOCATION_RADIUS_KM,
+  MAX_MATCH_DURATION_MINUTES,
+  MAX_NAME_LENGTH,
+  MAX_PAGE_SIZE,
+  MAX_PAYMENT_METADATA_BYTES,
+  MAX_PLAYER_NAME_LENGTH,
+  MAX_POOL_NAME_LENGTH,
+  MAX_TEAMS_UPPER_BOUND,
+  MILLISECONDS_PER_MINUTE,
+  OVERLAP_GAP_INDICATOR,
+  PROVIDER_REF_TEAM_ID_PREFIX_LENGTH,
+  SHARE_TOKEN_BYTES,
+  SPORT_CONFIG_TYPES,
+  TOURNAMENT_CONTINGENCY_MODES,
+  TOURNAMENT_PAYMENT_TRANSACTION_STATUSES,
+  TOURNAMENT_SEEDING_POLICIES,
+} from './_constants';
+import {
+  assertValidTournamentTimezone,
+  parseBoolean,
+  parseMatchScoreInput,
+  parseNonNegativeInteger,
+  parsePlayoffSize,
+  parseTimeToMinutes,
+} from './_helpers';
 type PoolWaitlistPromoterClient = Pick<typeof prisma, 'tournamentPoolWaitlist' | 'tournamentPool' | 'tournamentTeam'>;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
@@ -164,73 +166,6 @@ const getPaymentUpdatePayload = (paymentStatus: string, userId: string) => ({
         ? null
         : undefined,
 });
-
-const parseTimeToMinutes = (time: string): number => {
-  const match = TIME_24H_HH_MM_REGEX.exec(time);
-  if (!match) {
-    throw new BadRequestError('Time must be in HH:mm format');
-  }
-  return Number(match[1]) * 60 + Number(match[2]);
-};
-
-const parseNonNegativeInteger = (value: unknown, fieldName: string): number => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new BadRequestError(`${fieldName} must be a non-negative integer`);
-  }
-  return parsed;
-};
-
-const parseMatchScoreInput = (value: unknown, fieldName: string): number => {
-  if (value === null || value === undefined) {
-    throw new BadRequestError(`${fieldName} is required`);
-  }
-  if (typeof value === 'string' && value.trim().length === 0) {
-    throw new BadRequestError(`${fieldName} must be a whole number`);
-  }
-
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed)) {
-    throw new BadRequestError(`${fieldName} must be a whole number`);
-  }
-  if (parsed < 0) {
-    throw new BadRequestError('Scores cannot be negative');
-  }
-  if (parsed > MAX_MATCH_SCORE) {
-    throw new BadRequestError(`Scores must be ${MAX_MATCH_SCORE} or less`);
-  }
-
-  return parsed;
-};
-
-const parseBoolean = (value: unknown, fieldName: string): boolean => {
-  if (typeof value !== 'boolean') {
-    throw new BadRequestError(`${fieldName} must be a boolean`);
-  }
-  return value;
-};
-
-const parsePlayoffSize = (value: unknown): number => {
-  if (typeof value !== 'number' || !Number.isInteger(value) || ![2, 4, 8, 16].includes(value)) {
-    throw new BadRequestError('playoffSize must be one of 2, 4, 8, or 16');
-  }
-  return value;
-};
-
-const assertValidTournamentTimezone = (value: unknown): string => {
-  if (typeof value !== 'string' || !TIMEZONE_IANA_LIKE_REGEX.test(value.trim())) {
-    throw new BadRequestError('timezone must be a valid IANA timezone string (e.g. "Europe/Berlin" or "UTC")');
-  }
-  const normalized = value.trim();
-  if (normalized === 'UTC') return normalized;
-  try {
-    // Throws RangeError when the timezone is unknown.
-    new Intl.DateTimeFormat('en-US', { timeZone: normalized }).format(new Date());
-  } catch {
-    throw new BadRequestError('timezone must reference a real IANA timezone');
-  }
-  return normalized;
-};
 
 const normalizeRegistrationAnswers = (
   answers: unknown

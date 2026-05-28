@@ -20,16 +20,6 @@ describe('Upload Middleware', () => {
   });
 
   it('uploadProfilePicture handles multer LIMIT_FILE_SIZE error', () => {
-    const multer = require('multer');
-    const multerError = new multer.MulterError('LIMIT_FILE_SIZE');
-
-    const req: any = { user: { id: 'user-1' } };
-    const res: any = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
-    };
-    const next = vi.fn();
-
     // Simulate calling the wrapper with a multer error via the inner handler
     // We test that the middleware is callable and returns a function
     expect(uploadMiddleware.uploadProfilePicture).toBeDefined();
