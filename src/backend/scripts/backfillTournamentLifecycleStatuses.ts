@@ -55,13 +55,11 @@ const run = async (): Promise<void> => {
     }
 
     updatedCount += 1;
-    // eslint-disable-next-line no-console
     console.log(
       `[${hasDryRunFlag ? 'DRY-RUN' : 'UPDATED'}] ${tournament.id} (${safeTournamentName}): ${tournament.status} -> ${nextStatus}`
     );
   }
 
-  // eslint-disable-next-line no-console
   console.log(
     `${hasDryRunFlag ? 'Dry run complete' : 'Backfill complete'}: ${updatedCount} tournament(s) ${
       hasDryRunFlag ? 'would be updated' : 'updated'
@@ -71,7 +69,6 @@ const run = async (): Promise<void> => {
 
 run()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error('Backfill failed:', error);
     process.exitCode = 1;
   })

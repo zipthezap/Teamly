@@ -37,13 +37,11 @@ const run = async (): Promise<void> => {
     }
 
     createdCount += 1;
-    // eslint-disable-next-line no-console
     console.log(
       `[${hasDryRunFlag ? 'DRY-RUN' : 'CREATED'}] ${request.id} (${safeTitle}) default TeamUp position`
     );
   }
 
-  // eslint-disable-next-line no-console
   console.log(
     `${hasDryRunFlag ? 'Dry run complete' : 'Backfill complete'}: ${createdCount} TeamUp request(s) ${
       hasDryRunFlag ? 'would receive' : 'received'
@@ -53,7 +51,6 @@ const run = async (): Promise<void> => {
 
 run()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error('TeamUp position backfill failed:', error);
     process.exitCode = 1;
   })

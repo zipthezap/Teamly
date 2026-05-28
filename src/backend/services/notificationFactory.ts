@@ -394,7 +394,7 @@ export class NotificationFactory {
         params: params || {},
         metadata: metadata || {}
       });
-    } catch (e) {
+    } catch {
       // swallow logging errors to avoid breaking notification paths
     }
 
@@ -446,8 +446,8 @@ export class NotificationFactory {
           params,
           metadata,
         });
-      } catch (e) {
-        logger.error('dispatchPushNotifications failed', 'NotificationFactory', { error: e, tournamentId, type });
+      } catch (error) {
+        logger.error('dispatchPushNotifications failed', 'NotificationFactory', { error, tournamentId, type });
       }
 
       logger.debug(`Created ${finalUserIds.length} tournament notifications`, 'NotificationFactory', {
@@ -463,7 +463,7 @@ export class NotificationFactory {
           created: finalUserIds.length,
           skipped: userIds.length - finalUserIds.length
         });
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
 
       return { 
         created: finalUserIds.length, 

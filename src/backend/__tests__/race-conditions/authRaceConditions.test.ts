@@ -5,7 +5,7 @@
  * and that the account locking mechanism works properly without race conditions.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // In-memory user store to simulate atomic DB operations
 function makeUserStore() {

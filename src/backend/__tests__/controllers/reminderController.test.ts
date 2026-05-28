@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express, { Router } from 'express';
-import { createTestApp } from '../helpers/testApp';
 import * as reminderController from '../../controllers/reminderController';
 
 vi.mock('../../middleware/auth', () => ({

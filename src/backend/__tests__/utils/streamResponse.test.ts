@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { streamJsonArray, streamNdjson, streamCsv, streamPaginatedJson, createBatchStream } from '../../utils/streamResponse';
 
 // ---------------------------------------------------------------------------
@@ -16,23 +16,6 @@ const createMockRes = (headersSent = false) => {
     status: statusFn,
     json: jsonFn,
     get headersSent() { return headersSent; },
-    _written: written,
-  };
-};
-
-/** Creates a mock res whose headersSent flips to true after the first write. */
-const createMockResFlipping = () => {
-  const written: string[] = [];
-  let _headersSent = false;
-  const jsonFn = vi.fn();
-  const statusFn = vi.fn().mockReturnValue({ json: jsonFn });
-  return {
-    write: vi.fn((chunk: string) => { written.push(chunk); _headersSent = true; }),
-    end: vi.fn(),
-    setHeader: vi.fn(),
-    status: statusFn,
-    json: jsonFn,
-    get headersSent() { return _headersSent; },
     _written: written,
   };
 };

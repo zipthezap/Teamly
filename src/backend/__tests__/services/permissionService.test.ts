@@ -9,7 +9,7 @@ import {
   getUserGroupRole,
   getUserTournamentRole,
 } from '../../services/permissionService';
-import { Permission, GroupRole, TournamentRole, TeamUpRole } from '../../../shared/types/permissions.types';
+import { Permission, GroupRole, TournamentRole } from '../../../shared/types/permissions.types';
 
 vi.mock('../../config/database', () => ({
   default: {
@@ -192,7 +192,6 @@ describe('PermissionService', () => {
 
     it('returns true for organizer with TEAM_DELETE', async () => {
       db.tournamentTeam.findFirst.mockResolvedValue(null); // not captain
-      const teamWithOrg = { ...baseTeam, captainUserId: 'captain-1' };
       // hasTeamPermission uses tournamentTeam.findUnique not findFirst
       const prismaDirect = prisma as any;
       prismaDirect.tournamentTeam.findUnique = vi.fn().mockResolvedValue(baseTeam);

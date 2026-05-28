@@ -121,14 +121,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           }
         } catch (innerErr) {
           // continue on per-invite errors
-          // eslint-disable-next-line no-console
           console.error('Failed to process pending invite for new user', innerErr);
         }
       }
     }
   } catch (e) {
     // Non-fatal - log and continue
-    // eslint-disable-next-line no-console
     console.error('Failed to link pending invites during registration', e);
   }
 

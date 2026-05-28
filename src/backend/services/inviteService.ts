@@ -5,6 +5,7 @@
  */
 
 import prisma from '../config/database';
+import { randomBytes } from 'crypto';
 import { logger } from '../utils/logger';
 import { sendEmailWithQueue } from './emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
@@ -775,9 +776,7 @@ export class InviteService {
     expiresInDays: number = 30
   ): Promise<{ success: boolean; token?: string; expiresAt?: Date; error?: string }> {
     try {
-      // Use crypto for secure token generation
-      const crypto = require('crypto');
-      const token = crypto.randomBytes(16).toString('hex');
+      const token = randomBytes(16).toString('hex');
       const expiresAt = calculateExpirationDate(expiresInDays);
 
       if (resourceType === 'group') {
