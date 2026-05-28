@@ -2393,6 +2393,7 @@ class _TeamRow extends StatelessWidget {
 // Internal view model for a standings row – adapts both standings and team-only data.
 class _StandingRow {
   _StandingRow({
+    required this.teamId,
     required this.name,
     required this.wins,
     required this.losses,
@@ -2400,8 +2401,10 @@ class _StandingRow {
     required this.points,
     this.gf,
     this.ga,
+    this.categoryRank,
   });
 
+  final String teamId;
   final String name;
   final int wins;
   final int losses;
@@ -2409,6 +2412,8 @@ class _StandingRow {
   final int points;
   final int? gf; // goals / points scored
   final int? ga; // goals / points conceded
+  /// Overall seed within the category (across all pools). Null when not applicable.
+  final int? categoryRank;
   int? get gd => gf != null && ga != null ? gf! - ga! : null;
   int get played => wins + losses + draws;
   String get ratioLabel {
@@ -2421,14 +2426,18 @@ class _StandingRow {
     return (won / lost).toStringAsFixed(2);
   }
 
-  factory _StandingRow.fromStanding(TournamentStandingModel s) => _StandingRow(
-      name: s.teamName,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-      points: s.points,
-      gf: s.goalsFor,
-      ga: s.goalsAgainst);
+  factory _StandingRow.fromStanding(TournamentStandingModel s,
+          [int? categoryRank]) =>
+      _StandingRow(
+          teamId: s.teamId,
+          name: s.teamName,
+          wins: s.wins,
+          losses: s.losses,
+          draws: s.draws,
+          points: s.points,
+          gf: s.goalsFor,
+          ga: s.goalsAgainst,
+          categoryRank: categoryRank);
 }
 
 class _ScoresTab extends StatelessWidget {
@@ -2444,6 +2453,74 @@ class _ScoresTab extends StatelessWidget {
     // Build teamId→poolId lookup
     final teamPoolMap = {for (final tm in t.teams) tm.id: tm.poolId};
 
+    // Compute category-wide seed rank (1-N) for each team in groups_knockout
+    // tournaments. Teams are ranked by pool rank first (so all pool-winners are
+    // seeded before pool-runners-up), then by performance within the same rank.
+    final Map<String, int> teamCategoryRankMap = {};
+    if (t.format == 'groups_knockout' && t.categories.isNotEmpty && hasStandings) {
+      // Performance comparator: higher is better (descending points, GD, GF, wins)
+      int perfCompare(TournamentStandingModel a, TournamentStandingModel b) {
+        final pd = b.points.compareTo(a.points);
+        if (pd != 0) return pd;
+        final gdd = b.goalDifference.compareTo(a.goalDifference);
+        if (gdd != 0) return gdd;
+        final gfd = b.goalsFor.compareTo(a.goalsFor);
+        if (gfd != 0) return gfd;
+        return b.wins.compareTo(a.wins);
+      }
+
+      // poolId → categoryId
+      final poolToCatId = <String, String>{};
+      for (final cat in t.categories) {
+        for (final pool in cat.pools) {
+          poolToCatId[pool.id] = cat.id;
+        }
+      }
+      // categoryId → standings list
+      final catStandingsMap = <String, List<TournamentStandingModel>>{};
+      for (final s in t.standings) {
+        final poolId = teamPoolMap[s.teamId];
+        final catId = poolId != null ? poolToCatId[poolId] : null;
+        if (catId != null) {
+          catStandingsMap.putIfAbsent(catId, () => []).add(s);
+        }
+      }
+
+      for (final cat in t.categories) {
+        final catStandings = catStandingsMap[cat.id] ?? [];
+        if (catStandings.isEmpty) continue;
+
+        // Sort each pool's standings by performance to assign pool rank
+        final poolGroups = <String, List<TournamentStandingModel>>{};
+        for (final s in catStandings) {
+          final poolId = teamPoolMap[s.teamId] ?? '';
+          poolGroups.putIfAbsent(poolId, () => []).add(s);
+        }
+        for (final standings in poolGroups.values) {
+          standings.sort(perfCompare);
+        }
+
+        // Merge all pools: for each pool-rank position, collect teams across
+        // all pools and sort them by performance → assign overall category seed.
+        final maxPerPool =
+            poolGroups.values.fold(0, (m, v) => v.length > m ? v.length : m);
+
+        int categoryRank = 1;
+        for (int position = 0; position < maxPerPool; position++) {
+          final sameRankTeams = <TournamentStandingModel>[];
+          for (final standings in poolGroups.values) {
+            if (position < standings.length) {
+              sameRankTeams.add(standings[position]);
+            }
+          }
+          sameRankTeams.sort(perfCompare);
+          for (final s in sameRankTeams) {
+            teamCategoryRankMap[s.teamId] = categoryRank++;
+          }
+        }
+      }
+    }
+
     // Helper: get rows for a pool (or all teams if no pool given)
     List<_StandingRow> rowsForPool(String? poolId) {
       if (hasStandings) {
@@ -2455,7 +2532,10 @@ class _ScoresTab extends StatelessWidget {
         if (filtered.isEmpty && poolId != null) {
           return [];
         }
-        return filtered.map(_StandingRow.fromStanding).toList();
+        return filtered
+            .map((s) => _StandingRow.fromStanding(
+                s, teamCategoryRankMap[s.teamId]))
+            .toList();
       } else {
         return [];
       }
@@ -2570,6 +2650,9 @@ class _ScoreTable extends StatelessWidget {
         return b.wins.compareTo(a.wins);
       });
 
+    // Show category-wide bracket seed (#N) when available, pool rank otherwise.
+    final hasCategoryRank = sorted.any((r) => r.categoryRank != null);
+
     return Container(
       decoration: BoxDecoration(
         color: AppThemeTokens.card(context),
@@ -2587,7 +2670,16 @@ class _ScoreTable extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(children: [
-                  const SizedBox(width: 24),
+                  SizedBox(
+                      width: 32,
+                      child: Text(hasCategoryRank ? '#' : '',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: hasCategoryRank
+                                  ? AppThemeTokens.primary500
+                                  : null))),
                   const SizedBox(
                       width: 160,
                       child: Text('Team',
@@ -2653,10 +2745,19 @@ class _ScoreTable extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(children: [
                     SizedBox(
-                        width: 24,
-                        child: Text('${i + 1}',
+                        width: 32,
+                        child: Text(
+                            hasCategoryRank
+                                ? '${sorted[i].categoryRank ?? (i + 1)}'
+                                : '${i + 1}',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                                color: AppThemeTokens.textMuted(context),
+                                color: hasCategoryRank
+                                    ? AppThemeTokens.primary500
+                                    : AppThemeTokens.textMuted(context),
+                                fontWeight: hasCategoryRank
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
                                 fontSize: 13))),
                     SizedBox(
                         width: 160,
