@@ -45,6 +45,12 @@ export enum BracketStage {
   FINALS = 'finals'
 }
 
+export enum BracketSide {
+  WINNERS = 'winners',
+  LOSERS = 'losers',
+  GRAND_FINAL = 'grand_final',
+}
+
 export enum TournamentPaymentStatus {
   UNPAID = 'unpaid',
   PENDING = 'pending',
@@ -167,6 +173,8 @@ export interface Tournament {
   allowRescheduleAfterStart?: boolean;
   seedingPolicy?: TournamentSeedingPolicy;
   seedsLockedAt?: Date | string;
+  playoffSize?: number;
+  doubleElimination?: boolean;
   enableThirdPlaceMatch?: boolean;
   enableConsolationBracket?: boolean;
   allowByes?: boolean;
@@ -214,14 +222,17 @@ export interface TournamentMatch {
   id: string;
   tournamentId: string;
   homeTeamId: string;
-  awayTeamId: string;
+  awayTeamId?: string;
   refereeTeamId?: string; // Team assigned to referee this match
   homeScore?: number;
   awayScore?: number;
   detailedScore?: DetailedScore; // Structured scoring for sports with sets/periods
   stage?: BracketStage;
+  bracketSide?: BracketSide;
   roundNumber?: number;
   groupName?: string;
+  isBye?: boolean;
+  loserGoesToMatchId?: string;
   isManuallyCreated?: boolean;
   matchOrder?: number;
   status: MatchStatus;

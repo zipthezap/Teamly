@@ -312,9 +312,12 @@ class TournamentMatchModel extends Equatable {
     required this.round,
     required this.status,
     this.stage,
+    this.bracketSide,
     this.roundNumber,
     this.matchOrder,
     this.groupName,
+    this.isBye = false,
+    this.loserGoesToMatchId,
     this.teamAId,
     this.teamBId,
     this.teamAName,
@@ -337,9 +340,12 @@ class TournamentMatchModel extends Equatable {
   final String round;
   final String status;
   final String? stage;
+  final String? bracketSide;
   final int? roundNumber;
   final int? matchOrder;
   final String? groupName;
+  final bool isBye;
+  final String? loserGoesToMatchId;
   final String? teamAId;
   final String? teamBId;
   final String? teamAName;
@@ -384,9 +390,12 @@ class TournamentMatchModel extends Equatable {
       round: roundLabel,
       status: json['status'] as String? ?? 'scheduled',
       stage: json['stage'] as String?,
+      bracketSide: json['bracketSide'] as String?,
       roundNumber: (json['roundNumber'] as num?)?.toInt(),
       matchOrder: (json['matchOrder'] as num?)?.toInt(),
       groupName: json['groupName'] as String?,
+      isBye: json['isBye'] as bool? ?? false,
+      loserGoesToMatchId: json['loserGoesToMatchId'] as String?,
       teamAId: teamA?['id'] as String? ??
           json['homeTeamId'] as String? ??
           json['teamAId'] as String?,
@@ -425,9 +434,12 @@ class TournamentMatchModel extends Equatable {
         round,
         status,
         stage,
+        bracketSide,
         roundNumber,
         matchOrder,
         groupName,
+        isBye,
+        loserGoesToMatchId,
       ];
 }
 
@@ -479,6 +491,8 @@ class TournamentModel extends Equatable {
     this.paymentDeadline,
     this.tiebreakerRules,
     this.selfRefEnabled = false,
+    this.playoffSize = 8,
+    this.doubleElimination = false,
   });
 
   final String id;
@@ -530,6 +544,8 @@ class TournamentModel extends Equatable {
   final DateTime? paymentDeadline;
   final List<String>? tiebreakerRules;
   final bool selfRefEnabled;
+  final int playoffSize;
+  final bool doubleElimination;
 
   bool get hasFee => registrationFee != null && registrationFee! > 0;
   int get unpaidTeamCount => teams.where((t) => !t.isPaid).length;
@@ -634,6 +650,8 @@ class TournamentModel extends Equatable {
           ?.map((r) => r.toString())
           .toList(),
       selfRefEnabled: json['selfRefEnabled'] as bool? ?? false,
+      playoffSize: (json['playoffSize'] as num?)?.toInt() ?? 8,
+      doubleElimination: json['doubleElimination'] as bool? ?? false,
     );
   }
 
@@ -647,6 +665,8 @@ class TournamentModel extends Equatable {
         createdAt,
         latitude,
         longitude,
+        playoffSize,
+        doubleElimination,
       ];
 }
 

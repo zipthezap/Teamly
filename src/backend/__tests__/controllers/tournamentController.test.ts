@@ -226,6 +226,7 @@ vi.mock('../../services/tournamentService', () => ({
   canManageTeamInvitations: vi.fn().mockResolvedValue(true),
   computeAutoStatus: vi.fn(() => null),
   generateSingleEliminationBrackets: vi.fn().mockResolvedValue({ count: 4 }),
+  generateDoubleEliminationBrackets: vi.fn().mockResolvedValue({ count: 7 }),
   generateRandomizedSingleEliminationBracketsFromPools: vi.fn().mockResolvedValue({ count: 4 }),
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
@@ -1264,18 +1265,23 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
     });
   });
 
-  it('returns 400 for double_elimination until explicitly supported', async () => {
+  it('returns 200 for double_elimination generation', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       format: 'double_elimination',
     } as any);
     vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(tournamentService.generateDoubleEliminationBrackets).mockResolvedValue({ count: 7 });
 
     const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Double elimination');
-    expect(tournamentService.generateSingleEliminationBrackets).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(vi.mocked(tournamentService.generateDoubleEliminationBrackets)).toHaveBeenCalledWith(
+      'tournament-1',
+      expect.objectContaining({
+        playoffSize: mockTournament.playoffSize,
+      })
+    );
   });
 
   it('returns 404 when tournament not found', async () => {

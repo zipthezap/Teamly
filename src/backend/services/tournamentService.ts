@@ -4,6 +4,7 @@ import { randomInt } from 'crypto';
 import { 
   MatchStatus, 
   BracketStage,
+  BracketSide,
   TournamentFormat,
   TournamentStatus,
   TournamentSeedingPolicy,
@@ -165,17 +166,29 @@ const compareStandingsWithTiebreakers = (
 };
 
 /**
- * Returns the largest supported knockout bracket size (power of two, capped at 16)
- * that fits the number of available teams, or 0 when there are not enough teams
- * to seed a knockout round.
+ * Returns the largest supported configured playoff size.
  */
-const knockoutBracketSize = (teamCount: number) => {
-  if (teamCount >= 32) return 32;
-  if (teamCount >= 16) return 16;
-  if (teamCount >= 8) return 8;
-  if (teamCount >= 4) return 4;
-  if (teamCount >= 2) return 2;
-  return 0;
+const MAX_SUPPORTED_PLAYOFF_SIZE = 16;
+const PLAYOFF_SIZE_OPTIONS = [2, 4, 8, 16] as const;
+
+const normalizePlayoffSize = (playoffSize?: number | null): number =>
+  PLAYOFF_SIZE_OPTIONS.includes((playoffSize ?? 8) as (typeof PLAYOFF_SIZE_OPTIONS)[number])
+    ? (playoffSize ?? 8)
+    : 8;
+
+const nextPowerOfTwo = (teamCount: number): number => {
+  if (teamCount <= 2) return 2;
+  return 2 ** Math.ceil(Math.log2(teamCount));
+};
+
+const resolvePlayoffEntrantCount = (teamCount: number, requestedPlayoffSize?: number | null): number => {
+  if (teamCount < 2) return 0;
+  return Math.min(teamCount, normalizePlayoffSize(requestedPlayoffSize));
+};
+
+const resolvePlayoffFieldSize = (entrantCount: number): number => {
+  if (entrantCount < 2) return 0;
+  return Math.min(MAX_SUPPORTED_PLAYOFF_SIZE, nextPowerOfTwo(entrantCount));
 };
 
 const firstKnockoutStageForSize = (size: number): BracketStage => {
@@ -186,55 +199,27 @@ const firstKnockoutStageForSize = (size: number): BracketStage => {
   return BracketStage.FINALS;
 };
 
-const seededPairOrder = (size: number): Array<[number, number]> => {
-  switch (size) {
-    case 32:
-      return [
-        [0, 31],
-        [15, 16],
-        [8, 23],
-        [7, 24],
-        [4, 27],
-        [11, 20],
-        [12, 19],
-        [3, 28],
-        [2, 29],
-        [13, 18],
-        [10, 21],
-        [5, 26],
-        [6, 25],
-        [9, 22],
-        [14, 17],
-        [1, 30],
-      ];
-    case 16:
-      return [
-        [0, 15],
-        [7, 8],
-        [4, 11],
-        [3, 12],
-        [5, 10],
-        [2, 13],
-        [6, 9],
-        [1, 14],
-      ];
-    case 8:
-      return [
-        [0, 7],
-        [3, 4],
-        [2, 5],
-        [1, 6],
-      ];
-    case 4:
-      return [
-        [0, 3],
-        [1, 2],
-      ];
-    case 2:
-      return [[0, 1]];
-    default:
-      return [];
+const seededBracketSeedOrder = (size: number): number[] => {
+  if (!isPowerOfTwo(size) || size < 2) return [];
+
+  let order = [1, 2];
+  while (order.length < size) {
+    const mirror = order.length * 2 + 1;
+    order = order.flatMap((seed) => [seed, mirror - seed]);
   }
+
+  return order;
+};
+
+const seededPairOrder = (size: number): Array<[number, number]> => {
+  const seedOrder = seededBracketSeedOrder(size);
+  const pairs: Array<[number, number]> = [];
+
+  for (let index = 0; index < seedOrder.length; index += 2) {
+    pairs.push([seedOrder[index] - 1, seedOrder[index + 1] - 1]);
+  }
+
+  return pairs;
 };
 
 const compareStandingsPerformance = (
@@ -262,6 +247,7 @@ const compareQualifiedTeams = (
 
 const selectGroupKnockoutQualifiers = (
   standings: StandingLike[],
+  playoffSize?: number | null,
   tiebreakerRules?: string[] | null
 ): QualifiedTeam[] => {
   const grouped = new Map<string, QualifiedTeam[]>();
@@ -286,7 +272,7 @@ const selectGroupKnockoutQualifiers = (
     .sort(([a], [b]) => a.localeCompare(b));
 
   const totalTeams = orderedGroups.reduce((sum, [, items]) => sum + items.length, 0);
-  const qualifierCount = knockoutBracketSize(totalTeams);
+  const qualifierCount = resolvePlayoffEntrantCount(totalTeams, playoffSize);
   if (qualifierCount < 2) {
     throw new BadRequestError(
       `At least 2 qualified teams are required to seed knockout brackets (found ${qualifierCount})`,
@@ -306,31 +292,66 @@ const selectGroupKnockoutQualifiers = (
   const remainingSlots = Math.max(0, qualifierCount - autoQualified.length);
   remainingCandidates.sort((a, b) => compareQualifiedTeams(a, b, tiebreakerRules));
 
-  return [...autoQualified, ...remainingCandidates.slice(0, remainingSlots)].sort((a, b) =>
-    compareQualifiedTeams(a, b, tiebreakerRules)
-  );
+  return [...autoQualified, ...remainingCandidates.slice(0, remainingSlots)]
+    .sort((a, b) => compareQualifiedTeams(a, b, tiebreakerRules))
+    .slice(0, qualifierCount);
 };
 
 const buildKnockoutMatchesFromQualifiedTeams = (
   tournamentId: string,
-  qualifiedTeams: QualifiedTeam[]
-) => {
-  const qualifierCount = knockoutBracketSize(qualifiedTeams.length);
-  if (qualifierCount < 2) return [];
+  qualifiedTeams: QualifiedTeam[],
+  playoffSize?: number | null,
+  bracketSide: BracketSide = BracketSide.WINNERS,
+  roundNumber: number = 1
+): Prisma.TournamentMatchCreateManyInput[] => {
+  const entrantCount = resolvePlayoffEntrantCount(qualifiedTeams.length, playoffSize);
+  if (entrantCount < 2) return [];
 
-  const seededTeams = qualifiedTeams.slice(0, qualifierCount);
-  const stage = firstKnockoutStageForSize(qualifierCount);
-  const seedPairs = seededPairOrder(qualifierCount);
+  const seededTeams = qualifiedTeams.slice(0, entrantCount);
+  const fieldSize = resolvePlayoffFieldSize(entrantCount);
+  const stage = firstKnockoutStageForSize(fieldSize);
+  const seedPairs = seededPairOrder(fieldSize);
+  const matches: Prisma.TournamentMatchCreateManyInput[] = [];
 
-  return seedPairs.map(([leftIndex, rightIndex], index) => ({
-    tournamentId,
-    homeTeamId: seededTeams[leftIndex].teamId,
-    awayTeamId: seededTeams[rightIndex].teamId,
-    stage,
-    roundNumber: 1,
-    matchOrder: index + 1,
-    status: MatchStatus.SCHEDULED,
-  }));
+  seedPairs.forEach(([leftIndex, rightIndex], index) => {
+    const leftTeam = seededTeams[leftIndex]?.teamId ?? null;
+    const rightTeam = seededTeams[rightIndex]?.teamId ?? null;
+
+    if (!leftTeam && !rightTeam) return;
+    if (!leftTeam || !rightTeam) {
+      const advancingTeamId = leftTeam ?? rightTeam;
+      if (!advancingTeamId) return;
+      matches.push({
+        tournamentId,
+        homeTeamId: advancingTeamId,
+        awayTeamId: null,
+        stage,
+        bracketSide,
+        roundNumber,
+        matchOrder: index + 1,
+        status: MatchStatus.COMPLETED,
+        isBye: true,
+        homeScore: 1,
+        awayScore: 0,
+        completedAt: new Date(),
+      });
+      return;
+    }
+
+    matches.push({
+      tournamentId,
+      homeTeamId: leftTeam,
+      awayTeamId: rightTeam,
+      stage,
+      bracketSide,
+      roundNumber,
+      matchOrder: index + 1,
+      status: MatchStatus.SCHEDULED,
+      isBye: false,
+    });
+  });
+
+  return matches;
 };
 
 /**
@@ -733,7 +754,10 @@ export const revertStandings = async (
     return;
   }
 
-  const { homeTeamId, awayTeamId, homeScore, awayScore, groupName } = match;
+  const { homeTeamId, awayTeamId, homeScore, awayScore, groupName, isBye } = match;
+  if (!awayTeamId || isBye) {
+    return;
+  }
 
   const sportConfig = match.tournament?.sportConfig as unknown as SportScoringConfig | undefined;
   const defaultWinPoints = sportConfig?.type === 'default' ? sportConfig.winPoints : 3;
@@ -788,49 +812,40 @@ export const revertStandings = async (
 /**
  * Generate brackets for single elimination tournament
  */
-const buildSingleEliminationMatches = (tournamentId: string, teams: Array<{ id: string }>) => {
+const buildSingleEliminationMatches = (
+  tournamentId: string,
+  teams: Array<{ id: string }>,
+  playoffSize?: number | null
+): Prisma.TournamentMatchCreateManyInput[] => {
   if (teams.length < 2) {
     throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
 
-  const numTeams = teams.length;
-
-  // Determine bracket stage based on number of teams
-  let stage: BracketStage = BracketStage.FINALS;
-  if (numTeams > 16) stage = BracketStage.ROUND_OF_32;
-  else if (numTeams > 8) stage = BracketStage.ROUND_OF_16;
-  else if (numTeams > 4) stage = BracketStage.QUARTER_FINALS;
-  else if (numTeams > 2) stage = BracketStage.SEMI_FINALS;
-  
-  const nearestLowerPowerOfTwo = 2 ** Math.floor(Math.log2(numTeams));
-  const preliminaryMatchCount = numTeams - nearestLowerPowerOfTwo;
-  const byeTeamCount =
-    preliminaryMatchCount > 0
-      ? Math.max(0, numTeams - preliminaryMatchCount * 2)
-      : 0;
-
-  const teamsForMatches = preliminaryMatchCount > 0 ? teams.slice(byeTeamCount) : teams;
-
-  // Create first round matches (deterministic order; top teams may receive byes)
-  const matches = [];
-  for (let i = 0; i < teamsForMatches.length; i += 2) {
-    if (i + 1 < teamsForMatches.length) {
-      matches.push({
-        tournamentId,
-        homeTeamId: teamsForMatches[i].id,
-        awayTeamId: teamsForMatches[i + 1].id,
-        stage,
-        roundNumber: 1,
-        matchOrder: matches.length + 1,
-        status: MatchStatus.SCHEDULED
-      });
-    }
+  const normalizedPlayoffSize = normalizePlayoffSize(playoffSize);
+  if (teams.length > normalizedPlayoffSize) {
+    throw new BadRequestError(
+      `Playoff size ${normalizedPlayoffSize} is too small for ${teams.length} teams`,
+      'PLAYOFF_SIZE_TOO_SMALL'
+    );
   }
 
-  return matches;
+  return buildKnockoutMatchesFromQualifiedTeams(
+    tournamentId,
+    teams.map((team) => ({
+      teamId: team.id,
+      points: 0,
+      wins: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      rankInGroup: 0,
+    })),
+    normalizedPlayoffSize
+  );
 };
 
-const isPowerOfTwo = (value: number): boolean => value > 0 && (value & (value - 1)) === 0;
+function isPowerOfTwo(value: number): boolean {
+  return value > 0 && (value & (value - 1)) === 0;
+}
 
 const shuffleTeams = <T>(teams: T[]): T[] => {
   const shuffled = [...teams];
@@ -843,8 +858,12 @@ const shuffleTeams = <T>(teams: T[]): T[] => {
 
 export const generateSingleEliminationBrackets = async (
   tournamentId: string,
-  options?: { randomizeSeeds?: boolean; allowByes?: boolean }
+  options?: { randomizeSeeds?: boolean; allowByes?: boolean; playoffSize?: number | null }
 ) => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { playoffSize: true },
+  });
   const teamsRaw = await prisma.tournamentTeam.findMany({
     where: { tournamentId },
     orderBy: { createdAt: 'asc' }
@@ -858,7 +877,11 @@ export const generateSingleEliminationBrackets = async (
   }
 
   const teams = options?.randomizeSeeds ? shuffleTeams(teamsRaw) : teamsRaw;
-  const matches = buildSingleEliminationMatches(tournamentId, teams);
+  const matches = buildSingleEliminationMatches(
+    tournamentId,
+    teams,
+    options?.playoffSize ?? tournament?.playoffSize
+  );
   const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
 
   return createdMatches;
@@ -868,6 +891,10 @@ export const generateSingleEliminationBrackets = async (
  * Generate randomized single-elimination brackets from existing pool assignments.
  */
 export const generateRandomizedSingleEliminationBracketsFromPools = async (tournamentId: string) => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { playoffSize: true },
+  });
   const pools = await prisma.tournamentPool.findMany({
     where: { tournamentId },
     include: { teams: { orderBy: { createdAt: 'asc' } } },
@@ -879,9 +906,362 @@ export const generateRandomizedSingleEliminationBracketsFromPools = async (tourn
   const uniqueTeams = Array.from(new Map(poolTeams.map(team => [team.id, team])).values());
   const randomizedTeams = shuffleTeams(uniqueTeams);
 
-  const matches = buildSingleEliminationMatches(tournamentId, randomizedTeams);
+  const matches = buildSingleEliminationMatches(tournamentId, randomizedTeams, tournament?.playoffSize);
   const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
 
+  return createdMatches;
+};
+
+type KnockoutMatchRecord = {
+  id: string;
+  homeTeamId: string;
+  awayTeamId: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  stage: BracketStage | null;
+  status: MatchStatus;
+  roundNumber: number | null;
+  matchOrder: number | null;
+  isBye: boolean;
+  bracketSide: BracketSide | null;
+  loserGoesToMatchId: string | null;
+};
+
+type KnockoutMatchCreateInput = Prisma.TournamentMatchUncheckedCreateInput;
+
+const deriveKnockoutStage = (participantCount: number): BracketStage =>
+  firstKnockoutStageForSize(resolvePlayoffFieldSize(Math.max(2, participantCount)));
+
+const getMatchWinnerId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status'>) => {
+  if (match.status !== MatchStatus.COMPLETED) return null;
+  if (match.isBye || match.awayTeamId == null) return match.homeTeamId;
+  if (match.homeScore == null || match.awayScore == null) return null;
+  return match.homeScore > match.awayScore ? match.homeTeamId : match.awayTeamId;
+};
+
+const getMatchLoserId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status'>) => {
+  if (match.status !== MatchStatus.COMPLETED || match.isBye || match.awayTeamId == null) return null;
+  if (match.homeScore == null || match.awayScore == null) return null;
+  return match.homeScore > match.awayScore ? match.awayTeamId : match.homeTeamId;
+};
+
+const buildRoundMatches = (
+  tournamentId: string,
+  participants: string[],
+  bracketSide: BracketSide,
+  roundNumber: number
+): KnockoutMatchCreateInput[] => {
+  if (participants.length === 0) return [];
+
+  const matches: KnockoutMatchCreateInput[] = [];
+  participants.forEach((participantId, index, source) => {
+    if (index % 2 === 1) return;
+
+    const opponentId = source[index + 1] ?? null;
+    if (opponentId == null) {
+      matches.push({
+        tournamentId,
+        homeTeamId: participantId,
+        awayTeamId: null,
+        stage: deriveKnockoutStage(source.length),
+        bracketSide,
+        roundNumber,
+        matchOrder: index / 2 + 1,
+        status: MatchStatus.COMPLETED,
+        isBye: true,
+        homeScore: 1,
+        awayScore: 0,
+        completedAt: new Date(),
+      });
+      return;
+    }
+
+    matches.push({
+      tournamentId,
+      homeTeamId: participantId,
+      awayTeamId: opponentId,
+      stage: deriveKnockoutStage(source.length),
+      bracketSide,
+      roundNumber,
+      matchOrder: index / 2 + 1,
+      status: MatchStatus.SCHEDULED,
+      isBye: false,
+    });
+  });
+
+  return matches;
+};
+
+const buildInterleavedLoserRoundParticipants = (survivors: string[], freshLosers: string[]): string[] => {
+  const participants: string[] = [];
+  const maxLength = Math.max(survivors.length, freshLosers.length);
+
+  for (let index = 0; index < maxLength; index++) {
+    if (survivors[index]) participants.push(survivors[index]);
+    if (freshLosers[index]) participants.push(freshLosers[index]);
+  }
+
+  return participants;
+};
+
+const createMatches = async (matches: KnockoutMatchCreateInput[]) => {
+  if (matches.length === 0) return [] as Awaited<ReturnType<typeof prisma.tournamentMatch.create>>[];
+
+  return prisma.$transaction(
+    matches.map((data) =>
+      prisma.tournamentMatch.create({
+        data,
+      })
+    )
+  );
+};
+
+const assignLoserRouting = async (
+  sourceMatches: KnockoutMatchRecord[],
+  destinationMatches: Array<{ id: string }>
+) => {
+  if (sourceMatches.length === 0 || destinationMatches.length === 0) return;
+
+  const sourcesPerDestination = Math.max(1, sourceMatches.length / destinationMatches.length);
+
+  const updates = sourceMatches.map((match, index) =>
+    prisma.tournamentMatch.update({
+      where: { id: match.id },
+      data: {
+        loserGoesToMatchId:
+          destinationMatches[
+            Math.min(Math.floor(index / sourcesPerDestination), destinationMatches.length - 1)
+          ]?.id ?? null,
+      },
+    })
+  );
+
+  await prisma.$transaction(updates);
+};
+
+const isCompleteRound = (matches: KnockoutMatchRecord[]) =>
+  matches.length > 0 && matches.every((match) => match.status === MatchStatus.COMPLETED);
+
+const groupMatchesByRound = (matches: KnockoutMatchRecord[], bracketSide: BracketSide) => {
+  const grouped = new Map<number, KnockoutMatchRecord[]>();
+
+  matches
+    .filter((match) => match.bracketSide === bracketSide && match.roundNumber != null)
+    .forEach((match) => {
+      const roundNumber = match.roundNumber!;
+      if (!grouped.has(roundNumber)) grouped.set(roundNumber, []);
+      grouped.get(roundNumber)!.push(match);
+    });
+
+  for (const roundMatches of grouped.values()) {
+    roundMatches.sort((a, b) => (a.matchOrder ?? 0) - (b.matchOrder ?? 0));
+  }
+
+  return grouped;
+};
+
+const advanceDoubleElimination = async (tournamentId: string) => {
+  for (let guard = 0; guard < 16; guard++) {
+    const matches = (await prisma.tournamentMatch.findMany({
+      where: {
+        tournamentId,
+        stage: { not: BracketStage.GROUP_STAGE },
+        bracketSide: { not: null },
+      },
+      select: {
+        id: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+        stage: true,
+        status: true,
+        roundNumber: true,
+        matchOrder: true,
+        isBye: true,
+        bracketSide: true,
+        loserGoesToMatchId: true,
+      },
+      orderBy: [{ roundNumber: 'asc' }, { matchOrder: 'asc' }, { createdAt: 'asc' }],
+    })) as KnockoutMatchRecord[];
+
+    const winnerRounds = groupMatchesByRound(matches, BracketSide.WINNERS);
+    const loserRounds = groupMatchesByRound(matches, BracketSide.LOSERS);
+    const grandFinalRounds = groupMatchesByRound(matches, BracketSide.GRAND_FINAL);
+    const openingRound = winnerRounds.get(1) ?? [];
+
+    if (openingRound.length === 0) return;
+
+    const fieldSize = openingRound.length * 2;
+    const totalWinnerRounds = Math.max(1, Math.log2(Math.max(2, fieldSize)));
+    let createdAny = false;
+
+    for (let roundNumber = 1; roundNumber < totalWinnerRounds; roundNumber++) {
+      const currentRound = winnerRounds.get(roundNumber) ?? [];
+      const nextRoundNumber = roundNumber + 1;
+      if (!isCompleteRound(currentRound) || winnerRounds.has(nextRoundNumber)) continue;
+
+      const roundWinners = currentRound.map(getMatchWinnerId).filter((value): value is string => Boolean(value));
+      const createdMatches = await createMatches(
+        buildRoundMatches(tournamentId, roundWinners, BracketSide.WINNERS, nextRoundNumber)
+      );
+      if (createdMatches.length > 0) createdAny = true;
+    }
+
+    if (totalWinnerRounds > 1 && !loserRounds.has(1) && isCompleteRound(openingRound)) {
+      const openingLosers = openingRound.map(getMatchLoserId).filter((value): value is string => Boolean(value));
+      const createdMatches = await createMatches(
+        buildRoundMatches(tournamentId, openingLosers, BracketSide.LOSERS, 1)
+      );
+      if (createdMatches.length > 0) {
+        await assignLoserRouting(openingRound, createdMatches as Array<{ id: string }>);
+        createdAny = true;
+      }
+    }
+
+    for (let loserRoundNumber = 2; loserRoundNumber <= (totalWinnerRounds - 1) * 2; loserRoundNumber++) {
+      if (loserRounds.has(loserRoundNumber)) continue;
+
+      if (loserRoundNumber % 2 === 0) {
+        const survivorRound = loserRounds.get(loserRoundNumber - 1) ?? [];
+        const sourceWinnerRound = winnerRounds.get(Math.floor(loserRoundNumber / 2) + 1) ?? [];
+        if (!isCompleteRound(survivorRound) || !isCompleteRound(sourceWinnerRound)) continue;
+
+        const participants = buildInterleavedLoserRoundParticipants(
+          survivorRound.map(getMatchWinnerId).filter((value): value is string => Boolean(value)),
+          sourceWinnerRound.map(getMatchLoserId).filter((value): value is string => Boolean(value))
+        );
+        const createdMatches = await createMatches(
+          buildRoundMatches(tournamentId, participants, BracketSide.LOSERS, loserRoundNumber)
+        );
+        if (createdMatches.length > 0) {
+          await assignLoserRouting(sourceWinnerRound, createdMatches as Array<{ id: string }>);
+          createdAny = true;
+        }
+      } else {
+        const sourceLoserRound = loserRounds.get(loserRoundNumber - 1) ?? [];
+        if (!isCompleteRound(sourceLoserRound)) continue;
+
+        const participants = sourceLoserRound
+          .map(getMatchWinnerId)
+          .filter((value): value is string => Boolean(value));
+        const createdMatches = await createMatches(
+          buildRoundMatches(tournamentId, participants, BracketSide.LOSERS, loserRoundNumber)
+        );
+        if (createdMatches.length > 0) createdAny = true;
+      }
+    }
+
+    const winnersFinalRound = winnerRounds.get(totalWinnerRounds) ?? [];
+    const losersFinalRound = loserRounds.get(Math.max(1, (totalWinnerRounds - 1) * 2)) ?? [];
+    const firstGrandFinal = grandFinalRounds.get(1)?.[0];
+    if (
+      winnersFinalRound.length > 0 &&
+      losersFinalRound.length > 0 &&
+      isCompleteRound(winnersFinalRound) &&
+      isCompleteRound(losersFinalRound) &&
+      !firstGrandFinal
+    ) {
+      const winnersChampion = getMatchWinnerId(winnersFinalRound[0]);
+      const losersChampion = getMatchWinnerId(losersFinalRound[0]);
+      if (winnersChampion && losersChampion) {
+        const createdMatches = await createMatches([{
+          tournamentId,
+          homeTeamId: winnersChampion,
+          awayTeamId: losersChampion,
+          stage: BracketStage.FINALS,
+          bracketSide: BracketSide.GRAND_FINAL,
+          roundNumber: 1,
+          matchOrder: 1,
+          status: MatchStatus.SCHEDULED,
+          isBye: false,
+        }]);
+        if (createdMatches.length > 0) {
+          await assignLoserRouting(winnersFinalRound, createdMatches as Array<{ id: string }>);
+          createdAny = true;
+        }
+      }
+    }
+
+    if (!firstGrandFinal || firstGrandFinal.status !== MatchStatus.COMPLETED || grandFinalRounds.has(2)) {
+      if (!createdAny) break;
+      continue;
+    }
+
+    const winnersChampion = winnersFinalRound[0] ? getMatchWinnerId(winnersFinalRound[0]) : null;
+    const losersChampion = losersFinalRound[0] ? getMatchWinnerId(losersFinalRound[0]) : null;
+    const grandFinalWinner = getMatchWinnerId(firstGrandFinal);
+
+    if (winnersChampion && losersChampion && grandFinalWinner === losersChampion) {
+      const createdMatches = await createMatches([{
+        tournamentId,
+        homeTeamId: winnersChampion,
+        awayTeamId: losersChampion,
+        stage: BracketStage.FINALS,
+        bracketSide: BracketSide.GRAND_FINAL,
+        roundNumber: 2,
+        matchOrder: 2,
+        status: MatchStatus.SCHEDULED,
+        isBye: false,
+      }]);
+      if (createdMatches.length > 0) createdAny = true;
+    }
+
+    if (!createdAny) break;
+  }
+};
+
+export const generateDoubleEliminationBrackets = async (
+  tournamentId: string,
+  options?: { randomizeSeeds?: boolean; allowByes?: boolean; playoffSize?: number | null }
+) => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { playoffSize: true },
+  });
+  const teamsRaw = await prisma.tournamentTeam.findMany({
+    where: { tournamentId },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const normalizedPlayoffSize = normalizePlayoffSize(options?.playoffSize ?? tournament?.playoffSize);
+  if (teamsRaw.length > normalizedPlayoffSize) {
+    throw new BadRequestError(
+      `Playoff size ${normalizedPlayoffSize} is too small for ${teamsRaw.length} teams`,
+      'PLAYOFF_SIZE_TOO_SMALL'
+    );
+  }
+
+  if (options?.allowByes === false && !isPowerOfTwo(teamsRaw.length)) {
+    throw new BadRequestError(
+      'Double elimination without byes requires a power-of-two number of teams',
+      'INVALID_TEAM_COUNT_FOR_NO_BYES'
+    );
+  }
+
+  const teams = options?.randomizeSeeds ? shuffleTeams(teamsRaw) : teamsRaw;
+  if (teams.length === 2) {
+    return prisma.tournamentMatch.createMany({
+      data: [{
+        tournamentId,
+        homeTeamId: teams[0].id,
+        awayTeamId: teams[1].id,
+        stage: BracketStage.FINALS,
+        bracketSide: BracketSide.GRAND_FINAL,
+        roundNumber: 1,
+        matchOrder: 1,
+        status: MatchStatus.SCHEDULED,
+        isBye: false,
+      }],
+    });
+  }
+
+  const openingRound = buildSingleEliminationMatches(tournamentId, teams, normalizedPlayoffSize).map((match) => ({
+    ...match,
+    bracketSide: BracketSide.WINNERS,
+  }));
+  const createdMatches = await prisma.tournamentMatch.createMany({ data: openingRound });
+  await advanceDoubleElimination(tournamentId);
   return createdMatches;
 };
 
@@ -1127,7 +1507,7 @@ export const generatePoolAwareBrackets = async (
 export const generateKnockoutFromStandings = async (tournamentId: string) => {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
-    select: { tiebreakerRules: true, seedingPolicy: true },
+    select: { tiebreakerRules: true, seedingPolicy: true, playoffSize: true, doubleElimination: true },
   });
 
   const standings = await prisma.tournamentStanding.findMany({
@@ -1151,6 +1531,7 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
 
   const qualifiers = selectGroupKnockoutQualifiers(
     standings.filter((s) => s.groupName != null),
+    tournament?.playoffSize,
     tournament?.tiebreakerRules as string[] | null | undefined
   );
 
@@ -1159,7 +1540,41 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
       ? shuffleTeams(qualifiers)
       : qualifiers;
 
-  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, seededQualifiers);
+  if (tournament?.doubleElimination) {
+    if (seededQualifiers.length === 2) {
+      return prisma.tournamentMatch.createMany({
+        data: [{
+          tournamentId,
+          homeTeamId: seededQualifiers[0].teamId,
+          awayTeamId: seededQualifiers[1].teamId,
+          stage: BracketStage.FINALS,
+          bracketSide: BracketSide.GRAND_FINAL,
+          roundNumber: 1,
+          matchOrder: 1,
+          status: MatchStatus.SCHEDULED,
+          isBye: false,
+        }],
+      });
+    }
+
+    const created = await prisma.tournamentMatch.createMany({
+      data: buildKnockoutMatchesFromQualifiedTeams(
+        tournamentId,
+        seededQualifiers,
+        tournament.playoffSize,
+        BracketSide.WINNERS,
+        1
+      ),
+    });
+    await advanceDoubleElimination(tournamentId);
+    return created;
+  }
+
+  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(
+    tournamentId,
+    seededQualifiers,
+    tournament?.playoffSize
+  );
 
   if (firstStageMatches.length === 0) {
     throw new BadRequestError(
@@ -1189,7 +1604,10 @@ export const updateStandings = async (
   // Use provided tournament or fetch from match
   const tournamentData = tournament || match.tournament;
   
-  const { homeTeamId, awayTeamId, homeScore, awayScore, groupName } = match;
+  const { homeTeamId, awayTeamId, homeScore, awayScore, groupName, isBye } = match;
+  if (!awayTeamId || isBye) {
+    return;
+  }
   
   // Determine match outcome based on sport configuration
   let homeWin = 0, homeDraw = 0, homeLoss = 0;
@@ -1283,7 +1701,7 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
   if (currentStage === BracketStage.GROUP_STAGE) {
     const tournament = await prisma.tournament.findUnique({
       where: { id: tournamentId },
-      select: { format: true, tiebreakerRules: true }
+      select: { format: true }
     });
 
     if (!tournament || tournament.format !== TournamentFormat.GROUPS_KNOCKOUT) {
@@ -1316,36 +1734,32 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
       return;
     }
 
-    const standings = await prisma.tournamentStanding.findMany({
-      where: { tournamentId },
-      select: {
-        teamId: true,
-        groupName: true,
-        points: true,
-        wins: true,
-        goalsFor: true,
-        goalsAgainst: true,
-      },
-    });
+    await generateKnockoutFromStandings(tournamentId);
+    return;
+  }
 
-    const qualifiers = selectGroupKnockoutQualifiers(
-      standings.filter((standing) => standing.groupName != null),
-      tournament.tiebreakerRules as string[] | null | undefined
-    );
-    const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, qualifiers);
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: {
+      format: true,
+      doubleElimination: true,
+      enableThirdPlaceMatch: true,
+    },
+  });
 
-    if (firstStageMatches.length > 0) {
-      await prisma.tournamentMatch.createMany({
-        data: firstStageMatches,
-      });
-    }
+  if (
+    tournament?.format === TournamentFormat.DOUBLE_ELIMINATION ||
+    tournament?.doubleElimination === true
+  ) {
+    await advanceDoubleElimination(tournamentId);
     return;
   }
 
   const allStageMatches = await prisma.tournamentMatch.findMany({
     where: {
       tournamentId,
-      stage: currentStage
+      stage: currentStage,
+      bracketSide: { not: BracketSide.LOSERS },
     },
     orderBy: [
       { roundNumber: 'asc' },
@@ -1398,45 +1812,9 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
   }
 
   // Get winners from each completed match
-  const winnersFromPlayedMatches = matches.map(match => {
-    if (match.homeScore! > match.awayScore!) {
-      return match.homeTeamId;
-    } else {
-      return match.awayTeamId;
-    }
-  });
-
-  const previousStages = stageOrder.slice(0, currentIndex);
-  const previousStageMatchCount = previousStages.length
-    ? await prisma.tournamentMatch.count({
-        where: {
-          tournamentId,
-          stage: { in: previousStages },
-        },
-      })
-    : 0;
-
-  // First elimination stage may have byes (teams not represented in current stage matches)
-  let byeTeamIds: string[] = [];
-  if (previousStageMatchCount === 0) {
-    const participatingTeamIds = new Set<string>();
-    for (const stageMatch of allStageMatches) {
-      participatingTeamIds.add(stageMatch.homeTeamId);
-      participatingTeamIds.add(stageMatch.awayTeamId);
-    }
-
-    const allTeams = await prisma.tournamentTeam.findMany({
-      where: { tournamentId },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    byeTeamIds = allTeams
-      .map((team) => team.id)
-      .filter((teamId) => !participatingTeamIds.has(teamId));
-  }
-
-  const winners = [...byeTeamIds, ...winnersFromPlayedMatches];
+  const winners = matches
+    .map((match) => getMatchWinnerId(match as KnockoutMatchRecord))
+    .filter((teamId): teamId is string => Boolean(teamId));
   
   // Create next round matches
   const nextMatches = [];
@@ -1457,18 +1835,11 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
   const matchesToCreate = [...nextMatches];
 
   // If both semifinals are complete, also create a third-place match between semifinal losers.
-  const thirdPlacePolicyTournament =
-    currentStage === BracketStage.SEMI_FINALS
-      ? await prisma.tournament.findUnique({
-          where: { id: tournamentId },
-          select: { enableThirdPlaceMatch: true },
-        })
-      : null;
   if (
     currentStage === BracketStage.SEMI_FINALS &&
     allStageMatches.length === 2 &&
     existingThirdPlaceMatches === 0 &&
-    (thirdPlacePolicyTournament?.enableThirdPlaceMatch ?? true)
+    (tournament?.enableThirdPlaceMatch ?? true)
   ) {
     const hasDrawnSemiFinal = allStageMatches.some(match => match.homeScore === match.awayScore);
     if (hasDrawnSemiFinal) {

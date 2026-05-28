@@ -503,12 +503,24 @@ class _KnockoutBracketView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final columns = _buildBracketColumns(
-      matches,
+    final hasLoserBracket = matches.any(
+      (match) => match.bracketSide == 'losers' || match.bracketSide == 'grand_final',
+    );
+    final winnerColumns = _buildBracketColumns(
+      hasLoserBracket
+          ? matches
+              .where((match) => match.bracketSide == null || match.bracketSide == 'winners')
+              .toList()
+          : matches,
       useGroupsKnockoutLabels: useGroupsKnockoutLabels,
     );
+    final loserColumns = hasLoserBracket
+        ? _buildLoserBracketColumns(
+            matches.where((match) => match.bracketSide == 'losers' || match.bracketSide == 'grand_final').toList(),
+          )
+        : const <_BracketColumn>[];
 
-    if (columns.isEmpty) {
+    if (winnerColumns.isEmpty && loserColumns.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -523,7 +535,42 @@ class _KnockoutBracketView extends StatelessWidget {
       );
     }
 
-    return _VisualBracketCanvas(columns: columns);
+    if (!hasLoserBracket) {
+      return _VisualBracketCanvas(columns: winnerColumns);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (winnerColumns.isNotEmpty) ...[
+          const Text(
+            'Winners Bracket',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Teams stay here until their first loss.',
+            style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+          ),
+          const SizedBox(height: 12),
+          _VisualBracketCanvas(columns: winnerColumns),
+          const SizedBox(height: 24),
+        ],
+        if (loserColumns.isNotEmpty) ...[
+          const Text(
+            'Losers Bracket',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'One more loss means elimination.',
+            style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+          ),
+          const SizedBox(height: 12),
+          _VisualBracketCanvas(columns: loserColumns),
+        ],
+      ],
+    );
   }
 }
 
@@ -563,7 +610,7 @@ class _BracketCanvasMatch {
     return _BracketCanvasMatch(
       label: label,
       teamAName: match.teamAName ?? fallbackTeamAName,
-      teamBName: match.teamBName ?? fallbackTeamBName,
+      teamBName: match.teamBName ?? (match.isBye ? 'BYE' : fallbackTeamBName),
       scoreA: match.scoreA,
       scoreB: match.scoreB,
       status: match.status,
@@ -681,6 +728,36 @@ List<_BracketColumn> _buildLegacyRoundColumns(List<TournamentMatchModel> matches
           label: key,
           matches: byRound[key]!
               .map((match) => _BracketCanvasMatch.fromModel(match, label: key))
+              .toList(),
+        ),
+      )
+      .toList();
+}
+
+List<_BracketColumn> _buildLoserBracketColumns(List<TournamentMatchModel> matches) {
+  final byRound = <String, List<TournamentMatchModel>>{};
+  final roundOrder = <String, int>{};
+
+  for (final match in matches) {
+    final label = match.bracketSide == 'grand_final'
+        ? (match.roundNumber == 2 ? 'Grand Final Reset' : 'Grand Final')
+        : 'Losers Round ${match.roundNumber ?? 1}';
+    byRound.putIfAbsent(label, () => []).add(match);
+    roundOrder[label] = match.bracketSide == 'grand_final'
+        ? 10_000 + (match.roundNumber ?? 1)
+        : (match.roundNumber ?? 1);
+  }
+
+  final sortedLabels = byRound.keys.toList()
+    ..sort((a, b) => (roundOrder[a] ?? 0).compareTo(roundOrder[b] ?? 0));
+
+  return sortedLabels
+      .map(
+        (label) => _BracketColumn(
+          key: label,
+          label: label,
+          matches: byRound[label]!
+              .map((match) => _BracketCanvasMatch.fromModel(match, label: label))
               .toList(),
         ),
       )
