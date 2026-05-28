@@ -597,8 +597,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
+                            fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 4),
@@ -686,7 +685,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             textStyle: const TextStyle(
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),
                           ),
