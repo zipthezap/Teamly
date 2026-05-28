@@ -90,7 +90,6 @@ export const prismaErrorHandler = (err: unknown): ApiError => {
   const error = err as Record<string, unknown>;
   const errorCode = error.code as string;
   const errorName = error.name as string;
-  const errorMeta = error.meta as Record<string, unknown> | undefined;
 
   // Handle Prisma unique constraint violations
   if (errorCode === 'P2002') {

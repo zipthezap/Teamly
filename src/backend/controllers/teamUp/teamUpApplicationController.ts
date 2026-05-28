@@ -7,13 +7,17 @@ import {
 } from '@prisma/client';
 import * as teamUpService from '../../services/teamUpService';
 import { dispatchPushNotifications } from '../../services/pushNotificationService';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
+import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
+import { isValidUUID } from '../../utils/validation';
 import {
   computeRoleFitForApplication,
   getWaitlistRank,
   buildAutoFillWindow,
 } from './_helpers';
 import { BLOCKING_APPLICATION_STATUSES, REAPPLY_ELIGIBLE_STATUSES } from './_constants';
+
+/** Max responseIds allowed in a single bulk operation */
+const MAX_BULK_RESPONSE_IDS = 50;
 
 export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -56,18 +60,26 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   });
 
   if (!teamUpRequest) {
-    throw new NotFoundError('TeamUp request not found');
+    throw new NotFoundError(`TeamUp request ${id} not found`);
   }
 
   if (teamUpRequest.status !== 'open') {
     throw new BadRequestError('This TeamUp request is no longer accepting responses');
   }
 
+  // Reject if the event's dateTime has already passed
+  if (teamUpRequest.dateTime && new Date(teamUpRequest.dateTime) <= new Date()) {
+    throw new BadRequestError(
+      'This TeamUp request has already passed and is no longer accepting responses',
+      'TEAMUP_EXPIRED'
+    );
+  }
+
   if (teamUpRequest.creatorId === req.user!.id) {
     throw new BadRequestError('You cannot respond to your own TeamUp request');
   }
 
-  // Check if user has already responded (cancelled/declined responses may be reapplied)
+  // Check if user has already responded
   const existingResponse: any = await prisma.teamUpResponse.findFirst({
     where: {
       teamUpRequestId: id,
@@ -75,8 +87,17 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     }
   });
 
-  if (existingResponse && !REAPPLY_ELIGIBLE_STATUSES.includes(existingResponse.status)) {
-    throw new BadRequestError('You have already responded to this request');
+  if (existingResponse) {
+    if (!REAPPLY_ELIGIBLE_STATUSES.includes(existingResponse.status)) {
+      throw new BadRequestError('You have already responded to this request');
+    }
+    // Declined users may not re-apply
+    if (existingResponse.status === 'declined') {
+      throw new ConflictError(
+        'Your application to this request was declined. You cannot re-apply.',
+        'APPLICATION_DECLINED'
+      );
+    }
   }
 
   const hasPositionRequirements = teamUpRequest.positions.length > 0;
@@ -827,17 +848,32 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
   if (!Array.isArray(responseIds) || responseIds.length === 0) {
     throw new BadRequestError('responseIds must be a non-empty array');
   }
+  if (responseIds.length > MAX_BULK_RESPONSE_IDS) {
+    throw new BadRequestError(
+      `responseIds must contain at most ${MAX_BULK_RESPONSE_IDS} items`,
+      'BULK_LIMIT_EXCEEDED',
+      'responseIds'
+    );
+  }
+  const invalidIds = responseIds.filter((rid: unknown) => typeof rid !== 'string' || !isValidUUID(rid));
+  if (invalidIds.length > 0) {
+    throw new BadRequestError(
+      `responseIds contains invalid UUID values: ${invalidIds.slice(0, 5).join(', ')}`,
+      'INVALID_UUID',
+      'responseIds'
+    );
+  }
 
   const requestRecord = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { creatorId: true, playersNeeded: true },
   });
-  if (!requestRecord) throw new NotFoundError('TeamUp request not found');
+  if (!requestRecord) throw new NotFoundError(`TeamUp request ${id} not found`);
   if (requestRecord.creatorId !== req.user!.id) {
     throw new ForbiddenError('Only the creator can manage responses');
   }
 
-  const uniqueResponseIds = [...new Set(responseIds.map((value) => String(value)))];
+  const uniqueResponseIds = [...new Set(responseIds.map((value: string) => value))];
   const responses = await prisma.teamUpResponse.findMany({
     where: {
       id: { in: uniqueResponseIds },
@@ -885,5 +921,7 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
   res.json({
     message: `Bulk ${action} completed`,
     updatedCount: responses.length,
+    processedIds: responses.map((r) => r.id),
+    notFoundIds: uniqueResponseIds.filter((rid) => !responses.find((r) => r.id === rid)),
   });
 };

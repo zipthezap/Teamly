@@ -8,11 +8,27 @@ import * as groupService from '../../services/groupService';
 import { GroupNotificationType } from '../../../shared/types/event.types';
 import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
+import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
 import { createInviteToken } from '../../utils/inviteToken';
 import { groupBan } from '../../utils/prismaExtended';
 import { NotificationFactory } from '../../services/notificationFactory';
 import { InviteService } from '../../services/inviteService';
+
+const MAX_BULK_INVITES = 50;
+const MIN_EXPIRES_IN_DAYS = 1;
+const MAX_EXPIRES_IN_DAYS = 30;
+
+function validateExpiresInDays(expiresInDays: unknown) {
+  if (expiresInDays === undefined || expiresInDays === null) return;
+  const n = Number(expiresInDays);
+  if (!Number.isInteger(n) || n < MIN_EXPIRES_IN_DAYS || n > MAX_EXPIRES_IN_DAYS) {
+    throw new BadRequestError(
+      `expiresInDays must be an integer between ${MIN_EXPIRES_IN_DAYS} and ${MAX_EXPIRES_IN_DAYS}`,
+      'OUT_OF_RANGE',
+      'expiresInDays'
+    );
+  }
+}
 
 export const inviteMember = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -26,6 +42,8 @@ export const inviteMember = async (req: Request, res: Response) => {
   if (!isValidEmail(email)) {
     throw new BadRequestError('Invalid email format');
   }
+
+  validateExpiresInDays(expiresInDays);
 
   // Check if user has permission to invite
   const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'group');
@@ -55,6 +73,10 @@ export const inviteMember = async (req: Request, res: Response) => {
   });
 
   if (!result.success) {
+    // Surface pending-invite conflict clearly
+    if (result.error?.includes('pending') || result.error?.includes('already')) {
+      throw new ConflictError(result.error, 'INVITE_ALREADY_PENDING');
+    }
     throw new BadRequestError(result.error || 'Failed to send invitation');
   }
 
@@ -143,10 +165,24 @@ export const bulkInviteMembers = async (req: Request, res: Response) => {
     throw new BadRequestError('emails must be a non-empty array');
   }
 
-  const MAX_BULK = 50;
-  if (emails.length > MAX_BULK) {
-    throw new BadRequestError(`Cannot invite more than ${MAX_BULK} users at once`);
+  if (emails.length > MAX_BULK_INVITES) {
+    throw new BadRequestError(`Cannot invite more than ${MAX_BULK_INVITES} users at once`);
   }
+
+  // Validate each email format
+  const invalidEmails = emails.filter((e: unknown) => typeof e !== 'string' || !isValidEmail(e));
+  if (invalidEmails.length > 0) {
+    throw new BadRequestError(
+      `Invalid email format(s): ${(invalidEmails as string[]).slice(0, 5).join(', ')}`,
+      'INVALID_FORMAT',
+      'emails'
+    );
+  }
+
+  validateExpiresInDays(expiresInDays);
+
+  // De-duplicate emails before processing
+  const uniqueEmails = [...new Set((emails as string[]).map((e) => e.toLowerCase()))];
 
   // Check permission
   const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'group');
@@ -154,7 +190,7 @@ export const bulkInviteMembers = async (req: Request, res: Response) => {
     throw new ForbiddenError(canInvite.reason || 'You do not have permission to invite members');
   }
 
-  const result = await InviteService.batchInviteToGroup(id, emails, req.user!.id, {
+  const result = await InviteService.batchInviteToGroup(id, uniqueEmails, req.user!.id, {
     customMessage,
     expiresInDays,
   });
@@ -277,7 +313,7 @@ export const respondToInvitation = async (req: Request, res: Response) => {
         });
 
         if (currentMemberCount >= group.maxMembers) {
-          throw new BadRequestError('Group has reached maximum member capacity');
+          throw new ConflictError('Group has reached maximum member capacity', 'GROUP_AT_CAPACITY');
         }
       }
 
