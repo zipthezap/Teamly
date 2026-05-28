@@ -1125,6 +1125,7 @@ describe('POST /api/tournaments/:id/teams (addTeam)', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Category selection is required');
   });
+
 });
 
 describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
@@ -3229,6 +3230,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Category selection is required');
   });
+
 
   it('returns 403 when the tournament organizer attempts to self-register', async () => {
     // mockTournament.organizerId === 'test-user-id' (the authenticated user)

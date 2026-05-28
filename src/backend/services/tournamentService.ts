@@ -546,10 +546,12 @@ export const computeAutoStatus = (tournament: {
   status: string;
   startDate: Date;
   endDate?: Date | null;
+  format?: string;
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
   hasMatches?: boolean;
   hasIncompleteMatches?: boolean;
+  hasKnockoutMatches?: boolean;
 }): string | null => {
   if (isTerminalTournamentStatus(tournament.status)) return null;
 
@@ -562,12 +564,21 @@ export const computeAutoStatus = (tournament: {
 
   // Rule 2: startDate has arrived → in_progress (or completed if all matches done)
   if (now >= tournament.startDate) {
-    if (tournament.hasMatches === true && tournament.hasIncompleteMatches === false) {
-      return tournament.status !== 'completed' ? 'completed' : null;
+    const waitingForKnockoutMatches =
+      tournament.format === TournamentFormat.GROUPS_KNOCKOUT &&
+      tournament.hasMatches === true &&
+      tournament.hasKnockoutMatches === false;
+
+    if (waitingForKnockoutMatches) {
+      return tournament.status !== TournamentStatus.IN_PROGRESS ? TournamentStatus.IN_PROGRESS : null;
     }
 
-    if (tournament.status !== 'in_progress' && tournament.status !== 'completed') {
-      return 'in_progress';
+    if (tournament.hasMatches === true && tournament.hasIncompleteMatches === false) {
+      return tournament.status !== TournamentStatus.COMPLETED ? TournamentStatus.COMPLETED : null;
+    }
+
+    if (tournament.status !== TournamentStatus.IN_PROGRESS && tournament.status !== TournamentStatus.COMPLETED) {
+      return TournamentStatus.IN_PROGRESS;
     }
     return null;
   }
@@ -2380,6 +2391,7 @@ export const syncTournamentAutoStatus = async <T extends {
   id: string;
   status: string;
   name?: string;
+  format?: string;
   startDate: Date;
   endDate?: Date | null;
   registrationStartDate?: Date | null;
@@ -2392,7 +2404,7 @@ export const syncTournamentAutoStatus = async <T extends {
     }
   }
 
-  const [matchCount, incompleteMatchCount] = await Promise.all([
+  const [matchCount, incompleteMatchCount, knockoutMatchCount] = await Promise.all([
     prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
     prisma.tournamentMatch.count({
       where: {
@@ -2404,12 +2416,19 @@ export const syncTournamentAutoStatus = async <T extends {
         ],
       },
     }),
+    prisma.tournamentMatch.count({
+      where: {
+        tournamentId: tournament.id,
+        stage: { not: BracketStage.GROUP_STAGE },
+      },
+    }),
   ]);
 
   const nextStatus = computeAutoStatus({
     ...tournament,
     hasMatches: matchCount > 0,
     hasIncompleteMatches: incompleteMatchCount > 0,
+    hasKnockoutMatches: knockoutMatchCount > 0,
   });
 
   if (!nextStatus || nextStatus === tournament.status) {
@@ -2474,6 +2493,7 @@ export const reconcileTournamentLifecycleStatus = async (
       id: true,
       status: true,
       name: true,
+      format: true,
       startDate: true,
       endDate: true,
       registrationStartDate: true,

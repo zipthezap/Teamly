@@ -144,6 +144,15 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         textCapitalization: TextCapitalization.words,
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
+                      if (_categories.isEmpty) ...[
+                        const SizedBox(height: 16),
+                        UiAlert(
+                          icon: Icons.info_outline,
+                          tone: UiAlertTone.warning,
+                          message:
+                              'Categories are required before teams can register. Ask the organizer to create a category first.',
+                        ),
+                      ],
                       if (_categories.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
@@ -195,7 +204,12 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         ),
                       ],
                       const SizedBox(height: 24),
-                      UiPrimaryButton(text: 'Register Team', icon: Icons.check_circle_outline, onPressed: _loading ? null : _submit, loading: _loading),
+                      UiPrimaryButton(
+                        text: 'Register Team',
+                        icon: Icons.check_circle_outline,
+                        onPressed: _loading || _categories.isEmpty ? null : _submit,
+                        loading: _loading,
+                      ),
                     ],
                   ),
                 ),

@@ -772,7 +772,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Teams can be registered before categories are created. Categories and pools can be added later.',
+                        isAdmin
+                            ? 'Create at least one category before accepting team registrations.'
+                            : 'Team registration opens after the organizer publishes categories.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
