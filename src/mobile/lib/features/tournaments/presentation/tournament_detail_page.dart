@@ -12,30 +12,11 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
 import 'team_roster_page.dart';
+import 'tournament_match_utils.dart';
 import 'tournament_status_presentation.dart';
 import 'tournament_status_policy.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
-
-/// Returns true for matches that belong to the group (round-robin) stage.
-/// Checks both the `stage` field (preferred, set by current backend) and the
-/// legacy `groupName` field (for matches created by older backend versions).
-bool _isGroupStageMatch(TournamentMatchModel m) {
-  return m.stage == 'group_stage' || (m.stage == null && m.groupName != null);
-}
-
-bool _isKnockoutStageMatch(TournamentMatchModel m) {
-  return m.stage != null && m.stage != 'group_stage';
-}
-
-bool _isFormingKnockoutBrackets(TournamentModel tournament) {
-  if (tournament.format != 'groups_knockout') return false;
-  final groupMatches = tournament.matches.where(_isGroupStageMatch).toList();
-  if (groupMatches.isEmpty) return false;
-  final hasKnockout = tournament.matches.any(_isKnockoutStageMatch);
-  final allGroupsDone = groupMatches.every((m) => m.status == 'completed');
-  return allGroupsDone && !hasKnockout;
-}
 
 bool _isTournamentStarted(TournamentModel tournament) {
   return isTournamentStartedStatus(tournament.status) ||
@@ -47,7 +28,7 @@ bool _isTournamentStarted(TournamentModel tournament) {
 String _statusStageLabel(TournamentModel tournament) {
   return getTournamentStageLabel(
     status: tournament.status,
-    isFormingKnockoutBrackets: _isFormingKnockoutBrackets(tournament),
+    isFormingKnockoutBrackets: isFormingKnockoutBrackets(tournament),
     registrationStartDate: tournament.registrationStartDate,
     registrationDeadline: tournament.registrationDeadline,
   );
@@ -123,12 +104,11 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
 
         // Show Groups tab whenever there are any group-stage matches, or when
         // the tournament has started (for other formats).
-        final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+        final hasGroupMatches = t.matches.any(isGroupStageMatch);
         final hasGroupsTab = isStarted || hasGroupMatches;
 
         // Brackets tab: only shown when actual knockout matches exist (not just group stage).
-        final hasKnockoutMatches = t.matches.any(
-            (m) => m.stage != null && m.stage != 'group_stage');
+        final hasKnockoutMatches = t.matches.any(isKnockoutStageMatch);
         // For non-groups_knockout formats show Brackets whenever there are matches.
         final isGroupsKnockout = t.format == 'groups_knockout';
         final hasBrackets = isGroupsKnockout
@@ -561,65 +541,40 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.surface,
-                    Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.72),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(18),
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: Theme.of(context)
                       .colorScheme
                       .outlineVariant
-                      .withValues(alpha: 0.7),
+                      .withValues(alpha: 0.85),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.035),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: 38,
+                          height: 38,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.18),
-                                Theme.of(context)
-                                    .colorScheme
-                                    .tertiary
-                                    .withValues(alpha: 0.18),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             Icons.shield_rounded,
                             color: Theme.of(context).colorScheme.primary,
-                            size: 22,
+                            size: 18,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,9 +582,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               Text(
                                 'My Team',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.4,
+                                  letterSpacing: 0.3,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .primary,
@@ -641,8 +596,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.3,
+                                      fontWeight: FontWeight.w700,
                                     ),
                               ),
                               const SizedBox(height: 2),
@@ -651,7 +605,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                                     ? 'You are managing this roster.'
                                     : 'You are registered on this roster.',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurfaceVariant,
@@ -664,8 +618,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     ),
                     const SizedBox(height: 12),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
                         _TeamCardStatChip(
                           icon: team.isPaid
@@ -732,12 +686,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                             ),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: 14,
+                                vertical: 10,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              minimumSize: const Size(0, 38),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               textStyle: const TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -864,41 +817,38 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 }
                     : null,
               ),
-              OutlinedButton.icon(
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.auto_awesome_outlined, size: 16),
-                    if (t.requirePaymentForBrackets && t.unpaidTeamCount > 0)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            '${t.unpaidTeamCount}',
-                            style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+              if (t.format != 'groups_knockout')
+                OutlinedButton.icon(
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.auto_awesome_outlined, size: 16),
+                      if (t.requirePaymentForBrackets && t.unpaidTeamCount > 0)
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '${t.unpaidTeamCount}',
+                              style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
+                  label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
+                  // Allow regeneration while in_progress (backend now supports this).
+                  // This whole block is already gated on `isAdmin`, so only organizers
+                  // and co-admins ever see it.
+                  onPressed: (canManageTournament || t.status == 'in_progress')
+                      ? () => _generateBrackets(context, t)
+                      : null,
                 ),
-                label: Text(
-                  t.format == 'groups_knockout'
-                      ? (t.matches.any(_isKnockoutStageMatch) ? 'Regenerate Brackets' : 'Generate Brackets')
-                      : (t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
-                ),
-                // Allow regeneration while in_progress (backend now supports this).
-                // This whole block is already gated on `isAdmin`, so only organizers
-                // and co-admins ever see it.
-                onPressed: (canManageTournament || t.status == 'in_progress')
-                    ? () => _generateBrackets(context, t)
-                    : null,
-              ),
               // groups_knockout: stage-aware generation actions
               if (t.format == 'groups_knockout') ...[
                 _GroupMatchesButton(tournament: t, onRefresh: onRefresh),
@@ -999,7 +949,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         tournament.format == 'single_elimination' ||
         tournament.format == 'double_elimination';
     final hasExistingMatches = tournament.format == 'groups_knockout'
-        ? tournament.matches.any(_isKnockoutStageMatch)
+        ? tournament.matches.any(isKnockoutStageMatch)
         : tournament.matches.isNotEmpty;
     final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
@@ -1416,7 +1366,7 @@ class _GroupMatchesButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
     final canGenerate = t.status == 'registration_closed';
-    final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+    final hasGroupMatches = t.matches.any(isGroupStageMatch);
     final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
 
     return OutlinedButton.icon(
@@ -1581,10 +1531,10 @@ class _KnockoutBracketButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    final groupMatches = t.matches.where(_isGroupStageMatch).toList();
+    final groupMatches = t.matches.where(isGroupStageMatch).toList();
     final allGroupDone =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
-    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final hasKnockout = t.matches.any(isKnockoutStageMatch);
 
     return OutlinedButton.icon(
       icon: const Icon(Icons.emoji_events_outlined, size: 16),
@@ -1595,7 +1545,7 @@ class _KnockoutBracketButton extends ConsumerWidget {
 
   Future<void> _generate(BuildContext context, WidgetRef ref) async {
     final t = tournament;
-    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final hasKnockout = t.matches.any(isKnockoutStageMatch);
     var playoffSize = t.playoffSize;
     var doubleElimination = t.doubleElimination;
     final ok = await showDialog<bool>(
@@ -1609,8 +1559,8 @@ class _KnockoutBracketButton extends ConsumerWidget {
             children: [
               Text(
                 hasKnockout
-                    ? 'This will regenerate the knockout bracket based on current group standings. Continue?'
-                    : 'This will generate the knockout bracket from current group standings. Continue?',
+                    ? 'This will regenerate playoff brackets from completed category standings (all pools in each category merge). Continue?'
+                    : 'This will generate playoff brackets from completed category standings (all pools in each category merge). Continue?',
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(

@@ -10,6 +10,10 @@ import {
 const SCENARIO_PREFIX = '[Seed] Groups KO';
 const ORGANIZER_EMAIL = 'seed.tournament.lifecycle@teamly.local';
 const TEAM_COUNT = 8;
+const CATEGORY_CONFIG = [
+  { name: 'Open Division', sortOrder: 0, poolName: 'Open Pool A', maxTeams: 4 },
+  { name: 'Challenger Division', sortOrder: 1, poolName: 'Challenger Pool A', maxTeams: 4 },
+] as const;
 
 const createOrGetOrganizer = async () => {
   const existing = await prisma.user.findUnique({ where: { email: ORGANIZER_EMAIL } });
@@ -76,12 +80,50 @@ const syncStatus = async (tournamentId: string) => {
   return tournamentService.syncTournamentAutoStatus(tournament, 'seed_script');
 };
 
-const createTeams = async (tournamentId: string, count: number) => {
+const ensureCategoryStructure = async (tournamentId: string) => {
+  const categories = [] as Array<{ id: string; name: string; sortOrder: number }>;
+  const pools = [] as Array<{ id: string; name: string; maxTeams: number; categoryId: string }>;
+
+  for (const config of CATEGORY_CONFIG) {
+    const category = await prisma.tournamentCategory.create({
+      data: {
+        tournamentId,
+        name: config.name,
+        sortOrder: config.sortOrder,
+      },
+      select: { id: true, name: true, sortOrder: true },
+    });
+    categories.push(category);
+
+    const pool = await prisma.tournamentPool.create({
+      data: {
+        tournamentId,
+        name: config.poolName,
+        maxTeams: config.maxTeams,
+        categoryId: category.id,
+      },
+      select: { id: true, name: true, maxTeams: true, categoryId: true },
+    });
+    pools.push(pool);
+  }
+
+  return { categories, pools };
+};
+
+const createTeams = async (
+  tournamentId: string,
+  count: number,
+  pools: Array<{ id: string; name: string }>
+) => {
   for (let i = 1; i <= count; i += 1) {
+    const pool = pools[(i - 1) % pools.length];
     await prisma.tournamentTeam.create({
       data: {
         tournamentId,
         name: `Seed Team ${i}`,
+        poolId: pool.id,
+        poolName: pool.name,
+        registrationOrder: i,
       },
     });
   }
@@ -129,6 +171,7 @@ const createBaseTournament = async (
       ...dates,
     },
   });
+  await ensureCategoryStructure(tournament.id);
   if (mode !== 'draft') {
     await syncStatus(tournament.id);
   }
@@ -157,7 +200,12 @@ const seedRegistrationClosed = async (organizerId: string) => {
     `${SCENARIO_PREFIX} • Registration Closed`,
     'registration_closed'
   );
-  await createTeams(tournament.id, TEAM_COUNT);
+  const pools = await prisma.tournamentPool.findMany({
+    where: { tournamentId: tournament.id },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+  await createTeams(tournament.id, TEAM_COUNT, pools);
   await syncStatus(tournament.id);
   return tournament;
 };
@@ -168,7 +216,12 @@ const seedInProgressGroupPlay = async (organizerId: string) => {
     `${SCENARIO_PREFIX} • In Progress`,
     'active'
   );
-  await createTeams(tournament.id, TEAM_COUNT);
+  const pools = await prisma.tournamentPool.findMany({
+    where: { tournamentId: tournament.id },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+  await createTeams(tournament.id, TEAM_COUNT, pools);
   await tournamentService.generateGroupsKnockoutBrackets(tournament.id, 2);
 
   const groupMatches = await prisma.tournamentMatch.findMany({
@@ -199,7 +252,12 @@ const seedComplete = async (organizerId: string) => {
     `${SCENARIO_PREFIX} • Complete`,
     'active'
   );
-  await createTeams(tournament.id, TEAM_COUNT);
+  const pools = await prisma.tournamentPool.findMany({
+    where: { tournamentId: tournament.id },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+  await createTeams(tournament.id, TEAM_COUNT, pools);
   await tournamentService.generateGroupsKnockoutBrackets(tournament.id, 2);
   const groupMatches = await prisma.tournamentMatch.findMany({
     where: { tournamentId: tournament.id, stage: BracketStage.GROUP_STAGE },
@@ -232,6 +290,55 @@ const cleanupExistingSeeds = async () => {
   ]);
 };
 
+const validateSeedInvariants = async (tournamentIds: string[]) => {
+  const seededTournaments = await prisma.tournament.findMany({
+    where: { id: { in: tournamentIds } },
+    select: {
+      id: true,
+      name: true,
+      organizerId: true,
+      categories: { select: { id: true } },
+      adminRoles: { select: { userId: true } },
+      teams: {
+        select: {
+          id: true,
+          captainUserId: true,
+          players: { select: { userId: true } },
+        },
+      },
+    },
+  });
+
+  for (const tournament of seededTournaments) {
+    if (tournament.categories.length === 0) {
+      throw new Error(`Seed invariant failed: ${tournament.name} has no categories`);
+    }
+
+    const restrictedUsers = new Set([
+      tournament.organizerId,
+      ...tournament.adminRoles.map((role) => role.userId),
+    ]);
+
+    const invalidCaptain = tournament.teams.find(
+      (team) => team.captainUserId && restrictedUsers.has(team.captainUserId)
+    );
+    if (invalidCaptain) {
+      throw new Error(
+        `Seed invariant failed: restricted user is captain in ${tournament.name} (team ${invalidCaptain.id})`
+      );
+    }
+
+    const invalidPlayer = tournament.teams.find((team) =>
+      team.players.some((player) => player.userId && restrictedUsers.has(player.userId))
+    );
+    if (invalidPlayer) {
+      throw new Error(
+        `Seed invariant failed: restricted user is player in ${tournament.name} (team ${invalidPlayer.id})`
+      );
+    }
+  }
+};
+
 const run = async () => {
   await cleanupExistingSeeds();
   const organizer = await createOrGetOrganizer();
@@ -243,6 +350,8 @@ const run = async () => {
     seedInProgressGroupPlay(organizer.id),
     seedComplete(organizer.id),
   ]);
+
+  await validateSeedInvariants(created.map((tournament) => tournament.id));
 
   const summaries = await Promise.all(created.map(async (tournament) => {
     const [fresh, groupMatches, knockoutMatches] = await Promise.all([

@@ -6,6 +6,7 @@ import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_match_utils.dart';
 
 const _kAccentBracket = Color(0xFFFF9800);
 const double _kMatchW = 160.0;
@@ -100,11 +101,70 @@ class _GroupsKnockoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final knockoutMatches = tournament.matches
-        .where((m) => m.stage != null && m.stage != 'group_stage')
-        .toList();
+    final poolCategoryMap = <String, String>{};
+    for (final pool in tournament.pools) {
+      if (pool.categoryName != null) {
+        poolCategoryMap[pool.id] = pool.categoryName!;
+      }
+    }
+
+    final teamCategoryMap = <String, String>{};
+    for (final team in tournament.teams) {
+      if (team.poolId != null && poolCategoryMap.containsKey(team.poolId)) {
+        teamCategoryMap[team.id] = poolCategoryMap[team.poolId!]!;
+      }
+    }
+
+    final knockoutMatches = tournament.matches.where(isKnockoutStageMatch).toList();
 
     if (knockoutMatches.isNotEmpty) {
+      final byCategory = <String, List<TournamentMatchModel>>{};
+      for (final match in knockoutMatches) {
+        final category = match.teamAId != null && teamCategoryMap.containsKey(match.teamAId)
+            ? teamCategoryMap[match.teamAId]!
+            : (match.teamBId != null && teamCategoryMap.containsKey(match.teamBId)
+                ? teamCategoryMap[match.teamBId]!
+                : 'Open');
+        byCategory.putIfAbsent(category, () => []).add(match);
+      }
+
+      if (byCategory.length > 1) {
+        final categoryOrder = {
+          for (final category in tournament.categories) category.name: category.sortOrder,
+        };
+        final tabs = byCategory.keys.toList()
+          ..sort((a, b) {
+            final sortA = categoryOrder[a] ?? 999;
+            final sortB = categoryOrder[b] ?? 999;
+            if (sortA != sortB) return sortA.compareTo(sortB);
+            return a.compareTo(b);
+          });
+
+        return DefaultTabController(
+          length: tabs.length,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: tabs.map((category) => Tab(text: category)).toList(),
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: tabs
+                      .map((category) => _KnockoutBracketView(
+                            matches: byCategory[category]!,
+                            useGroupsKnockoutLabels: true,
+                          ))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       return _KnockoutBracketView(
         matches: knockoutMatches,
         useGroupsKnockoutLabels: true,
@@ -114,9 +174,7 @@ class _GroupsKnockoutView extends StatelessWidget {
     // No knockout matches yet — this view should not normally be reached because
     // the Brackets tab is hidden until knockout matches exist.  Show a
     // descriptive placeholder in case it is navigated to directly.
-    final groupMatches = tournament.matches
-        .where((m) => m.stage == 'group_stage' || m.groupName != null)
-        .toList();
+    final groupMatches = tournament.matches.where(isGroupStageMatch).toList();
     final allGroupMatchesCompleted =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
     return ListView(

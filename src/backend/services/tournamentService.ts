@@ -1519,6 +1519,19 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
       wins: true,
       goalsFor: true,
       goalsAgainst: true,
+      team: {
+        select: {
+          poolName: true,
+          pool: {
+            select: {
+              categoryId: true,
+              category: {
+                select: { id: true, name: true, sortOrder: true },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -1529,21 +1542,78 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
     );
   }
 
-  const qualifiers = selectGroupKnockoutQualifiers(
-    standings.filter((s) => s.groupName != null),
-    tournament?.playoffSize,
-    tournament?.tiebreakerRules as string[] | null | undefined
-  );
+  const standingsByCategory = new Map<string, {
+    standings: StandingLike[];
+    sortOrder: number;
+    label: string;
+  }>();
 
-  const seededQualifiers =
-    tournament?.seedingPolicy === TournamentSeedingPolicy.RANDOM
-      ? shuffleTeams(qualifiers)
-      : qualifiers;
+  for (const standing of standings) {
+    const categoryId = standing.team?.pool?.categoryId;
+    const categoryName = standing.team?.pool?.category?.name;
+    const poolNameHint = standing.team?.poolName?.trim();
+    const categoryKey =
+      categoryId ?? (poolNameHint ? `__pool_name__:${poolNameHint.toLowerCase()}` : '__uncategorized__');
+    const categoryLabel = categoryName ?? poolNameHint ?? 'Open';
+    const categorySortOrder = standing.team?.pool?.category?.sortOrder ?? Number.MAX_SAFE_INTEGER;
 
-  if (tournament?.doubleElimination) {
-    if (seededQualifiers.length === 2) {
-      return prisma.tournamentMatch.createMany({
-        data: [{
+    if (!standingsByCategory.has(categoryKey)) {
+      standingsByCategory.set(categoryKey, {
+        standings: [],
+        sortOrder: categorySortOrder,
+        label: categoryLabel,
+      });
+    }
+
+    standingsByCategory.get(categoryKey)!.standings.push({
+      teamId: standing.teamId,
+      groupName: standing.groupName,
+      points: standing.points,
+      wins: standing.wins,
+      goalsFor: standing.goalsFor,
+      goalsAgainst: standing.goalsAgainst,
+    });
+  }
+
+  const categoryBuckets = Array.from(standingsByCategory.values())
+    .filter((bucket) => bucket.standings.length >= 2)
+    .sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return a.label.localeCompare(b.label);
+    });
+
+  if (categoryBuckets.length === 0) {
+    throw new BadRequestError(
+      'No category has enough qualified teams to generate knockout brackets.',
+      'INSUFFICIENT_TEAMS'
+    );
+  }
+
+  if (tournament?.doubleElimination && categoryBuckets.length > 1) {
+    throw new BadRequestError(
+      'Double elimination tournaments with multiple categories are not currently supported.',
+      'UNSUPPORTED_DOUBLE_ELIMINATION_MULTI_CATEGORY'
+    );
+  }
+
+  const tiebreakerRules = tournament?.tiebreakerRules as string[] | null | undefined;
+  const firstStageMatches: Prisma.TournamentMatchCreateManyInput[] = [];
+
+  for (const bucket of categoryBuckets) {
+    const qualifiers = selectGroupKnockoutQualifiers(
+      bucket.standings,
+      tournament?.playoffSize,
+      tiebreakerRules
+    );
+
+    const seededQualifiers =
+      tournament?.seedingPolicy === TournamentSeedingPolicy.RANDOM
+        ? shuffleTeams(qualifiers)
+        : qualifiers;
+
+    if (tournament?.doubleElimination) {
+      if (seededQualifiers.length === 2) {
+        firstStageMatches.push({
           tournamentId,
           homeTeamId: seededQualifiers[0].teamId,
           awayTeamId: seededQualifiers[1].teamId,
@@ -1553,28 +1623,29 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
           matchOrder: 1,
           status: MatchStatus.SCHEDULED,
           isBye: false,
-        }],
-      });
+        });
+      } else {
+        firstStageMatches.push(
+          ...buildKnockoutMatchesFromQualifiedTeams(
+            tournamentId,
+            seededQualifiers,
+            tournament.playoffSize,
+            BracketSide.WINNERS,
+            1
+          )
+        );
+      }
+      continue;
     }
 
-    const created = await prisma.tournamentMatch.createMany({
-      data: buildKnockoutMatchesFromQualifiedTeams(
+    firstStageMatches.push(
+      ...buildKnockoutMatchesFromQualifiedTeams(
         tournamentId,
         seededQualifiers,
-        tournament.playoffSize,
-        BracketSide.WINNERS,
-        1
-      ),
-    });
-    await advanceDoubleElimination(tournamentId);
-    return created;
+        tournament?.playoffSize
+      )
+    );
   }
-
-  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(
-    tournamentId,
-    seededQualifiers,
-    tournament?.playoffSize
-  );
 
   if (firstStageMatches.length === 0) {
     throw new BadRequestError(
@@ -1584,6 +1655,9 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
   }
 
   const created = await prisma.tournamentMatch.createMany({ data: firstStageMatches });
+  if (tournament?.doubleElimination) {
+    await advanceDoubleElimination(tournamentId);
+  }
   return created;
 };
 export const updateStandings = async (

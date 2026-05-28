@@ -59,9 +59,27 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
         ref.read(tournamentRepositoryProvider).getCategories(widget.tournamentId),
       ]);
       if (mounted) {
+        final fetchedPools = results[0] as List<TournamentPoolModel>;
+        final fetchedCategories = results[1] as List<TournamentCategoryModel>;
+        final defaultCategoryId = fetchedCategories.isNotEmpty
+            ? (_selectedCategoryId ?? fetchedCategories.first.id)
+            : null;
         setState(() {
-          _pools = results[0] as List<TournamentPoolModel>;
-          _categories = results[1] as List<TournamentCategoryModel>;
+          _pools = fetchedPools;
+          _categories = fetchedCategories;
+          _selectedCategoryId = defaultCategoryId;
+          if (_selectedPoolId != null && _selectedCategoryId != null) {
+            TournamentPoolModel? selectedPool;
+            for (final pool in _pools) {
+              if (pool.id == _selectedPoolId) {
+                selectedPool = pool;
+                break;
+              }
+            }
+            if (selectedPool == null || selectedPool.categoryId != _selectedCategoryId) {
+              _selectedPoolId = null;
+            }
+          }
           _dataLoading = false;
         });
       }
@@ -72,6 +90,12 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_categories.isNotEmpty && _selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final result = await ref.read(tournamentRepositoryProvider).selfRegisterTeam(
@@ -123,19 +147,21 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                       if (_categories.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
-                          value: _selectedCategoryId,
+                          value: _categories.isNotEmpty
+                              ? (_selectedCategoryId ?? _categories.first.id)
+                              : _selectedCategoryId,
                           decoration: InputDecoration(
-                            labelText: 'Category (optional)',
+                            labelText: _categories.isNotEmpty ? 'Category *' : 'Category',
                             prefixIcon: const Icon(Icons.category_outlined),
-                            helperText: 'Choose a category to filter available pools',
+                            helperText: 'Choose a category first',
                           ),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
-                            const DropdownMenuItem(value: null, child: Text('No category')),
                             for (final cat in _categories)
                               DropdownMenuItem(value: cat.id, child: Text(cat.name)),
                           ],
                           onChanged: (v) {
+                            if (v == null) return;
                             setState(() {
                               _selectedCategoryId = v;
                               // If a pool is selected but no longer belongs to the chosen
