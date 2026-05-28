@@ -33,15 +33,6 @@ class DashboardPage extends ConsumerWidget {
     return MobileShell(
       title: 'Teamly',
       currentIndex: 0,
-      actions: [
-        IconButton(
-          icon: user?.profilePicture != null
-              ? UserAvatar(name: user!.name, imageUrl: user.profilePicture, radius: 14)
-              : const Icon(Icons.account_circle_outlined),
-          onPressed: () => context.push('/profile'),
-          tooltip: 'Profile',
-        ),
-      ],
       child: RefreshIndicator(
         onRefresh: () =>
             ref.read(dashboardNotifierProvider.notifier).reload(),
