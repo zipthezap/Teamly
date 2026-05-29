@@ -6,9 +6,10 @@ import {
   TeamUpResponseStatus,
 } from '@prisma/client';
 import * as teamUpService from '../../services/teamUpService';
-import { dispatchPushNotifications } from '../../services/pushNotificationService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
 import { isValidUUID } from '../../utils/validation';
+import { TeamUpNotificationType } from '../../../shared/types/event.types';
 import {
   computeRoleFitForApplication,
   getWaitlistRank,
@@ -212,22 +213,22 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 
   // Create notification for the request creator
   try {
-    await prisma.teamUpNotification.create({
-      data: {
-        userId: teamUpRequest.creatorId,
-        teamUpRequestId: id,
-        type: 'teamup_response',
-        params: {
-          name: req.user!.name,
-          title: teamUpRequest.title,
-          sportType: teamUpRequest.sportType
-        },
-        metadata: {
-          responseId: response.id,
-          responderId: req.user!.id,
-          responderName: req.user!.name
-        }
-      }
+    await NotificationFactory.createTeamUpNotifications({
+      teamUpRequestId: id,
+      type: TeamUpNotificationType.teamup_response,
+      userIds: [teamUpRequest.creatorId],
+      params: {
+        name: req.user!.name,
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        responseId: response.id,
+        responderId: req.user!.id,
+        responderName: req.user!.name,
+        actionUrl: `/teamup/${id}`,
+      },
+      checkMutePreference: false,
     });
 
     // Send email notification
@@ -255,20 +256,6 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       }
     });
 
-    await dispatchPushNotifications({
-      userIds: [teamUpRequest.creatorId],
-      notificationKind: 'teamup',
-      notificationType: 'teamup_response',
-      entityId: id,
-      params: {
-        name: req.user!.name,
-        title: teamUpRequest.title,
-        sportType: teamUpRequest.sportType,
-      },
-      metadata: {
-        actionUrl: `/teamup/${id}`,
-      },
-    });
   } catch (notifError) {
     logger.error('Failed to create TeamUp response notification:', 'teamUpController', { error: notifError });
     // Don't fail the response if notification fails
@@ -482,22 +469,24 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
   // Send notifications outside the transaction (non-blocking)
   try {
-    await prisma.teamUpNotification.create({
-      data: {
-        userId: existingResponse.userId,
-        teamUpRequestId: id,
-        type: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
-        params: {
-          title: teamUpRequest.title,
-          sportType: teamUpRequest.sportType
-        },
-        metadata: {
-          responseId: responseId,
-          action: action,
-          location: teamUpRequest.location,
-          dateTime: teamUpRequest.dateTime
-        }
-      }
+    await NotificationFactory.createTeamUpNotifications({
+      teamUpRequestId: id,
+      type: action === 'accept'
+        ? TeamUpNotificationType.teamup_accepted
+        : TeamUpNotificationType.teamup_declined,
+      userIds: [existingResponse.userId],
+      params: {
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        responseId: responseId,
+        action: action,
+        location: teamUpRequest.location,
+        dateTime: teamUpRequest.dateTime,
+        actionUrl: `/teamup/${id}`,
+      },
+      checkMutePreference: false,
     });
 
     // Send email notification
@@ -539,19 +528,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
       }
     });
 
-    await dispatchPushNotifications({
-      userIds: [existingResponse.userId],
-      notificationKind: 'teamup',
-      notificationType: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
-      entityId: id,
-      params: {
-        title: teamUpRequest.title,
-        sportType: teamUpRequest.sportType,
-      },
-      metadata: {
-        actionUrl: `/teamup/${id}`,
-      },
-    });
   } catch (notifError) {
     logger.error('Failed to create TeamUp action notification:', 'teamUpController', { error: notifError });
     // Don't fail the response if notification fails
@@ -809,21 +785,20 @@ export const withdrawTeamUpResponse = async (req: Request, res: Response) => {
     await Promise.all(
       promotedResponses.map(async (promoted) => {
         try {
-          await prisma.teamUpNotification.create({
-            data: {
-              userId: promoted.userId,
-              teamUpRequestId: id,
-              type: 'teamup_response',
-              params: {
-                title: 'Auto-fill confirmation requested',
-                sportType: 'teamup',
-              },
-              metadata: {
-                actionUrl: `/teamup/${id}`,
-                autoFill: true,
-                expiresAt: promoted.autoFillExpiresAt,
-              },
+          await NotificationFactory.createTeamUpNotifications({
+            teamUpRequestId: id,
+            type: TeamUpNotificationType.teamup_response,
+            userIds: [promoted.userId],
+            params: {
+              title: 'Auto-fill confirmation requested',
+              sportType: 'teamup',
             },
+            metadata: {
+              actionUrl: `/teamup/${id}`,
+              autoFill: true,
+              expiresAt: promoted.autoFillExpiresAt,
+            },
+            checkMutePreference: false,
           });
         } catch (error) {
           logger.error('Failed to notify promoted waitlisted response', 'teamUpController', { error });

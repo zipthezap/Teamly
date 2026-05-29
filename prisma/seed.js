@@ -1,7 +1,12 @@
 ﻿// prisma/seed.js
+const { existsSync } = require('node:fs');
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
+
+if (!process.env.DATABASE_URL && typeof process.loadEnvFile === 'function' && existsSync('.env')) {
+  process.loadEnvFile('.env');
+}
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -87,11 +92,109 @@ async function validateTournamentSeedIntegrity(tournamentIds) {
   }
 }
 
+async function backfillSeedTournament4ScheduleData() {
+  const tournamentId = 'seed-tournament-4';
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { id: true },
+  });
+
+  if (!tournament) {
+    return false;
+  }
+
+  const poolVenues = {
+    'seed-pool-4a': 'Bell Centre - East Rink',
+    'seed-pool-4b': 'Bell Centre - West Rink',
+    'seed-pool-4c': 'Verdun Auditorium',
+    'seed-pool-4d': 'Complexe sportif Claude-Robillard',
+  };
+
+  const courtDefs = [
+    { id: 'seed-court-4a-1', name: 'Rink 1', location: poolVenues['seed-pool-4a'] },
+    { id: 'seed-court-4a-2', name: 'Rink 2', location: poolVenues['seed-pool-4a'] },
+    { id: 'seed-court-4b-1', name: 'Rink 3', location: poolVenues['seed-pool-4b'] },
+    { id: 'seed-court-4b-2', name: 'Rink 4', location: poolVenues['seed-pool-4b'] },
+    { id: 'seed-court-4c-1', name: 'Rink 5', location: poolVenues['seed-pool-4c'] },
+    { id: 'seed-court-4c-2', name: 'Rink 6', location: poolVenues['seed-pool-4c'] },
+    { id: 'seed-court-4d-1', name: 'Rink 7', location: poolVenues['seed-pool-4d'] },
+    { id: 'seed-court-4d-2', name: 'Rink 8', location: poolVenues['seed-pool-4d'] },
+  ];
+
+  for (const court of courtDefs) {
+    await prisma.tournamentCourt.upsert({
+      where: {
+        tournamentId_name: {
+          tournamentId,
+          name: court.name,
+        },
+      },
+      update: {
+        location: court.location,
+        isActive: true,
+      },
+      create: {
+        id: court.id,
+        tournamentId,
+        name: court.name,
+        location: court.location,
+        isActive: true,
+      },
+    });
+  }
+
+  const poolMatchAssignments = [
+    {
+      prefix: '4a',
+      venue: poolVenues['seed-pool-4a'],
+      courts: ['seed-court-4a-1', 'seed-court-4a-2'],
+    },
+    {
+      prefix: '4b',
+      venue: poolVenues['seed-pool-4b'],
+      courts: ['seed-court-4b-1', 'seed-court-4b-2'],
+    },
+    {
+      prefix: '4c',
+      venue: poolVenues['seed-pool-4c'],
+      courts: ['seed-court-4c-1', 'seed-court-4c-2'],
+    },
+    {
+      prefix: '4d',
+      venue: poolVenues['seed-pool-4d'],
+      courts: ['seed-court-4d-1', 'seed-court-4d-2'],
+    },
+  ];
+
+  for (const assignment of poolMatchAssignments) {
+    for (let index = 1; index <= 6; index += 1) {
+      await prisma.tournamentMatch.updateMany({
+        where: {
+          id: `seed-match-${assignment.prefix}-${index}`,
+          tournamentId,
+        },
+        data: {
+          courtId: assignment.courts[(index - 1) % assignment.courts.length],
+          location: assignment.venue,
+        },
+      });
+    }
+  }
+
+  console.log('Backfilled tournament 4 facilities, courts, and match schedule locations.');
+  return true;
+}
+
 async function main() {
   // Check if seeding is needed (skip if Alice exists)
   const existingAlice = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });
   if (existingAlice) {
-    console.log('Seed data already exists. Skipping seeding.');
+    const backfilled = await backfillSeedTournament4ScheduleData();
+    console.log(
+      backfilled
+        ? 'Seed data already exists. Applied tournament 4 schedule backfill.'
+        : 'Seed data already exists. Skipping seeding.'
+    );
     return;
   }
 
@@ -2752,6 +2855,8 @@ async function main() {
     });
   }
 
+  await backfillSeedTournament4ScheduleData();
+
   console.log('Created Montreal tournament with all group matches completed and standings ready for knockout generation');
 
   // ===========================================================================
@@ -2856,50 +2961,106 @@ async function main() {
 
   // Create tournament notifications (new model) â€” moved here so tournaments exist
   console.log('\nSeeding tournament notifications...');
-  await prisma.tournamentNotification.upsert({
-    where: { id: 'seed-tournament-notif-1' },
-    update: {},
-    create: {
+  const tournamentNotificationSeeds = [
+    {
       id: 'seed-tournament-notif-1',
       tournamentId: tournament1.id,
       userId: user2.id,
-      type: 'team_registered',
+      type: 'team_invited',
       params: { tournamentName: tournament1.name, teamName: 'Thunder Strikers' },
       metadata: { teamId: 'seed-team-1a-0' },
       read: false,
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-    }
-  });
-
-  await prisma.tournamentNotification.upsert({
-    where: { id: 'seed-tournament-notif-2' },
-    update: {},
-    create: {
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    },
+    {
       id: 'seed-tournament-notif-2',
+      tournamentId: tournament1.id,
+      userId: user3.id,
+      type: 'team_registered',
+      params: { tournamentName: tournament1.name, teamName: 'Northside FC' },
+      metadata: { teamId: 'seed-team-1b-1' },
+      read: false,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-3',
       tournamentId: tournament2.id,
       userId: user1.id,
       type: 'tournament_updated',
       params: { tournamentName: tournament2.name },
       metadata: { updatedFields: ['registrationDeadline'] },
       read: false,
-      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
-    }
-  });
-
-  await prisma.tournamentNotification.upsert({
-    where: { id: 'seed-tournament-notif-3' },
-    update: {},
-    create: {
-      id: 'seed-tournament-notif-3',
+      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-4',
+      tournamentId: tournament3.id,
+      userId: user4.id,
+      type: 'tournament_cancelled',
+      params: { tournamentName: tournament3.name },
+      metadata: { reason: 'Weather conditions' },
+      read: false,
+      createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-5',
       tournamentId: tournament4.id,
       userId: user3.id,
       type: 'match_scheduled',
       params: { tournamentName: tournament4.name, matchId: 'seed-match-4a-1' },
       metadata: { scheduledAt: new Date() },
       read: false,
-      createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-    }
-  });
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-6',
+      tournamentId: tournament4.id,
+      userId: user2.id,
+      type: 'score_submitted',
+      params: { tournamentName: tournament4.name, matchId: 'seed-match-4a-2' },
+      metadata: { homeScore: 2, awayScore: 1 },
+      read: false,
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-7',
+      tournamentId: tournament4.id,
+      userId: user1.id,
+      type: 'score_disputed',
+      params: { tournamentName: tournament4.name, matchId: 'seed-match-4b-1' },
+      metadata: { disputeId: 'seed-dispute-4-1' },
+      read: false,
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-8',
+      tournamentId: tournament5.id,
+      userId: user1.id,
+      type: 'payment_reminder',
+      params: { tournamentName: tournament5.name },
+      metadata: { amountDue: 40, currency: 'CAD' },
+      read: false,
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'seed-tournament-notif-9',
+      tournamentId: tournament5.id,
+      userId: user2.id,
+      type: 'announcement',
+      params: { tournamentName: tournament5.name, title: 'Schedule updated' },
+      metadata: { announcementId: 'seed-announcement-5-1' },
+      read: false,
+      createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+    },
+  ];
+
+  for (const notification of tournamentNotificationSeeds) {
+    await prisma.tournamentNotification.upsert({
+      where: { id: notification.id },
+      update: {},
+      create: notification,
+    });
+  }
 
   await validateTournamentSeedIntegrity([
     tournament1.id,
@@ -2933,6 +3094,7 @@ async function main() {
   console.log('- Session Comments: 4');
   console.log('- Guest Participants: 8');
   console.log('- Tournament Team Invitations: 1');
+  console.log('- Tournament Notifications: 9');
   console.log('- Tournaments: 5 (covers every status)');
   console.log('  - T1: Spring Football Championship        → registration (open, 3 pools)');
   console.log('  - T2: Summer Basketball League            → registration (open, 2 pools)');

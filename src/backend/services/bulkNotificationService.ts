@@ -17,6 +17,8 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { Prisma } from '@prisma/client';
+import { NotificationFactory } from './notificationFactory';
+import { NotificationMetadata, NotificationParams } from './notificationFactory';
 import {
   SessionNotificationType,
   GroupNotificationType,
@@ -57,20 +59,13 @@ export async function createBulkEventNotifications(
     // Process in batches to avoid memory issues with very large arrays
     for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
       const batch = uniqueUserIds.slice(i, i + BATCH_SIZE);
-      
-      const notifications = batch.map(userId => ({
+      await NotificationFactory.createSessionNotifications({
         sessionId,
-        userId,
         type,
-        params: params || {},
-        metadata: metadata || {},
-        read: false,
-        createdAt: new Date(),
-      }));
-
-      await prisma.sessionNotification.createMany({
-        data: notifications,
-        skipDuplicates: true, // Skip if notification already exists
+        userIds: batch,
+        params: (params as NotificationParams | undefined) || {},
+        metadata: (metadata as NotificationMetadata | undefined) || {},
+        checkMutePreference: false,
       });
     }
 
@@ -111,19 +106,12 @@ export async function createBulkGroupNotifications(
     
     for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
       const batch = uniqueUserIds.slice(i, i + BATCH_SIZE);
-      
-      const notifications = batch.map(userId => ({
+      await NotificationFactory.createGroupNotifications({
         groupId,
-        userId,
         type,
-        params: params || {},
-        read: false,
-        createdAt: new Date(),
-      }));
-
-      await prisma.groupNotification.createMany({
-        data: notifications,
-        skipDuplicates: true,
+        userIds: batch,
+        params: (params as NotificationParams | undefined) || {},
+        checkMutePreference: false,
       });
     }
 
@@ -166,20 +154,13 @@ export async function createBulkTeamUpNotifications(
     
     for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
       const batch = uniqueUserIds.slice(i, i + BATCH_SIZE);
-      
-      const notifications = batch.map(userId => ({
+      await NotificationFactory.createTeamUpNotifications({
         teamUpRequestId,
-        userId,
         type,
-        params: params || {},
-        metadata: metadata || {},
-        read: false,
-        createdAt: new Date(),
-      }));
-
-      await prisma.teamUpNotification.createMany({
-        data: notifications,
-        skipDuplicates: true,
+        userIds: batch,
+        params: (params as NotificationParams | undefined) || {},
+        metadata: (metadata as NotificationMetadata | undefined) || {},
+        checkMutePreference: false,
       });
     }
 

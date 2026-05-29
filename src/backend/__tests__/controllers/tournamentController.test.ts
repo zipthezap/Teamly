@@ -1752,12 +1752,11 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
       .send({ homeScore: 2, awayScore: 1 });
 
     expect(res.status).toBe(200);
-    expect(prisma.tournamentNotification.createMany).toHaveBeenCalledWith(
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({ userId: 'captain-1', type: 'score_submitted' }),
-          expect.objectContaining({ userId: 'captain-2', type: 'score_submitted' }),
-        ]),
+        tournamentId: 'tournament-1',
+        type: 'score_submitted',
+        userIds: expect.arrayContaining(['captain-1', 'captain-2']),
       })
     );
   });
@@ -3619,6 +3618,13 @@ describe('DELETE /api/tournaments/:id/admins/:adminUserId (removeAdmin)', () => 
 
     expect(res.status).toBe(200);
     expect(res.body.message).toContain('removed');
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        type: 'tournament_updated',
+        userIds: ['other-user-id'],
+      })
+    );
   });
 
   it('returns 400 when trying to remove organizer from admin roles', async () => {
@@ -5434,12 +5440,11 @@ describe('PUT /api/tournaments/:id/matches/:matchId/scorekeeper (assignMatchScor
       .send({ scorekeeperUserId: 'scorekeeper-1' });
 
     expect(res.status).toBe(200);
-    expect(prisma.tournamentNotification.create).toHaveBeenCalledWith(
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          userId: 'scorekeeper-1',
-          type: 'match_scheduled',
-        }),
+        tournamentId: 'tournament-1',
+        type: 'match_scheduled',
+        userIds: ['scorekeeper-1'],
       })
     );
   });
@@ -6065,12 +6070,11 @@ describe('POST /api/tournaments/:id/announcements (createAnnouncement)', () => {
       .post('/api/tournaments/tournament-1/announcements')
       .send({ title: 'Update', body: 'Important info.' });
 
-    expect(prisma.tournamentNotification.createMany).toHaveBeenCalledWith(
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({ userId: 'captain-1' }),
-          expect.objectContaining({ userId: 'captain-2' }),
-        ]),
+        tournamentId: 'tournament-1',
+        type: 'announcement',
+        userIds: ['captain-1', 'captain-2'],
       })
     );
   });
@@ -7024,15 +7028,15 @@ describe('Notifications: addAdmin notifies new co-organizer', () => {
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentAdminRole.create).mockResolvedValue(mockAdminRole as any);
-    vi.mocked(prisma.tournamentNotification.create).mockResolvedValue({} as any);
-
     await request(app)
       .post('/api/tournaments/tournament-1/admins')
       .send({ userId: 'other-user-id' });
 
-    expect(prisma.tournamentNotification.create).toHaveBeenCalledWith(
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId: 'other-user-id' }),
+        tournamentId: 'tournament-1',
+        type: 'tournament_updated',
+        userIds: ['other-user-id'],
       })
     );
   });
@@ -7060,9 +7064,10 @@ describe('Notifications: resolveMatchIncident notifies reporter', () => {
       .put('/api/tournaments/tournament-1/incidents/incident-1/resolve')
       .send({ status: 'resolved', resolution: 'Issue fixed' });
 
-    expect(prisma.tournamentNotification.create).toHaveBeenCalledWith(
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId: 'reporter-user-id' }),
+        tournamentId: 'tournament-1',
+        userIds: ['reporter-user-id'],
       })
     );
   });

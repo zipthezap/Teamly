@@ -65,6 +65,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       final dio = ref.read(dioProvider);
       final response = await dio.post<Map<String, dynamic>>('/2fa/setup');
       final data = response.data!;
+      if (!mounted) return;
       setState(() {
         _secret = data['secret'] as String?;
       });
@@ -153,11 +154,22 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       return;
     }
 
+    final password = passwordCtrl.text.trim();
+    if (password.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password is required')),
+        );
+      }
+      passwordCtrl.dispose();
+      return;
+    }
+
     try {
       final dio = ref.read(dioProvider);
       await dio.post<void>(
         '/2fa/disable',
-        data: {'password': passwordCtrl.text},
+        data: {'password': password},
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,7 +230,9 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                             : AppThemeTokens.warning.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
+                          color: _enabled
+                              ? AppThemeTokens.success
+                              : AppThemeTokens.warning,
                         ),
                       ),
                       child: Row(
@@ -227,7 +241,9 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                             _enabled
                                 ? Icons.verified_user_outlined
                                 : Icons.security_outlined,
-                            color: _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
+                            color: _enabled
+                                ? AppThemeTokens.success
+                                : AppThemeTokens.warning,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -237,8 +253,9 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                                 Text(
                                   _enabled ? 'Enabled' : 'Disabled',
                                   style: theme.textTheme.titleSmall?.copyWith(
-                                    color:
-                                        _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
+                                    color: _enabled
+                                        ? AppThemeTokens.success
+                                        : AppThemeTokens.warning,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

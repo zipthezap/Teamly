@@ -32,11 +32,14 @@ vi.mock('../../utils/notificationHelper', () => ({
   filterUnmutedUsers: vi.fn()
 }));
 
-vi.mock('../../services/pushNotificationService', () => ({
-  dispatchPushNotifications: vi.fn().mockResolvedValue(undefined),
+vi.mock('../../services/notificationFactory', () => ({
+  NotificationFactory: {
+    createTeamUpNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+  },
 }));
 
 import prisma from '../../config/database';
+import { NotificationFactory } from '../../services/notificationFactory';
 import {
   findUsersForTeamUpNotification,
   notifyUsersAboutNewTeamUp
@@ -47,6 +50,7 @@ import {
 } from '../../utils/notificationHelper';
 
 const mockPrisma = vi.mocked(prisma);
+const mockNotificationFactory = vi.mocked(NotificationFactory);
 const mockBatchShouldSend = vi.mocked(batchShouldSendEmailNotification);
 const mockFilterUnmuted = vi.mocked(filterUnmutedUsers);
 
@@ -302,21 +306,17 @@ describe('TeamUpNotificationService', () => {
 
       mockBatchShouldSend.mockResolvedValue(new Map([['user-1', true]]));
       mockFilterUnmuted.mockResolvedValue(['user-1']);
-      mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
       mockPrisma.emailQueue.create = vi.fn().mockResolvedValue({});
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
 
-      expect(mockPrisma.teamUpNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            userId: 'user-1',
-            teamUpRequestId: 'teamup-1',
-            type: 'teamup_nearby'
-          })
-        ]),
-        skipDuplicates: true
-      });
+      expect(mockNotificationFactory.createTeamUpNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          teamUpRequestId: 'teamup-1',
+          userIds: ['user-1'],
+          type: 'teamup_nearby',
+        })
+      );
 
       expect(mockPrisma.emailQueue.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -355,7 +355,7 @@ describe('TeamUpNotificationService', () => {
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
 
-      expect(mockPrisma.teamUpNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createTeamUpNotifications).not.toHaveBeenCalled();
       expect(mockPrisma.emailQueue.create).not.toHaveBeenCalled();
     });
 
@@ -388,7 +388,7 @@ describe('TeamUpNotificationService', () => {
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
 
-      expect(mockPrisma.teamUpNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createTeamUpNotifications).not.toHaveBeenCalled();
       expect(mockPrisma.emailQueue.create).not.toHaveBeenCalled();
     });
 
@@ -410,7 +410,7 @@ describe('TeamUpNotificationService', () => {
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
 
-      expect(mockPrisma.teamUpNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createTeamUpNotifications).not.toHaveBeenCalled();
       expect(mockPrisma.emailQueue.create).not.toHaveBeenCalled();
     });
 
@@ -451,7 +451,6 @@ describe('TeamUpNotificationService', () => {
 
       mockBatchShouldSend.mockResolvedValue(new Map([['user-1', true]]));
       mockFilterUnmuted.mockResolvedValue(['user-1']);
-      mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
       mockPrisma.emailQueue.create = vi.fn().mockResolvedValue({});
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);

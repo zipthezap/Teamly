@@ -249,9 +249,8 @@ export function sanitizeString(value: string): string {
 
 /**
  * Escapes HTML special characters to prevent XSS attacks
- * NOTE: This function should only be used when rendering to HTML views.
- * For JSON APIs with React/Vue frontends, the framework handles escaping.
- * @deprecated Use frontend escaping instead for JSON APIs
+ * NOTE: Use this for server-rendered HTML content (for example email templates).
+ * For JSON API responses consumed by React/Vue apps, frontend rendering handles escaping.
  */
 export function escapeHtml(text: string): string {
   const map: Record<string, string> = {

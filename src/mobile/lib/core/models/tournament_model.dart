@@ -8,7 +8,8 @@ DateTime _requireParsedTournamentDate(String? raw, String fieldName) {
   return parsed;
 }
 
-String _requireTournamentIdentifier(List<dynamic> candidates, String fieldName) {
+String _requireTournamentIdentifier(
+    List<dynamic> candidates, String fieldName) {
   for (final candidate in candidates) {
     final value = candidate?.toString().trim();
     if (value != null && value.isNotEmpty && value.toLowerCase() != 'null') {
@@ -138,12 +139,13 @@ class TournamentPoolModel extends Equatable {
 
   factory TournamentPoolModel.fromJson(Map<String, dynamic> json) {
     final teamsList = (json['teams'] as List<dynamic>?)
-            ?.map((t) => TournamentTeamModel.fromJson(t as Map<String, dynamic>))
+            ?.map(
+                (t) => TournamentTeamModel.fromJson(t as Map<String, dynamic>))
             .toList() ??
         [];
     final waitlistList = (json['waitlist'] as List<dynamic>?)
-            ?.map((w) =>
-                TournamentWaitlistEntryModel.fromJson(w as Map<String, dynamic>))
+            ?.map((w) => TournamentWaitlistEntryModel.fromJson(
+                w as Map<String, dynamic>))
             .toList() ??
         [];
     final category = json['category'] as Map<String, dynamic>?;
@@ -188,8 +190,8 @@ class TournamentCategoryModel extends Equatable {
 
   factory TournamentCategoryModel.fromJson(Map<String, dynamic> json) {
     final poolsList = (json['pools'] as List<dynamic>?)
-            ?.map((p) =>
-                TournamentPoolModel.fromJson(p as Map<String, dynamic>))
+            ?.map(
+                (p) => TournamentPoolModel.fromJson(p as Map<String, dynamic>))
             .toList() ??
         [];
     return TournamentCategoryModel(
@@ -272,6 +274,7 @@ class TournamentTeamModel extends Equatable {
   final List<Map<String, dynamic>> players;
   final String paymentStatus; // unpaid | pending | paid | waived
   final bool checkedIn;
+
   /// When the team captain accepted the organizer waiver.
   final DateTime? waiverAcceptedAt;
   final String? logoUrl;
@@ -326,6 +329,9 @@ class TournamentMatchModel extends Equatable {
     this.scoreB,
     this.scheduledAt,
     this.poolId,
+    this.courtId,
+    this.courtName,
+    this.courtLocation,
     this.location,
     this.refereeTeamId,
     this.refereeTeamName,
@@ -354,6 +360,9 @@ class TournamentMatchModel extends Equatable {
   final int? scoreB;
   final DateTime? scheduledAt;
   final String? poolId;
+  final String? courtId;
+  final String? courtName;
+  final String? courtLocation;
   final String? location;
   final String? refereeTeamId;
   final String? refereeTeamName;
@@ -368,6 +377,7 @@ class TournamentMatchModel extends Equatable {
     final teamB = (json['awayTeam'] ?? json['teamB']) as Map<String, dynamic>?;
     final refereeTeam = json['refereeTeam'] as Map<String, dynamic>?;
     final scorekeeper = json['scorekeeper'] as Map<String, dynamic>?;
+    final court = json['court'] as Map<String, dynamic>?;
 
     // Build a human-readable round label from available fields
     String roundLabel;
@@ -412,8 +422,12 @@ class TournamentMatchModel extends Equatable {
           ? DateTime.tryParse(json['scheduledAt'] as String)
           : null,
       poolId: json['poolId'] as String?,
+      courtId: court?['id'] as String? ?? json['courtId'] as String?,
+      courtName: court?['name'] as String?,
+      courtLocation: court?['location'] as String?,
       location: json['location'] as String?,
-      refereeTeamId: refereeTeam?['id'] as String? ?? json['refereeTeamId'] as String?,
+      refereeTeamId:
+          refereeTeam?['id'] as String? ?? json['refereeTeamId'] as String?,
       refereeTeamName: refereeTeam?['name'] as String?,
       scorekeeperUserId:
           scorekeeper?['id'] as String? ?? json['scorekeeperUserId'] as String?,
@@ -499,7 +513,8 @@ class TournamentModel extends Equatable {
   final String name;
   final String sportType;
   final String format; // bracket, pool, round_robin
-  final String status; // draft, registration, registration_closed, in_progress, completed, cancelled
+  final String
+      status; // draft, registration, registration_closed, in_progress, completed, cancelled
   final DateTime createdAt;
   final String creatorId;
   final String? organizerName;
@@ -526,10 +541,13 @@ class TournamentModel extends Equatable {
   final bool isPublic;
   final double? registrationFee;
   final bool requirePaymentForBrackets;
+
   /// Whether teams must accept the organizer waiver before registration.
   final bool requireWaiverForRegistration;
+
   /// Full text of the organizer-provided waiver.
   final String? waiverText;
+
   /// Opaque share token for the public portal URL (Phase 4).
   final String? shareToken;
   final List<TournamentTeamModel> teams;
@@ -553,16 +571,18 @@ class TournamentModel extends Equatable {
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
     final teamsList = (json['teams'] as List<dynamic>?)
-            ?.map((t) => TournamentTeamModel.fromJson(t as Map<String, dynamic>))
+            ?.map(
+                (t) => TournamentTeamModel.fromJson(t as Map<String, dynamic>))
             .toList() ??
         [];
     final matchesList = (json['matches'] as List<dynamic>?)
-            ?.map((m) => TournamentMatchModel.fromJson(m as Map<String, dynamic>))
+            ?.map(
+                (m) => TournamentMatchModel.fromJson(m as Map<String, dynamic>))
             .toList() ??
         [];
     final poolsList = (json['pools'] as List<dynamic>?)
-            ?.map((p) =>
-                TournamentPoolModel.fromJson(p as Map<String, dynamic>))
+            ?.map(
+                (p) => TournamentPoolModel.fromJson(p as Map<String, dynamic>))
             .toList() ??
         [];
     final categoriesList = (json['categories'] as List<dynamic>?)
@@ -571,8 +591,8 @@ class TournamentModel extends Equatable {
             .toList() ??
         [];
     final adminsList = (json['adminRoles'] as List<dynamic>?)
-            ?.map((a) =>
-                TournamentAdminModel.fromJson(a as Map<String, dynamic>))
+            ?.map(
+                (a) => TournamentAdminModel.fromJson(a as Map<String, dynamic>))
             .toList() ??
         [];
     final standingsList = (json['standings'] as List<dynamic>?)
@@ -580,6 +600,7 @@ class TournamentModel extends Equatable {
                 TournamentStandingModel.fromJson(s as Map<String, dynamic>))
             .toList() ??
         [];
+    final myTeamJson = json['myTeam'] as Map<String, dynamic>?;
     final count = json['_count'] as Map<String, dynamic>?;
     final organizer = json['organizer'] as Map<String, dynamic>?;
     return TournamentModel(
@@ -640,6 +661,12 @@ class TournamentModel extends Equatable {
       admins: adminsList,
       standings: standingsList,
       teamCount: (count?['teams'] as num?)?.toInt() ?? teamsList.length,
+      myTeam: myTeamJson == null
+          ? null
+          : TournamentTeamModel.fromJson({
+              ...myTeamJson,
+              'tournamentId': myTeamJson['tournamentId'] ?? json['id'],
+            }),
       rosterLockDate: json['rosterLockDate'] != null
           ? DateTime.tryParse(json['rosterLockDate'] as String)
           : null,
@@ -732,7 +759,8 @@ class TournamentAnnouncementModel extends Equatable {
       title: json['title'] as String,
       body: json['body'] as String,
       isPinned: json['isPinned'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 
@@ -768,7 +796,8 @@ class TournamentScoreDisputeModel extends Equatable {
     return TournamentScoreDisputeModel(
       id: json['id'] as String,
       matchId: json['matchId'] as String? ?? '',
-      disputingTeamId: team?['id'] as String? ?? json['disputingTeamId'] as String? ?? '',
+      disputingTeamId:
+          team?['id'] as String? ?? json['disputingTeamId'] as String? ?? '',
       disputingTeamName: team?['name'] as String? ?? '',
       reason: json['reason'] as String? ?? '',
       status: json['status'] as String? ?? 'open',
@@ -804,7 +833,10 @@ class TournamentRegistrationFieldModel extends Equatable {
   final int sortOrder;
 
   factory TournamentRegistrationFieldModel.fromJson(Map<String, dynamic> json) {
-    final opts = (json['options'] as List<dynamic>?)?.map((o) => o.toString()).toList() ?? [];
+    final opts = (json['options'] as List<dynamic>?)
+            ?.map((o) => o.toString())
+            .toList() ??
+        [];
     return TournamentRegistrationFieldModel(
       id: json['id'] as String,
       tournamentId: json['tournamentId'] as String? ?? '',
@@ -876,7 +908,8 @@ class TournamentRegistrationWaitlistModel extends Equatable {
   final String teamName;
   final int position;
 
-  factory TournamentRegistrationWaitlistModel.fromJson(Map<String, dynamic> json) {
+  factory TournamentRegistrationWaitlistModel.fromJson(
+      Map<String, dynamic> json) {
     final team = json['team'] as Map<String, dynamic>?;
     return TournamentRegistrationWaitlistModel(
       id: json['id'] as String,
@@ -1068,7 +1101,8 @@ class TournamentAnalyticsPayments extends Equatable {
     return TournamentAnalyticsPayments(
       totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0,
       transactionsPaid: (json['transactionsPaid'] as num?)?.toInt() ?? 0,
-      transactionsRefunded: (json['transactionsRefunded'] as num?)?.toInt() ?? 0,
+      transactionsRefunded:
+          (json['transactionsRefunded'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -1107,5 +1141,6 @@ class TournamentAnalyticsModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [registration, matches, disputes, incidents, payments];
+  List<Object?> get props =>
+      [registration, matches, disputes, incidents, payments];
 }

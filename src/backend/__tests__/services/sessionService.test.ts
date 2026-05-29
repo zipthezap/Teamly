@@ -77,12 +77,17 @@ vi.mock('../../utils/notificationHelper', () => ({
   batchShouldSendEmailNotification: vi.fn((ids: string[]) => 
     Promise.resolve(new Map(ids.map(id => [id, true])))
   ),
+  shouldSendPushNotification: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('../../services/permissionService', () => ({
   permissionService: {
     hasGroupPermission: vi.fn(() => Promise.resolve(false)),
   },
+}));
+
+vi.mock('../../services/pushNotificationService', () => ({
+  dispatchPushNotifications: vi.fn(() => Promise.resolve(undefined)),
 }));
 
 describe('Event Service', () => {

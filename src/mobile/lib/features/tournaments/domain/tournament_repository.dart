@@ -1,15 +1,18 @@
 import '../../../core/models/tournament_model.dart';
 
 abstract class TournamentReadRepository {
-  Future<List<TournamentModel>> getTournaments({String? status, String? sportType, String? search});
+  Future<List<TournamentModel>> getTournaments(
+      {String? status, String? sportType, String? search});
   Future<TournamentModel> getTournament(String id);
 }
 
 abstract class TournamentWriteRepository {
   Future<TournamentModel> createTournament(Map<String, dynamic> data);
-  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data);
+  Future<TournamentModel> updateTournament(
+      String id, Map<String, dynamic> data);
   Future<void> deleteTournament(String id);
   Future<void> cancelTournament(String id);
+
   /// Clone a tournament structure into a new draft tournament owned by the
   /// current user.  Returns the newly created tournament.
   Future<TournamentModel> cloneTournament(String tournamentId);
@@ -26,10 +29,14 @@ abstract class TeamRegistrationRepository {
       String tournamentId, String teamId);
   Future<void> removePlayer(
       String tournamentId, String teamId, String playerId);
-  Future<Map<String, dynamic>> generateCheckInQrToken(String tournamentId, String teamId);
-  Future<Map<String, dynamic>> checkInViaQrToken(String tournamentId, String token);
+  Future<Map<String, dynamic>> generateCheckInQrToken(
+      String tournamentId, String teamId);
+  Future<Map<String, dynamic>> checkInViaQrToken(
+      String tournamentId, String token);
+
   /// Manually check in a team (organizer/admin action).
   Future<void> checkInTeam(String tournamentId, String teamId);
+
   /// Accept the tournament waiver on behalf of the registering team.
   Future<void> acceptTeamWaiver(String tournamentId, String teamId);
 }
@@ -45,14 +52,15 @@ abstract class PoolRepository {
       String tournamentId, String poolId, String teamId);
   Future<Map<String, dynamic>> registerTeamToPoolAsAdmin(
       String tournamentId, String poolId, String teamId);
-  Future<void> moveTeamToPoolAsAdmin(
-      String tournamentId, String sourcePoolId, String teamId, String targetPoolId);
+  Future<void> moveTeamToPoolAsAdmin(String tournamentId, String sourcePoolId,
+      String teamId, String targetPoolId);
   Future<void> removeTeamFromPool(
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromPoolAsAdmin(
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromWaitlist(
       String tournamentId, String poolId, String teamId);
+
   /// Move (or unassign) a team to the given pool. Pass null to just remove from
   /// the current pool. Returns the raw response map from the backend.
   Future<Map<String, dynamic>> moveTeamToPool(
@@ -92,7 +100,7 @@ abstract class InvitationRepository {
   Future<List<Map<String, dynamic>>> getMyInvitations();
   Future<void> acceptInvitation(String inviteToken);
   Future<void> declineInvitation(String inviteToken);
-    Future<Map<String, dynamic>> getInvitation(String inviteToken);
+  Future<Map<String, dynamic>> getInvitation(String inviteToken);
   Future<void> cancelInvitation(
       String tournamentId, String teamId, String invitationId);
   Future<Map<String, dynamic>> getInvitationDetails(String inviteToken);
@@ -104,9 +112,11 @@ abstract class MatchRepository {
   Future<void> adminUpdateScore(String tournamentId, String matchId,
       {required int homeScore, required int awayScore});
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
-  Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
+  Future<void> updateMatch(
+      String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
-  Future<void> assignReferee(String tournamentId, String matchId, String? refereeTeamId);
+  Future<void> assignReferee(
+      String tournamentId, String matchId, String? refereeTeamId);
   Future<Map<String, dynamic>> autoAssignReferees(
     String tournamentId, {
     int? roundNumber,
@@ -114,9 +124,11 @@ abstract class MatchRepository {
     String? stage,
   });
   Future<List<RefereeDutyModel>> getRefereeDuties(String tournamentId);
-  Future<void> assignScorekeeper(String tournamentId, String matchId, String? scorekeeperUserId);
+  Future<void> assignScorekeeper(
+      String tournamentId, String matchId, String? scorekeeperUserId);
   Future<void> startMatch(String tournamentId, String matchId);
-  Future<List<Map<String, dynamic>>> getMatchIncidents(String tournamentId, String matchId);
+  Future<List<Map<String, dynamic>>> getMatchIncidents(
+      String tournamentId, String matchId);
   Future<Map<String, dynamic>> createMatchIncident(
     String tournamentId,
     String matchId, {
@@ -133,11 +145,26 @@ abstract class MatchRepository {
 
   // Bracket generation
   Future<Map<String, dynamic>> generateBrackets(String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, int? playoffSize, bool? doubleElimination, bool usePoolAssignments = false, bool forceGenerate = false});
+      {int? numberOfGroups,
+      int? teamsPerGroup,
+      int? playoffSize,
+      bool? doubleElimination,
+      bool usePoolAssignments = false,
+      bool forceGenerate = false});
 
   /// Generate group-stage matches (groups_knockout only, post-registration-close).
-  Future<Map<String, dynamic>> generateGroupMatches(String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false});
+  Future<Map<String, dynamic>> generateGroupMatches(
+    String tournamentId, {
+    int? numberOfGroups,
+    int? teamsPerGroup,
+    bool usePoolAssignments = false,
+    bool forceGenerate = false,
+    DateTime? scheduleStartAt,
+    int? gameDurationMinutes,
+    int? warmupMinutes,
+    int? breakMinutes,
+    int? minTeamRestMinutes,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -145,11 +172,13 @@ abstract class MatchRepository {
 // ---------------------------------------------------------------------------
 
 abstract class AnnouncementRepository {
-  Future<List<TournamentAnnouncementModel>> getAnnouncements(String tournamentId);
-  Future<TournamentAnnouncementModel> createAnnouncement(
-      String tournamentId, {required String title, required String body, bool isPinned = false});
+  Future<List<TournamentAnnouncementModel>> getAnnouncements(
+      String tournamentId);
+  Future<TournamentAnnouncementModel> createAnnouncement(String tournamentId,
+      {required String title, required String body, bool isPinned = false});
   Future<TournamentAnnouncementModel> updateAnnouncement(
-      String tournamentId, String announcementId, {String? title, String? body, bool? isPinned});
+      String tournamentId, String announcementId,
+      {String? title, String? body, bool? isPinned});
   Future<void> deleteAnnouncement(String tournamentId, String announcementId);
 }
 
@@ -158,7 +187,8 @@ abstract class AnnouncementRepository {
 // ---------------------------------------------------------------------------
 
 abstract class RegistrationFieldRepository {
-  Future<List<TournamentRegistrationFieldModel>> getRegistrationFields(String tournamentId);
+  Future<List<TournamentRegistrationFieldModel>> getRegistrationFields(
+      String tournamentId);
   Future<TournamentRegistrationFieldModel> createRegistrationField(
       String tournamentId, Map<String, dynamic> data);
   Future<TournamentRegistrationFieldModel> updateRegistrationField(
@@ -171,11 +201,14 @@ abstract class RegistrationFieldRepository {
 // ---------------------------------------------------------------------------
 
 abstract class RegistrationWaitlistRepository {
-  Future<List<TournamentRegistrationWaitlistModel>> getRegistrationWaitlist(String tournamentId);
+  Future<List<TournamentRegistrationWaitlistModel>> getRegistrationWaitlist(
+      String tournamentId);
   Future<void> joinRegistrationWaitlist(String tournamentId, String teamName);
   Future<void> leaveRegistrationWaitlist(String tournamentId);
-  Future<void> promoteFromRegistrationWaitlist(String tournamentId, String entryId);
-  Future<void> removeFromRegistrationWaitlist(String tournamentId, String entryId);
+  Future<void> promoteFromRegistrationWaitlist(
+      String tournamentId, String entryId);
+  Future<void> removeFromRegistrationWaitlist(
+      String tournamentId, String entryId);
 }
 
 // ---------------------------------------------------------------------------
@@ -184,11 +217,14 @@ abstract class RegistrationWaitlistRepository {
 
 abstract class CourtRepository {
   Future<List<TournamentCourtModel>> getCourts(String tournamentId);
-  Future<TournamentCourtModel> createCourt(String tournamentId, {required String name, String? location});
-  Future<TournamentCourtModel> updateCourt(String tournamentId, String courtId, Map<String, dynamic> data);
+  Future<TournamentCourtModel> createCourt(String tournamentId,
+      {required String name, String? location});
+  Future<TournamentCourtModel> updateCourt(
+      String tournamentId, String courtId, Map<String, dynamic> data);
   Future<void> deleteCourt(String tournamentId, String courtId);
   Future<void> scheduleMatchOnCourt(
-      String tournamentId, String matchId, String courtId, {DateTime? scheduledAt, int? durationMinutes});
+      String tournamentId, String matchId, String courtId,
+      {DateTime? scheduledAt, int? durationMinutes});
 }
 
 // ---------------------------------------------------------------------------
@@ -196,11 +232,13 @@ abstract class CourtRepository {
 // ---------------------------------------------------------------------------
 
 abstract class ScoreDisputeRepository {
-  Future<List<TournamentScoreDisputeModel>> getMatchDisputes(String tournamentId, String matchId);
+  Future<List<TournamentScoreDisputeModel>> getMatchDisputes(
+      String tournamentId, String matchId);
   Future<TournamentScoreDisputeModel> createScoreDispute(
-      String tournamentId, String matchId, {required String reason});
-  Future<void> resolveScoreDispute(
-      String tournamentId, String disputeId, {required String status, String? resolution});
+      String tournamentId, String matchId,
+      {required String reason});
+  Future<void> resolveScoreDispute(String tournamentId, String disputeId,
+      {required String status, String? resolution});
 }
 
 // ---------------------------------------------------------------------------

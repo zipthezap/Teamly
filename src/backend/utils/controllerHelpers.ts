@@ -4,7 +4,6 @@
  */
 
 import { Response } from 'express';
-import { logger } from './logger';
 import { ApiSuccessResponse, PaginationMeta } from '../../shared/types';
 import { 
   BadRequestError, 
@@ -36,21 +35,6 @@ export const sendSuccess = <T>(
   };
 
   res.status(options?.statusCode || 200).json(response);
-};
-
-/**
- * Standard error response helper (deprecated - use error classes instead)
- */
-export const sendError = (
-  res: Response,
-  message: string,
-  statusCode: number = 500,
-  context?: string
-): void => {
-  if (context) {
-    logger.error(message, context, { statusCode });
-  }
-  res.status(statusCode).json({ error: message });
 };
 
 /**

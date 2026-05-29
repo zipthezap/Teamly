@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import prisma from '../config/database';
 import { sendEmailWithQueue } from './emailQueueService';
 import { expireOldInvitations, syncTournamentAutoStatus } from './tournamentService';
+import { NotificationFactory } from './notificationFactory';
 import {
   MatchIncidentStatus,
   TournamentNotificationType,
@@ -344,20 +345,19 @@ export const checkIncidentSlas = async (): Promise<void> => {
         continue;
       }
 
-      await prisma.tournamentNotification.create({
-        data: {
-          userId: incident.tournament.organizerId,
-          tournamentId: incident.tournamentId,
-          type: TournamentNotificationType.tournament_updated,
-          params: {
-            tournamentName: incident.tournament.name,
-            incidentStatus: 'sla_breached',
-          },
-          metadata: {
-            slaIncidentId: incident.id,
-            matchId: incident.matchId,
-          },
+      await NotificationFactory.createTournamentNotifications({
+        tournamentId: incident.tournamentId,
+        type: TournamentNotificationType.tournament_updated,
+        userIds: [incident.tournament.organizerId],
+        params: {
+          tournamentName: incident.tournament.name,
+          incidentStatus: 'sla_breached',
         },
+        metadata: {
+          slaIncidentId: incident.id,
+          matchId: incident.matchId,
+        },
+        checkMutePreference: false,
       });
       notified++;
     }
@@ -420,20 +420,19 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
           continue;
         }
 
-        await prisma.tournamentNotification.create({
-          data: {
-            userId: team.captainUserId,
-            tournamentId: tournament.id,
-            type: TournamentNotificationType.payment_reminder,
-            params: {
-              tournamentName: tournament.name,
-            },
-            metadata: {
-              paymentReminderKey: `payment_deadline:${tournament.id}:${team.id}`,
-              teamId: team.id,
-              paymentDeadline: tournament.paymentDeadline?.toISOString?.() ?? tournament.paymentDeadline,
-            },
+        await NotificationFactory.createTournamentNotifications({
+          tournamentId: tournament.id,
+          type: TournamentNotificationType.payment_reminder,
+          userIds: [team.captainUserId],
+          params: {
+            tournamentName: tournament.name,
           },
+          metadata: {
+            paymentReminderKey: `payment_deadline:${tournament.id}:${team.id}`,
+            teamId: team.id,
+            paymentDeadline: tournament.paymentDeadline?.toISOString?.() ?? tournament.paymentDeadline,
+          },
+          checkMutePreference: false,
         });
         reminded++;
       }

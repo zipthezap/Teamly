@@ -3,6 +3,8 @@ import { sanitizeUserInput } from '../utils/validation';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
+import { NotificationFactory } from '../services/notificationFactory';
+import { SessionNotificationType } from '../../shared/types/event.types';
 
 // Get notifications for the current user (session and group notifications)
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
@@ -151,16 +153,15 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
   });
 
   if (eventDetails) {
-    await prisma.sessionNotification.create({
-      data: {
-        sessionId,
-        userId,
-        type: 'late',
-        params: {
-          name: req.user!.name,
-          eventTitle: eventDetails.title
-        }
-      }
+    await NotificationFactory.createSessionNotifications({
+      sessionId,
+      type: SessionNotificationType.late,
+      userIds: [userId],
+      params: {
+        name: req.user!.name,
+        eventTitle: eventDetails.title,
+      },
+      checkMutePreference: false,
     });
   }
 

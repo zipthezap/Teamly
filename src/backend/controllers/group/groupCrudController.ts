@@ -1,5 +1,4 @@
 import prisma from '../../config/database';
-import { filterUnmutedUsers } from '../../utils/notificationHelper';
 import { logger } from '../../utils/logger';
 import { parseCoordinates, parseFloatStrict } from '../../utils/validation';
 import { hasLocation } from '../../utils/typeGuards';
@@ -7,6 +6,7 @@ import { Request, Response } from 'express';
 import * as groupService from '../../services/groupService';
 import * as permissionService from '../../services/permissionService';
 import * as locationService from '../../services/locationService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { GroupNotificationType } from '../../../shared/types/event.types';
 import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
@@ -197,39 +197,22 @@ export const createGroup = async (req: Request, res: Response) => {
       const nearbyUserIds = nearbyUserCandidates.map(u => u.id);
 
       if (nearbyUserIds.length > 0) {
-        // Filter out users who have muted nearby group notifications
-        const unmutedUserIds = await filterUnmutedUsers(nearbyUserIds, 'muteNearbyGroups');
+        const result = await NotificationFactory.createGroupNotifications({
+          groupId: group.id,
+          type: GroupNotificationType.nearby_created,
+          userIds: nearbyUserIds,
+          params: {
+            groupName: group.name,
+            name: req.user!.name,
+          },
+          checkMutePreference: true,
+        });
 
-        if (unmutedUserIds.length > 0) {
-          const notificationResults = await Promise.allSettled(
-            unmutedUserIds.map(nUserId =>
-              prisma.groupNotification.create({
-                data: {
-                  groupId: group.id,
-                  userId: nUserId,
-                  type: GroupNotificationType.nearby_created,
-                  params: {
-                    groupName: group.name,
-                    name: req.user!.name,
-                  },
-                },
-              })
-            )
-          );
-
-          const failures = notificationResults.filter(r => r.status === 'rejected');
-          if (failures.length > 0) {
-            logger.warn('Some nearby user notifications failed', 'GroupController', {
-              failureCount: failures.length,
-              totalUsers: unmutedUserIds.length,
-            });
-          }
-
-          logger.info('Sent nearby group notifications', 'GroupController', {
-            groupId: group.id,
-            notifiedUsers: unmutedUserIds.length,
-          });
-        }
+        logger.info('Sent nearby group notifications', 'GroupController', {
+          groupId: group.id,
+          notifiedUsers: result.created,
+          skippedUsers: result.skipped,
+        });
       }
     } catch (notifyError) {
       // Non-fatal: group creation should not fail if notifications fail

@@ -1,8 +1,9 @@
 import prisma from '../../config/database';
 import { Request, Response } from 'express';
-import { dispatchPushNotifications } from '../../services/pushNotificationService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { clampScore } from './_helpers';
+import { TeamUpNotificationType } from '../../../shared/types/event.types';
 
 export const updateTeamUpRsvp = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -41,11 +42,11 @@ export const updateTeamUpRsvp = async (req: Request, res: Response) => {
     },
   });
 
-  await prisma.teamUpNotification.create({
-    data: {
-      userId: response.teamUpRequest.creatorId,
+  try {
+    await NotificationFactory.createTeamUpNotifications({
       teamUpRequestId: response.teamUpRequestId,
-      type: 'teamup_response',
+      type: TeamUpNotificationType.teamup_response,
+      userIds: [response.teamUpRequest.creatorId],
       params: {
         title: response.teamUpRequest.title,
         sportType: response.teamUpRequest.sportType,
@@ -55,8 +56,11 @@ export const updateTeamUpRsvp = async (req: Request, res: Response) => {
         rsvpStatus,
         actionUrl: `/teamup/${response.teamUpRequestId}`,
       },
-    },
-  }).catch((_error: unknown): undefined => undefined);
+      checkMutePreference: false,
+    });
+  } catch (_error) {
+    // Non-fatal notification path.
+  }
 
   res.json(updated);
 };
@@ -160,11 +164,11 @@ export const sendTeamUpReminderNudges = async (req: Request, res: Response) => {
     return res.json({ message: 'No pending RSVPs to remind', notifiedCount: 0 });
   }
 
-  await prisma.teamUpNotification.createMany({
-    data: recipients.map((recipient) => ({
-      userId: recipient.userId,
+  try {
+    await NotificationFactory.createTeamUpNotifications({
       teamUpRequestId: id,
-      type: 'teamup_response',
+      type: TeamUpNotificationType.teamup_response,
+      userIds: recipients.map((recipient) => recipient.userId),
       params: {
         title: requestRecord.title,
         sportType: requestRecord.sportType,
@@ -173,21 +177,11 @@ export const sendTeamUpReminderNudges = async (req: Request, res: Response) => {
         reminder: true,
         actionUrl: `/teamup/${id}`,
       },
-    })),
-    skipDuplicates: false,
-  });
-
-  await dispatchPushNotifications({
-    userIds: recipients.map((recipient) => recipient.userId),
-    notificationKind: 'teamup',
-    notificationType: 'teamup_response',
-    entityId: id,
-    params: {
-      title: requestRecord.title,
-      sportType: requestRecord.sportType,
-    },
-    metadata: { actionUrl: `/teamup/${id}`, reminder: true },
-  }).catch((_error: unknown): undefined => undefined);
+      checkMutePreference: false,
+    });
+  } catch (_error) {
+    // Non-fatal notification path.
+  }
 
   res.json({ message: 'Reminder nudges sent', notifiedCount: recipients.length });
 };

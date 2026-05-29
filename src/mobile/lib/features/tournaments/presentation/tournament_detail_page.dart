@@ -83,7 +83,6 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         ),
       ),
       data: (t) {
-
         final isStarted = _isTournamentStarted(t);
         final isOrganizer = t.creatorId == currentUserId;
         final isAdmin =
@@ -106,18 +105,21 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         // the tournament has started (for other formats).
         final hasGroupMatches = t.matches.any(isGroupStageMatch);
         final hasGroupsTab = isStarted || hasGroupMatches;
+        final hasScheduleTab = t.matches.isNotEmpty;
 
         // Brackets tab: only shown when actual knockout matches exist (not just group stage).
         final hasKnockoutMatches = t.matches.any(isKnockoutStageMatch);
         // For non-groups_knockout formats show Brackets whenever there are matches.
         final isGroupsKnockout = t.format == 'groups_knockout';
-        final hasBrackets = isGroupsKnockout
-            ? hasKnockoutMatches
-            : t.matches.isNotEmpty;
+        final hasBrackets =
+            isGroupsKnockout ? hasKnockoutMatches : t.matches.isNotEmpty;
 
         final tabs = <Tab>[const Tab(text: 'Overview')];
         if (hasGroupsTab) {
           tabs.add(const Tab(text: 'Groups'));
+        }
+        if (hasScheduleTab) {
+          tabs.add(const Tab(text: 'Schedule'));
         }
         if (hasBrackets) {
           tabs.add(const Tab(text: 'Brackets'));
@@ -126,8 +128,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
 
         if (_tabController.length != tabs.length) {
           final previousIndex = _tabController.index;
-          final clampedIndex =
-              previousIndex.clamp(0, tabs.length - 1).toInt();
+          final clampedIndex = previousIndex.clamp(0, tabs.length - 1).toInt();
           _tabController.dispose();
           _tabController = TabController(
             length: tabs.length,
@@ -163,7 +164,8 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
                       onPressed: () async {
-                        await context.push('/tournaments/${t.id}/edit', extra: t);
+                        await context.push('/tournaments/${t.id}/edit',
+                            extra: t);
                         if (mounted) refresh();
                       },
                     ),
@@ -183,7 +185,8 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) async {
                         if (value == 'cancel') {
-                          await _confirmCancelTournament(context, t.id, refresh);
+                          await _confirmCancelTournament(
+                              context, t.id, refresh);
                         } else if (value == 'delete') {
                           await _confirmDeleteTournament(context, t.id);
                         }
@@ -227,6 +230,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   onRefresh: refresh,
                 ),
                 if (hasGroupsTab) _ScoresTab(tournament: t),
+                if (hasScheduleTab) _PoolScheduleTab(tournament: t),
                 if (hasBrackets)
                   _BracketsTab(tournament: t, currentUserId: currentUserId),
                 if (hasMyTeam)
@@ -267,7 +271,9 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
     );
     if (ok != true || !context.mounted) return;
     try {
-      await ref.read(tournamentRepositoryProvider).cancelTournament(tournamentId);
+      await ref
+          .read(tournamentRepositoryProvider)
+          .cancelTournament(tournamentId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Tournament cancelled')));
@@ -275,8 +281,8 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to cancel: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to cancel: $e')));
       }
     }
   }
@@ -304,17 +310,19 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
     );
     if (ok != true || !context.mounted) return;
     try {
-      await ref.read(tournamentRepositoryProvider).deleteTournament(tournamentId);
+      await ref
+          .read(tournamentRepositoryProvider)
+          .deleteTournament(tournamentId);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tournament deleted')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Tournament deleted')));
         ref.invalidate(tournamentsNotifierProvider);
         context.pop();
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       }
     }
   }
@@ -357,9 +365,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isOrganizer = widget.currentUserId != null && t.creatorId == widget.currentUserId;
+    final isOrganizer =
+        widget.currentUserId != null && t.creatorId == widget.currentUserId;
     final isCaptain = myTeam?.captainUserId == widget.currentUserId;
-    final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null, isOrganizer: isOrganizer);
+    final canRegister = canRegisterTeam(t.status,
+        hasMyTeam: myTeam != null, isOrganizer: isOrganizer);
     final canManageTournament = canManageTournamentAdminActions(t.status);
     final dateFormat = DateFormat.yMMMd();
     final organizerNames = <String>[];
@@ -374,7 +384,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
     addOrganizer(t.organizerName);
     for (final admin in t.admins) {
-      addOrganizer(admin.userName.isNotEmpty ? admin.userName : admin.userEmail);
+      addOrganizer(
+          admin.userName.isNotEmpty ? admin.userName : admin.userEmail);
     }
 
     return RefreshIndicator(
@@ -383,8 +394,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         padding: const EdgeInsets.all(16),
         children: [
           _InfoCard(children: [
-            _OfficiatingModeBadge(selfRefEnabled: t.selfRefEnabled),
-            const SizedBox(height: 8),
             _InfoRow(
                 icon: Icons.emoji_events_outlined,
                 label: 'Sport',
@@ -433,7 +442,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   organizerNames.map((name) => '- $name').join('\n'),
                 ),
               ),
-            if (t.rulesDescription != null || t.prizesDescription != null || (t.hasFee && t.paymentInfo != null))
+            if (t.rulesDescription != null ||
+                t.prizesDescription != null ||
+                (t.hasFee && t.paymentInfo != null))
               const Divider(height: 16),
             if (t.hasFee)
               _InfoRow(
@@ -446,8 +457,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 icon: Icons.payment_outlined,
                 label: 'How to Pay',
                 value: 'Tap to view',
-                onTap: () =>
-                    _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
+                onTap: () => _showTextDialog(
+                    context, 'Payment Instructions', t.paymentInfo!),
               ),
             if (t.rulesDescription != null)
               _InfoRow(
@@ -490,16 +501,21 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             const SizedBox(height: 16),
             if (t.hasFee) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                  border:
+                      Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                 ),
                 child: Row(
-                  crossAxisAlignment: t.paymentInfo != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+                  crossAxisAlignment: t.paymentInfo != null
+                      ? CrossAxisAlignment.start
+                      : CrossAxisAlignment.center,
                   children: [
-                    const Icon(Icons.attach_money_outlined, color: Colors.orange, size: 18),
+                    const Icon(Icons.attach_money_outlined,
+                        color: Colors.orange, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: t.paymentInfo != null
@@ -508,18 +524,23 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               children: [
                                 Text(
                                   'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team',
-                                  style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   t.paymentInfo!,
-                                  style: const TextStyle(fontSize: 13, color: Colors.orange),
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.orange),
                                 ),
                               ],
                             )
                           : Text(
                               'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team — payment details will be provided after registration.',
-                              style: const TextStyle(fontSize: 13, color: Colors.orange),
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.orange),
                             ),
                     ),
                   ],
@@ -661,7 +682,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         label: const Text('View payment instructions'),
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.orange.shade800,
-                          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 0, vertical: 0),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           minimumSize: Size.zero,
                           visualDensity: VisualDensity.compact,
@@ -693,7 +715,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                           ),
                         ),
                       ),
-                      if (t.status == 'registration' || t.status == 'draft') ...[
+                      if (t.status == 'registration' ||
+                          t.status == 'draft') ...[
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
@@ -719,7 +742,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                              textStyle:
+                                  const TextStyle(fontWeight: FontWeight.w700),
                             ),
                             onPressed: () => _confirmUnregister(
                               context,
@@ -757,10 +781,16 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.25),
                   ),
                 ),
                 child: Row(
@@ -822,9 +852,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 label: const Text('Manage Pools'),
                 onPressed: canManageTournament
                     ? () async {
-                  await context.push('/tournaments/${t.id}/pools');
-                  if (context.mounted) onRefresh();
-                }
+                        await context.push('/tournaments/${t.id}/pools');
+                        if (context.mounted) onRefresh();
+                      }
                     : null,
               ),
               OutlinedButton.icon(
@@ -832,9 +862,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 label: const Text('Categories'),
                 onPressed: canManageTournament
                     ? () async {
-                  await context.push('/tournaments/${t.id}/categories');
-                  if (context.mounted) onRefresh();
-                }
+                        await context.push('/tournaments/${t.id}/categories');
+                        if (context.mounted) onRefresh();
+                      }
                     : null,
               ),
               OutlinedButton.icon(
@@ -850,9 +880,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 label: const Text('Matches'),
                 onPressed: canManageTournament
                     ? () async {
-                  await context.push('/tournaments/${t.id}/matches');
-                  if (context.mounted) onRefresh();
-                }
+                        await context.push('/tournaments/${t.id}/matches');
+                        if (context.mounted) onRefresh();
+                      }
                     : null,
               ),
               if (t.format != 'groups_knockout')
@@ -873,13 +903,18 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                             ),
                             child: Text(
                               '${t.unpaidTeamCount}',
-                              style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
                     ],
                   ),
-                  label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
+                  label: Text(t.matches.isNotEmpty
+                      ? 'Regenerate Brackets'
+                      : 'Generate Brackets'),
                   // Allow regeneration while in_progress (backend now supports this).
                   // This whole block is already gated on `isAdmin`, so only organizers
                   // and co-admins ever see it.
@@ -912,8 +947,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.insights_outlined, size: 16),
                 label: const Text('Analytics'),
-                onPressed: () =>
-                    context.push('/tournaments/${t.id}/analytics'),
+                onPressed: () => context.push('/tournaments/${t.id}/analytics'),
               ),
             ]),
           ],
@@ -975,16 +1009,16 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
-  Future<void> _generateBrackets(BuildContext context, TournamentModel tournament) async {
+  Future<void> _generateBrackets(
+      BuildContext context, TournamentModel tournament) async {
     int? numberOfGroups;
     int? teamsPerGroup;
     int playoffSize = tournament.playoffSize;
     bool usePoolAssignments = false;
     bool forceGenerate = false;
-    bool doubleElimination =
-        tournament.format == 'double_elimination' || tournament.doubleElimination;
-    final isEliminationTournament =
-        tournament.format == 'single_elimination' ||
+    bool doubleElimination = tournament.format == 'double_elimination' ||
+        tournament.doubleElimination;
+    final isEliminationTournament = tournament.format == 'single_elimination' ||
         tournament.format == 'double_elimination';
     final hasExistingMatches = tournament.format == 'groups_knockout'
         ? tournament.matches.any(isKnockoutStageMatch)
@@ -992,7 +1026,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
     // Payment gate warning
-    if (tournament.requirePaymentForBrackets && tournament.unpaidTeamCount > 0) {
+    if (tournament.requirePaymentForBrackets &&
+        tournament.unpaidTeamCount > 0) {
       final choice = await showDialog<String>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -1002,7 +1037,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             'You can wait until all teams pay, or force-generate brackets now.',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             OutlinedButton(
               onPressed: () => Navigator.pop(ctx, 'force'),
               child: const Text('Force Generate'),
@@ -1026,7 +1063,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           tournament.pools.any((p) => p.teams.isNotEmpty);
       final poolSummary = tournament.pools
           .where((p) => p.teams.isNotEmpty)
-          .map((p) => '${p.name} (${p.teams.length} teams)${p.venue != null ? ' · ${p.venue}' : ''}')
+          .map((p) =>
+              '${p.name} (${p.teams.length} teams)${p.venue != null ? ' · ${p.venue}' : ''}')
           .join('\n');
 
       // 0 = not chosen, 1 = auto-split, 2 = use pools
@@ -1045,7 +1083,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (hasPools) ...[
-                    const Text('Group Assignment', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text('Group Assignment',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     _RadioOption(
                       label: 'Use existing pool assignments',
@@ -1067,15 +1106,19 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          color:
+                              Theme.of(ctx).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Pools:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                            const Text('Pools:',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 12)),
                             const SizedBox(height: 4),
-                            Text(poolSummary, style: const TextStyle(fontSize: 12)),
+                            Text(poolSummary,
+                                style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                       ),
@@ -1089,7 +1132,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         Expanded(
                           child: TextField(
                             controller: groupCtrl,
-                            decoration: const InputDecoration(labelText: 'Number of groups', isDense: true),
+                            decoration: const InputDecoration(
+                                labelText: 'Number of groups', isDense: true),
                             keyboardType: TextInputType.number,
                           ),
                         ),
@@ -1097,7 +1141,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         Expanded(
                           child: TextField(
                             controller: teamCtrl,
-                            decoration: const InputDecoration(labelText: 'Teams per group (optional)', isDense: true),
+                            decoration: const InputDecoration(
+                                labelText: 'Teams per group (optional)',
+                                isDense: true),
                             keyboardType: TextInputType.number,
                           ),
                         ),
@@ -1106,7 +1152,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     const SizedBox(height: 6),
                     Text(
                       'If both are set, "teams per group" takes precedence.',
-                      style: TextStyle(fontSize: 11, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
@@ -1131,17 +1179,23 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: doubleElimination,
-                      onChanged: (value) => setS(() => doubleElimination = value),
+                      onChanged: (value) =>
+                          setS(() => doubleElimination = value),
                       title: const Text('Double elimination'),
-                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                      subtitle: const Text(
+                          'Create a losers bracket for playoff matches'),
                     ),
                   ],
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(generateVerb)),
             ],
           ),
         ),
@@ -1164,7 +1218,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           tournament.pools.any((p) => p.teams.isNotEmpty);
       final poolSummary = tournament.pools
           .where((p) => p.teams.isNotEmpty)
-          .map((p) => '${p.name}: ${p.teams.length} teams${p.venue != null ? ' @ ${p.venue}' : ''}')
+          .map((p) =>
+              '${p.name}: ${p.teams.length} teams${p.venue != null ? ' @ ${p.venue}' : ''}')
           .join('\n');
 
       final ok = await showDialog<bool>(
@@ -1191,7 +1246,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Pools:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                        const Text('Pools:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12)),
                         const SizedBox(height: 4),
                         Text(poolSummary, style: const TextStyle(fontSize: 12)),
                       ],
@@ -1206,8 +1263,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(generateVerb)),
           ],
         ),
       );
@@ -1235,9 +1296,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
                     value: localUseRandomFromPools,
-                    onChanged: (value) => setDialogState(() => localUseRandomFromPools = value ?? false),
+                    onChanged: (value) => setDialogState(
+                        () => localUseRandomFromPools = value ?? false),
                     title: const Text('Randomize from pools'),
-                    subtitle: const Text('Seed teams from existing pools using random draw'),
+                    subtitle: const Text(
+                        'Seed teams from existing pools using random draw'),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
                   if (isEliminationTournament) ...[
@@ -1266,15 +1329,19 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       value: doubleElimination,
                       onChanged: tournament.format == 'double_elimination'
                           ? null
-                          : (value) => setDialogState(() => doubleElimination = value),
+                          : (value) =>
+                              setDialogState(() => doubleElimination = value),
                       title: const Text('Double elimination'),
-                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                      subtitle: const Text(
+                          'Create a losers bracket for playoff matches'),
                     ),
                   ],
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel')),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, localUseRandomFromPools),
                   child: Text(generateVerb),
@@ -1326,16 +1393,22 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       value: doubleElimination,
                       onChanged: tournament.format == 'double_elimination'
                           ? null
-                          : (value) => setDialogState(() => doubleElimination = value),
+                          : (value) =>
+                              setDialogState(() => doubleElimination = value),
                       title: const Text('Double elimination'),
-                      subtitle: const Text('Create a losers bracket for playoff matches'),
+                      subtitle: const Text(
+                          'Create a losers bracket for playoff matches'),
                     ),
                   ],
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(generateVerb)),
               ],
             ),
           ),
@@ -1346,24 +1419,27 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
     try {
       await ref.read(tournamentRepositoryProvider).generateBrackets(
-        tournament.id,
-        numberOfGroups: numberOfGroups,
-        teamsPerGroup: teamsPerGroup,
-        playoffSize:
-            (isEliminationTournament || tournament.format == 'groups_knockout')
+            tournament.id,
+            numberOfGroups: numberOfGroups,
+            teamsPerGroup: teamsPerGroup,
+            playoffSize: (isEliminationTournament ||
+                    tournament.format == 'groups_knockout')
                 ? playoffSize
                 : null,
-        doubleElimination:
-            (isEliminationTournament || tournament.format == 'groups_knockout')
+            doubleElimination: (isEliminationTournament ||
+                    tournament.format == 'groups_knockout')
                 ? doubleElimination
                 : null,
-        usePoolAssignments: usePoolAssignments,
-        forceGenerate: forceGenerate,
-      );
+            usePoolAssignments: usePoolAssignments,
+            forceGenerate: forceGenerate,
+          );
       onRefresh();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(hasExistingMatches ? 'Brackets regenerated!' : 'Brackets generated!')),
+          SnackBar(
+              content: Text(hasExistingMatches
+                  ? 'Brackets regenerated!'
+                  : 'Brackets generated!')),
         );
       }
     } on Exception catch (e) {
@@ -1387,7 +1463,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     };
     return m[f] ?? f;
   }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -1395,7 +1470,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 // ---------------------------------------------------------------------------
 
 class _GroupMatchesButton extends ConsumerWidget {
-  const _GroupMatchesButton({required this.tournament, required this.onRefresh});
+  const _GroupMatchesButton(
+      {required this.tournament, required this.onRefresh});
 
   final TournamentModel tournament;
   final VoidCallback onRefresh;
@@ -1423,9 +1499,7 @@ class _GroupMatchesButton extends ConsumerWidget {
         OutlinedButton.icon(
           icon: const Icon(Icons.table_chart_outlined, size: 16),
           label: Text(label),
-          onPressed: canGenerate
-              ? () => _generate(context, ref)
-              : null,
+          onPressed: canGenerate ? () => _generate(context, ref) : null,
         ),
         if (helperText != null) ...[
           const SizedBox(height: 4),
@@ -1445,7 +1519,8 @@ class _GroupMatchesButton extends ConsumerWidget {
 
   Future<void> _generate(BuildContext context, WidgetRef ref) async {
     final t = tournament;
-    final hasPools = t.pools.isNotEmpty && t.pools.any((p) => p.teams.isNotEmpty);
+    final hasPools =
+        t.pools.isNotEmpty && t.pools.any((p) => p.teams.isNotEmpty);
     final poolSummary = t.pools
         .where((p) => p.teams.isNotEmpty)
         .map((p) => '${p.name} (${p.teams.length} teams)')
@@ -1454,6 +1529,11 @@ class _GroupMatchesButton extends ConsumerWidget {
     int splitMode = hasPools ? 0 : 1;
     final groupCtrl = TextEditingController(text: '4');
     final teamCtrl = TextEditingController();
+    final gameDurationCtrl = TextEditingController(text: '30');
+    final warmupCtrl = TextEditingController(text: '5');
+    final breakCtrl = TextEditingController(text: '5');
+    final minRestCtrl = TextEditingController(text: '10');
+    DateTime? scheduleStartAt;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -1466,7 +1546,8 @@ class _GroupMatchesButton extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (hasPools) ...[
-                  const Text('Group Assignment', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('Group Assignment',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   RadioListTile<int>(
                     contentPadding: EdgeInsets.zero,
@@ -1487,7 +1568,8 @@ class _GroupMatchesButton extends ConsumerWidget {
                   RadioListTile<int>(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Manually create groups'),
-                    subtitle: const Text('Open pool manager to assign teams to groups yourself'),
+                    subtitle: const Text(
+                        'Open pool manager to assign teams to groups yourself'),
                     value: 3,
                     groupValue: splitMode,
                     onChanged: (v) => setS(() => splitMode = v!),
@@ -1497,10 +1579,12 @@ class _GroupMatchesButton extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        color:
+                            Theme.of(ctx).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(poolSummary, style: const TextStyle(fontSize: 12)),
+                      child: Text(poolSummary,
+                          style: const TextStyle(fontSize: 12)),
                     ),
                   ],
                 ],
@@ -1511,7 +1595,8 @@ class _GroupMatchesButton extends ConsumerWidget {
                       Expanded(
                         child: TextField(
                           controller: groupCtrl,
-                          decoration: const InputDecoration(labelText: 'Number of groups', isDense: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Number of groups', isDense: true),
                           keyboardType: TextInputType.number,
                         ),
                       ),
@@ -1519,19 +1604,109 @@ class _GroupMatchesButton extends ConsumerWidget {
                       Expanded(
                         child: TextField(
                           controller: teamCtrl,
-                          decoration: const InputDecoration(labelText: 'Teams per group (optional)', isDense: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Teams per group (optional)',
+                              isDense: true),
                           keyboardType: TextInputType.number,
                         ),
                       ),
                     ],
                   ),
                 ],
+                const SizedBox(height: 12),
+                const Text('Schedule per pool',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.schedule_outlined, size: 16),
+                  label: Text(
+                    scheduleStartAt == null
+                        ? 'Pick first game start time'
+                        : DateFormat('EEE, MMM d • h:mm a')
+                            .format(scheduleStartAt!.toLocal()),
+                  ),
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final pickedDate = await showDatePicker(
+                      context: ctx,
+                      initialDate: scheduleStartAt?.toLocal() ?? now,
+                      firstDate: now.subtract(const Duration(days: 1)),
+                      lastDate: now.add(const Duration(days: 730)),
+                    );
+                    if (pickedDate == null || !ctx.mounted) return;
+                    final pickedTime = await showTimePicker(
+                      context: ctx,
+                      initialTime: TimeOfDay.fromDateTime(
+                          scheduleStartAt?.toLocal() ?? now),
+                    );
+                    if (pickedTime == null) return;
+                    setS(() {
+                      scheduleStartAt = DateTime(
+                        pickedDate.year,
+                        pickedDate.month,
+                        pickedDate.day,
+                        pickedTime.hour,
+                        pickedTime.minute,
+                      );
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: gameDurationCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Game (min)',
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: warmupCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Warmup (min)',
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: breakCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Break (min)',
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: minRestCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Minimum team rest (min)',
+                    isDense: true,
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Generate')),
           ],
         ),
       ),
@@ -1548,6 +1723,10 @@ class _GroupMatchesButton extends ConsumerWidget {
     int? numberOfGroups;
     int? teamsPerGroup;
     bool usePoolAssignments = false;
+    final parsedGameDuration = int.tryParse(gameDurationCtrl.text.trim());
+    final parsedWarmup = int.tryParse(warmupCtrl.text.trim());
+    final parsedBreak = int.tryParse(breakCtrl.text.trim());
+    final parsedMinRest = int.tryParse(minRestCtrl.text.trim());
 
     if (splitMode == 2) {
       usePoolAssignments = true;
@@ -1562,15 +1741,32 @@ class _GroupMatchesButton extends ConsumerWidget {
 
     try {
       await ref.read(tournamentRepositoryProvider).generateGroupMatches(
-        t.id,
-        numberOfGroups: numberOfGroups,
-        teamsPerGroup: teamsPerGroup,
-        usePoolAssignments: usePoolAssignments,
-      );
+            t.id,
+            numberOfGroups: numberOfGroups,
+            teamsPerGroup: teamsPerGroup,
+            usePoolAssignments: usePoolAssignments,
+            scheduleStartAt: scheduleStartAt,
+            gameDurationMinutes: parsedGameDuration,
+            warmupMinutes: parsedWarmup,
+            breakMinutes: parsedBreak,
+            minTeamRestMinutes: parsedMinRest,
+          );
+
+      int autoAssigned = 0;
+      if (t.selfRefEnabled) {
+        final assignmentResult = await ref
+            .read(tournamentRepositoryProvider)
+            .autoAssignReferees(t.id);
+        autoAssigned = (assignmentResult['assigned'] as num?)?.toInt() ?? 0;
+      }
+
       onRefresh();
       if (context.mounted) {
+        final message = t.selfRefEnabled
+            ? 'Group matches generated. Referees auto-assigned for $autoAssigned match(es).'
+            : 'Group matches generated!';
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Group matches generated!')));
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } on Exception catch (e) {
       if (context.mounted) {
@@ -1588,7 +1784,8 @@ class _GroupMatchesButton extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _KnockoutBracketButton extends ConsumerWidget {
-  const _KnockoutBracketButton({required this.tournament, required this.onRefresh});
+  const _KnockoutBracketButton(
+      {required this.tournament, required this.onRefresh});
 
   final TournamentModel tournament;
   final VoidCallback onRefresh;
@@ -1680,15 +1877,21 @@ class _KnockoutBracketButton extends ConsumerWidget {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: doubleElimination,
-                onChanged: (value) => setDialogState(() => doubleElimination = value),
+                onChanged: (value) =>
+                    setDialogState(() => doubleElimination = value),
                 title: const Text('Double elimination'),
-                subtitle: const Text('Create a losers bracket for playoff matches'),
+                subtitle:
+                    const Text('Create a losers bracket for playoff matches'),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Generate')),
           ],
         ),
       ),
@@ -1703,8 +1906,8 @@ class _KnockoutBracketButton extends ConsumerWidget {
           );
       onRefresh();
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Knockout bracket generated!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Knockout bracket generated!')));
       }
     } on Exception catch (e) {
       if (context.mounted) {
@@ -1757,56 +1960,10 @@ class _PaymentStatusBadge extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
-    );
-  }
-}
-
-class _OfficiatingModeBadge extends StatelessWidget {
-  const _OfficiatingModeBadge({required this.selfRefEnabled});
-
-  final bool selfRefEnabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isSelfRef = selfRefEnabled;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isSelfRef
-            ? colorScheme.tertiaryContainer.withValues(alpha: 0.35)
-            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isSelfRef
-              ? colorScheme.tertiary.withValues(alpha: 0.45)
-              : colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isSelfRef ? Icons.sports : Icons.badge_outlined,
-            size: 16,
-            color: isSelfRef ? colorScheme.tertiary : colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isSelfRef
-                  ? 'Self-ref mode enabled'
-                  : 'Dedicated officiating mode',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1836,8 +1993,10 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
   Future<void> _setPayment(TournamentTeamModel team, String status) async {
     try {
       await ref.read(tournamentRepositoryProvider).updateTeamPayment(
-        widget.tournament.id, team.id, status,
-      );
+            widget.tournament.id,
+            team.id,
+            status,
+          );
       _selectedTeamIds.remove(team.id);
       widget.onRefresh();
     } on Exception catch (e) {
@@ -1854,17 +2013,20 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
     if (_selectedTeamIds.isEmpty || _bulkUpdating) return;
     setState(() => _bulkUpdating = true);
     try {
-      final response = await ref.read(tournamentRepositoryProvider).batchUpdateTeamPayment(
-        widget.tournament.id,
-        _selectedTeamIds.toList(),
-        status,
-      );
+      final response =
+          await ref.read(tournamentRepositoryProvider).batchUpdateTeamPayment(
+                widget.tournament.id,
+                _selectedTeamIds.toList(),
+                status,
+              );
       if (mounted) {
         final updated = (response['updatedCount'] as num?)?.toInt() ?? 0;
         final skipped = (response['skippedCount'] as num?)?.toInt() ?? 0;
         final notFound = (response['notFoundCount'] as num?)?.toInt() ?? 0;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Updated $updated team(s), skipped $skipped, not found $notFound.')),
+          SnackBar(
+              content: Text(
+                  'Updated $updated team(s), skipped $skipped, not found $notFound.')),
         );
       }
       _selectedTeamIds.clear();
@@ -1888,11 +2050,15 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Unregister Team'),
-        content: Text('Remove "${team.name}" from this tournament? This cannot be undone.'),
+        content: Text(
+            'Remove "${team.name}" from this tournament? This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Unregister'),
           ),
@@ -1902,8 +2068,9 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
     if (confirmed != true) return;
     try {
       await ref.read(tournamentRepositoryProvider).deleteTeam(
-        widget.tournament.id, team.id,
-      );
+            widget.tournament.id,
+            team.id,
+          );
       widget.onRefresh();
     } on Exception catch (e) {
       if (mounted) {
@@ -1924,21 +2091,26 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(team.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              child: Text(team.name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 16)),
             ),
             const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+              leading:
+                  const Icon(Icons.check_circle_outline, color: Colors.green),
               title: const Text('Mark as Paid'),
               onTap: () => Navigator.pop(ctx, 'paid'),
             ),
             ListTile(
-              leading: const Icon(Icons.schedule_outlined, color: Colors.orange),
+              leading:
+                  const Icon(Icons.schedule_outlined, color: Colors.orange),
               title: const Text('Mark as Pending'),
               onTap: () => Navigator.pop(ctx, 'pending'),
             ),
             ListTile(
-              leading: const Icon(Icons.do_not_disturb_alt_outlined, color: Colors.blue),
+              leading: const Icon(Icons.do_not_disturb_alt_outlined,
+                  color: Colors.blue),
               title: const Text('Waive Fee'),
               onTap: () => Navigator.pop(ctx, 'waived'),
             ),
@@ -1949,8 +2121,10 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
             ),
             const Divider(height: 1),
             ListTile(
-              leading: Icon(Icons.person_remove_outlined, color: Theme.of(ctx).colorScheme.error),
-              title: Text('Unregister Team', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              leading: Icon(Icons.person_remove_outlined,
+                  color: Theme.of(ctx).colorScheme.error),
+              title: Text('Unregister Team',
+                  style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
               onTap: () => Navigator.pop(ctx, 'unregister'),
             ),
             const SizedBox(height: 8),
@@ -1977,22 +2151,26 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
                 'Update ${_selectedTeamIds.length} selected team(s)',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
             ),
             const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+              leading:
+                  const Icon(Icons.check_circle_outline, color: Colors.green),
               title: const Text('Mark as Paid'),
               onTap: () => Navigator.pop(ctx, 'paid'),
             ),
             ListTile(
-              leading: const Icon(Icons.schedule_outlined, color: Colors.orange),
+              leading:
+                  const Icon(Icons.schedule_outlined, color: Colors.orange),
               title: const Text('Mark as Pending'),
               onTap: () => Navigator.pop(ctx, 'pending'),
             ),
             ListTile(
-              leading: const Icon(Icons.do_not_disturb_alt_outlined, color: Colors.blue),
+              leading: const Icon(Icons.do_not_disturb_alt_outlined,
+                  color: Colors.blue),
               title: const Text('Waive Fee'),
               onTap: () => Navigator.pop(ctx, 'waived'),
             ),
@@ -2038,14 +2216,17 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
     final t = widget.tournament;
     final unpaid = t.teams.where((tm) => !tm.isPaid).length;
     final paid = t.teams.where((tm) => tm.isPaid).length;
-    final allSelected = t.teams.isNotEmpty && _selectedTeamIds.length == t.teams.length;
+    final allSelected =
+        t.teams.isNotEmpty && _selectedTeamIds.length == t.teams.length;
 
     return Container(
       decoration: BoxDecoration(
         color: AppThemeTokens.card(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: unpaid > 0 ? Colors.orange.withValues(alpha: 0.5) : Colors.green.withValues(alpha: 0.4),
+          color: unpaid > 0
+              ? Colors.orange.withValues(alpha: 0.5)
+              : Colors.green.withValues(alpha: 0.4),
         ),
       ),
       child: Column(
@@ -2053,7 +2234,8 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
         children: [
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppThemeTokens.radiusMd)),
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppThemeTokens.radiusMd)),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Row(
@@ -2091,7 +2273,8 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(6),
-                    onTap: _bulkUpdating ? null : () => _toggleSelectAll(t.teams),
+                    onTap:
+                        _bulkUpdating ? null : () => _toggleSelectAll(t.teams),
                     child: Row(
                       children: [
                         Checkbox(
@@ -2104,14 +2287,18 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
                         const SizedBox(width: 2),
                         Text(
                           allSelected ? 'Clear all' : 'Select all',
-                          style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppThemeTokens.textMuted(context)),
                         ),
                       ],
                     ),
                   ),
                   const Spacer(),
                   FilledButton.tonalIcon(
-                    onPressed: _selectedTeamIds.isEmpty || _bulkUpdating ? null : _showBulkPaymentOptions,
+                    onPressed: _selectedTeamIds.isEmpty || _bulkUpdating
+                        ? null
+                        : _showBulkPaymentOptions,
                     icon: _bulkUpdating
                         ? const SizedBox(
                             width: 14,
@@ -2127,7 +2314,8 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
             for (final team in t.teams)
               ListTile(
                 dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                 leading: Checkbox(
                   value: _selectedTeamIds.contains(team.id),
                   visualDensity: VisualDensity.compact,
@@ -2140,7 +2328,8 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
                   onTap: () => _showPaymentOptions(team),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     child: _PaymentStatusBadge(status: team.paymentStatus),
                   ),
                 ),
@@ -2275,9 +2464,9 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
           )
         else ...[
           if (category.pools.isNotEmpty)
-          for (final pool in category.pools)
-            _PoolCard(
-                pool: pool, isAdmin: widget.isAdmin, tournament: tournament),
+            for (final pool in category.pools)
+              _PoolCard(
+                  pool: pool, isAdmin: widget.isAdmin, tournament: tournament),
           if (unpooledCategoryTeams.isNotEmpty)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
@@ -2369,11 +2558,11 @@ class _PoolCard extends StatelessWidget {
           for (final team in pool.teams)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: _TeamRow(
-                  team: team,
-                  tournamentId: tournament.id,
-                  maxPlayers: tournament.maxPlayers,
-                ),
+              child: _TeamRow(
+                team: team,
+                tournamentId: tournament.id,
+                maxPlayers: tournament.maxPlayers,
+              ),
             ),
           if (pool.waitlist.isNotEmpty) ...[
             Padding(
@@ -2507,7 +2696,9 @@ class _ScoresTab extends StatelessWidget {
     // tournaments. Teams are ranked by pool rank first (so all pool-winners are
     // seeded before pool-runners-up), then by performance within the same rank.
     final Map<String, int> teamCategoryRankMap = {};
-    if (t.format == 'groups_knockout' && t.categories.isNotEmpty && hasStandings) {
+    if (t.format == 'groups_knockout' &&
+        t.categories.isNotEmpty &&
+        hasStandings) {
       // Performance comparator: higher is better (descending points, GD, GF, wins)
       int perfCompare(TournamentStandingModel a, TournamentStandingModel b) {
         final pd = b.points.compareTo(a.points);
@@ -2583,8 +2774,8 @@ class _ScoresTab extends StatelessWidget {
           return [];
         }
         return filtered
-            .map((s) => _StandingRow.fromStanding(
-                s, teamCategoryRankMap[s.teamId]))
+            .map((s) =>
+                _StandingRow.fromStanding(s, teamCategoryRankMap[s.teamId]))
             .toList();
       } else {
         return [];
@@ -2667,7 +2858,8 @@ class _ScoresTab extends StatelessWidget {
       final rows = rowsForPool(null);
       if (rows.isEmpty) {
         return const UiEmptyState(
-            icon: Icons.leaderboard_outlined, message: 'No group standings yet.');
+            icon: Icons.leaderboard_outlined,
+            message: 'No group standings yet.');
       }
       children.add(_ScoreTable(rows: rows, showGoals: showGF));
       children.add(const SizedBox(height: 16));
@@ -2700,8 +2892,8 @@ class _ScoreTable extends StatelessWidget {
         return b.wins.compareTo(a.wins);
       });
 
-    // Show category-wide bracket seed (#N) when available, pool rank otherwise.
     final hasCategoryRank = sorted.any((r) => r.categoryRank != null);
+    final showsDraws = rows.any((r) => r.draws > 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -2709,167 +2901,492 @@ class _ScoreTable extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(color: AppThemeTokens.border(context)),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints:
-              BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
-          child: Column(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(children: [
-                  SizedBox(
-                      width: 32,
-                      child: Text(hasCategoryRank ? '#' : '',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: hasCategoryRank
-                                  ? AppThemeTokens.primary500
-                                  : null))),
-                  const SizedBox(
-                      width: 160,
-                      child: Text('Team',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(
-                      width: 32,
-                      child: Text('P',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(
-                      width: 32,
-                      child: Text('W',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12))),
-                  if (rows.any((r) => r.draws > 0))
-                    const SizedBox(
-                        width: 32,
-                        child: Text('D',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(
-                      width: 32,
-                      child: Text('L',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12))),
-                    if (showGoals) ...[
-                      const SizedBox(
-                          width: 64,
-                          child: Text('Pts Won',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 12))),
-                      const SizedBox(
-                          width: 64,
-                          child: Text('Pts Lost',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 12))),
-                      const SizedBox(
-                          width: 56,
-                          child: Text('Ratio',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 12))),
-                  ],
-                  const SizedBox(
-                      width: 40,
-                      child: Text('Pts',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 12))),
-                ]),
-              ),
-              const Divider(height: 1),
-              for (int i = 0; i < sorted.length; i++) ...[
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(children: [
-                    SizedBox(
-                        width: 32,
+      child: Column(
+        children: [
+          for (int i = 0; i < sorted.length; i++) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: hasCategoryRank
+                              ? AppThemeTokens.primary500
+                                  .withValues(alpha: 0.10)
+                              : AppThemeTokens.cardElevated(context),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Text(
-                            hasCategoryRank
-                                ? '${sorted[i].categoryRank ?? (i + 1)}'
-                                : '${i + 1}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: hasCategoryRank
-                                    ? AppThemeTokens.primary500
-                                    : AppThemeTokens.textMuted(context),
-                                fontWeight: hasCategoryRank
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
-                                fontSize: 13))),
-                    SizedBox(
-                        width: 160,
-                        child: Text(sorted[i].name,
-                            style: const TextStyle(fontSize: 13),
-                            overflow: TextOverflow.ellipsis)),
-                    SizedBox(
-                        width: 32,
-                        child: Text('${sorted[i].played}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: AppThemeTokens.textSecondary(context),
-                                fontSize: 13))),
-                    SizedBox(
-                        width: 32,
-                        child: Text('${sorted[i].wins}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13))),
-                    if (rows.any((r) => r.draws > 0))
-                      SizedBox(
-                          width: 32,
-                          child: Text('${sorted[i].draws}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13))),
-                    SizedBox(
-                        width: 32,
-                        child: Text('${sorted[i].losses}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13))),
-                    if (showGoals) ...[
-                      SizedBox(
-                          width: 64,
-                          child: Text('${sorted[i].gf ?? 0}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13))),
-                      SizedBox(
-                          width: 64,
-                          child: Text('${sorted[i].ga ?? 0}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13))),
-                      SizedBox(
-                          width: 56,
-                          child: Text(sorted[i].ratioLabel,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13))),
+                          hasCategoryRank
+                              ? '${sorted[i].categoryRank ?? (i + 1)}'
+                              : '${i + 1}',
+                          style: TextStyle(
+                            color: hasCategoryRank
+                                ? AppThemeTokens.primary500
+                                : AppThemeTokens.textMuted(context),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sorted[i].name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color:
+                              AppThemeTokens.primary500.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${sorted[i].points} pts',
+                          style: const TextStyle(
+                            color: AppThemeTokens.primary500,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ],
-                    SizedBox(
-                        width: 40,
-                        child: Text('${sorted[i].points}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppThemeTokens.primary500))),
-                  ]),
-                ),
-                if (i < sorted.length - 1) const Divider(height: 1),
-              ],
-            ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _StandingStatChip(
+                          label: 'P', value: '${sorted[i].played}'),
+                      _StandingStatChip(label: 'W', value: '${sorted[i].wins}'),
+                      if (showsDraws)
+                        _StandingStatChip(
+                            label: 'D', value: '${sorted[i].draws}'),
+                      _StandingStatChip(
+                          label: 'L', value: '${sorted[i].losses}'),
+                      if (showGoals) ...[
+                        _StandingStatChip(
+                            label: 'Pts Won', value: '${sorted[i].gf ?? 0}'),
+                        _StandingStatChip(
+                            label: 'Pts Lost', value: '${sorted[i].ga ?? 0}'),
+                        _StandingStatChip(
+                            label: 'Ratio', value: sorted[i].ratioLabel),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (i < sorted.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StandingStatChip extends StatelessWidget {
+  const _StandingStatChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.cardElevated(context),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppThemeTokens.border(context)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            color: AppThemeTokens.textSecondary(context),
+            fontSize: 12,
           ),
+          children: [
+            TextSpan(text: '$label '),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: AppThemeTokens.textSecondary(context),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Per-pool schedule tab
+// ---------------------------------------------------------------------------
+
+String _normalizeScheduleLocationKey(String? value) =>
+    (value ?? '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
+
+String? _resolvePoolFacility(TournamentModel tournament, String? groupName) {
+  final normalizedGroup = _normalizeScheduleLocationKey(groupName);
+  if (normalizedGroup.isEmpty) return null;
+
+  for (final pool in tournament.pools) {
+    final venue = (pool.venue ?? '').trim();
+    if (venue.isEmpty) continue;
+    final normalizedPoolName = _normalizeScheduleLocationKey(pool.name);
+    if (normalizedPoolName == normalizedGroup ||
+        normalizedGroup.startsWith(normalizedPoolName) ||
+        normalizedPoolName.startsWith(normalizedGroup)) {
+      return venue;
+    }
+  }
+
+  return null;
+}
+
+String? _resolveMatchFacility(
+  TournamentModel tournament,
+  TournamentMatchModel match, {
+  String? selectedPoolFacility,
+}) {
+  final candidates = [
+    match.location,
+    match.courtLocation,
+    selectedPoolFacility,
+    _resolvePoolFacility(tournament, match.groupName),
+    tournament.locationName,
+    tournament.location,
+  ];
+
+  for (final candidate in candidates) {
+    final trimmed = candidate?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+class _PoolScheduleTab extends StatefulWidget {
+  const _PoolScheduleTab({required this.tournament});
+
+  final TournamentModel tournament;
+
+  @override
+  State<_PoolScheduleTab> createState() => _PoolScheduleTabState();
+}
+
+class _PoolScheduleTabState extends State<_PoolScheduleTab> {
+  String? _selectedGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = [...widget.tournament.matches]..sort((a, b) {
+        if (a.scheduledAt == null && b.scheduledAt == null) {
+          return a.id.compareTo(b.id);
+        }
+        if (a.scheduledAt == null) return 1;
+        if (b.scheduledAt == null) return -1;
+        return a.scheduledAt!.compareTo(b.scheduledAt!);
+      });
+
+    if (matches.isEmpty) {
+      return const UiEmptyState(
+        icon: Icons.schedule_outlined,
+        message: 'No scheduled matches yet.',
+      );
+    }
+
+    final grouped = <String, List<TournamentMatchModel>>{};
+    for (final match in matches) {
+      final key = (match.groupName ?? '').trim().isNotEmpty
+          ? match.groupName!.trim()
+          : ((match.round.isNotEmpty && !match.round.startsWith('Round'))
+              ? match.round
+              : 'General');
+      grouped.putIfAbsent(key, () => []).add(match);
+    }
+
+    final groupKeys = grouped.keys.toList()..sort();
+    if (_selectedGroup == null || !groupKeys.contains(_selectedGroup)) {
+      _selectedGroup = groupKeys.isEmpty ? null : groupKeys.first;
+    }
+    final selectedGroupName = _selectedGroup;
+    final visibleMatches = selectedGroupName == null
+        ? <TournamentMatchModel>[]
+        : grouped[selectedGroupName] ?? [];
+
+    final teamNameById = <String, String>{};
+    for (final team in widget.tournament.teams) {
+      teamNameById[team.id] = team.name;
+    }
+
+    final dutyCountByTeamId = <String, int>{};
+    for (final match in visibleMatches) {
+      final refereeTeamId = match.refereeTeamId;
+      if (refereeTeamId == null || refereeTeamId.trim().isEmpty) continue;
+      dutyCountByTeamId[refereeTeamId] =
+          (dutyCountByTeamId[refereeTeamId] ?? 0) + 1;
+    }
+    final dutySummary = dutyCountByTeamId.entries.toList()
+      ..sort((a, b) {
+        final countCompare = b.value.compareTo(a.value);
+        if (countCompare != 0) return countCompare;
+        final aName = teamNameById[a.key] ?? a.key;
+        final bName = teamNameById[b.key] ?? b.key;
+        return aName.compareTo(bName);
+      });
+    final dutySpread = dutySummary.isEmpty
+        ? 0
+        : (dutySummary.first.value - dutySummary.last.value);
+    final selectedPoolVenue = selectedGroupName == null
+        ? null
+        : _resolvePoolFacility(widget.tournament, selectedGroupName);
+
+    final dateFmt = DateFormat('EEE, MMM d');
+    final timeFmt = DateFormat('h:mm a');
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (groupKeys.length > 1) ...[
+          Text(
+            'Pool',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppThemeTokens.textMuted(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: selectedGroupName,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            items: groupKeys
+                .map(
+                  (groupName) => DropdownMenuItem<String>(
+                    value: groupName,
+                    child: Text(
+                      groupName,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedGroup = value);
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (selectedGroupName != null) ...[
+          UiSectionTitle(selectedGroupName),
+          if (selectedPoolVenue != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: AppThemeTokens.textMuted(context),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Facility: $selectedPoolVenue',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppThemeTokens.textMuted(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (dutySummary.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Ref duties: ${dutySummary.map((entry) => '${teamNameById[entry.key] ?? 'Team'} ${entry.value}').join(' • ')}'
+              '${dutySpread <= 1 ? '  (balanced)' : ''}',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemeTokens.textMuted(context),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+        for (final match in visibleMatches) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppThemeTokens.cardElevated(context),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              border: Border.all(color: AppThemeTokens.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color:
+                            AppThemeTokens.primary500.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        match.status.replaceAll('_', ' ').toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppThemeTokens.primary500,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      match.scheduledAt == null
+                          ? 'TBD'
+                          : '${dateFmt.format(match.scheduledAt!.toLocal())} • ${timeFmt.format(match.scheduledAt!.toLocal())}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppThemeTokens.textMuted(context),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        match.teamAName ?? 'TBD',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        match.status == 'completed'
+                            ? '${match.scoreA ?? 0} - ${match.scoreB ?? 0}'
+                            : 'vs',
+                        style:
+                            TextStyle(color: AppThemeTokens.textMuted(context)),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        match.teamBName ?? 'TBD',
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.sports,
+                      size: 13,
+                      color: AppThemeTokens.textMuted(context),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Referee: ${match.refereeTeamName ?? teamNameById[match.refereeTeamId] ?? 'Unassigned'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppThemeTokens.textMuted(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                if ((_resolveMatchFacility(
+                              widget.tournament,
+                              match,
+                              selectedPoolFacility: selectedPoolVenue,
+                            ) ??
+                            '')
+                        .isNotEmpty ||
+                    (match.courtName ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 13,
+                        color: AppThemeTokens.textMuted(context),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          [
+                            if (_resolveMatchFacility(
+                                  widget.tournament,
+                                  match,
+                                  selectedPoolFacility: selectedPoolVenue,
+                                ) !=
+                                null)
+                              'Facility: ${_resolveMatchFacility(
+                                widget.tournament,
+                                match,
+                                selectedPoolFacility: selectedPoolVenue,
+                              )}',
+                            if ((match.courtName ?? '').trim().isNotEmpty)
+                              'Court: ${match.courtName!.trim()}',
+                          ].join(' • '),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppThemeTokens.textMuted(context),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
@@ -2893,8 +3410,19 @@ class _MyScheduleTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final myMatches = tournament.matches
-        .where((m) => m.teamAId == myTeam.id || m.teamBId == myTeam.id)
-        .toList();
+        .where((m) =>
+            m.teamAId == myTeam.id ||
+            m.teamBId == myTeam.id ||
+            m.refereeTeamId == myTeam.id)
+        .toList()
+      ..sort((a, b) {
+        if (a.scheduledAt == null && b.scheduledAt == null) {
+          return a.id.compareTo(b.id);
+        }
+        if (a.scheduledAt == null) return 1;
+        if (b.scheduledAt == null) return -1;
+        return a.scheduledAt!.compareTo(b.scheduledAt!);
+      });
     if (myMatches.isEmpty) {
       return const UiEmptyState(
           icon: Icons.calendar_today_outlined,
@@ -2973,12 +3501,19 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
   @override
   Widget build(BuildContext context) {
     final m = widget.match;
+    final isRefAssignment = m.refereeTeamId == widget.myTeamId &&
+        m.teamAId != widget.myTeamId &&
+        m.teamBId != widget.myTeamId;
+    final displayFacility = _resolveMatchFacility(widget.tournament, m);
+    final displayCourt =
+        (m.courtName ?? '').trim().isNotEmpty ? m.courtName!.trim() : null;
     final hasScore = m.scoreA != null && m.scoreB != null;
     final isMyHome = m.teamAId == widget.myTeamId;
     final opponent = isMyHome ? m.teamBName : m.teamAName;
     final myScore = isMyHome ? m.scoreA : m.scoreB;
     final oppScore = isMyHome ? m.scoreB : m.scoreA;
-    final canSubmit = m.status == 'in_progress' || m.status == 'scheduled';
+    final canSubmit = !isRefAssignment &&
+        (m.status == 'in_progress' || m.status == 'scheduled');
 
     return Container(
       decoration: BoxDecoration(
@@ -2993,12 +3528,23 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
             Row(
               children: [
                 Expanded(
-                    child: Text('vs ${opponent ?? "TBD"}',
+                    child: Text(
+                        isRefAssignment
+                            ? '${m.teamAName ?? "TBD"} vs ${m.teamBName ?? "TBD"}'
+                            : 'vs ${opponent ?? "TBD"}',
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 15))),
                 _StatusChip(m.status),
               ],
             ),
+            if (isRefAssignment) ...[
+              const SizedBox(height: 4),
+              Text('Role: Referee',
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ],
             if (m.scheduledAt != null) ...[
               const SizedBox(height: 4),
               Text(
@@ -3007,10 +3553,29 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
                   style: TextStyle(
                       color: AppThemeTokens.textMuted(context), fontSize: 12)),
             ],
-            if (m.location != null)
-              Text(m.location!,
-                  style: TextStyle(
-                      color: AppThemeTokens.textMuted(context), fontSize: 12)),
+            if (displayFacility != null || displayCourt != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined,
+                      size: 13, color: AppThemeTokens.textMuted(context)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      [
+                        if (displayFacility != null)
+                          'Facility: $displayFacility',
+                        if (displayCourt != null) 'Court: $displayCourt',
+                      ].join(' • '),
+                      style: TextStyle(
+                          color: AppThemeTokens.textMuted(context),
+                          fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (hasScore)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -3320,9 +3885,15 @@ class _RadioOption<T> extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w500)),
                 if (sublabel != null)
-                  Text(sublabel!, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(sublabel!,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           ),

@@ -3,11 +3,12 @@ import { SessionParticipantStatus, GroupNotificationType, SessionNotificationTyp
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
-import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
+import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
 import { permissionService } from './permissionService';
 import { Permission } from '../../shared/types/permissions.types';
+import { NotificationFactory } from './notificationFactory';
 
 /**
  * Sanitizes session data inputs
@@ -130,24 +131,15 @@ export const createSessionNotifications = async (
   if (memberIds.length === 0) return;
 
   try {
-    // Filter out users who have muted session created notifications
-    const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteSessionCreated');
-    
-    if (unmutedMemberIds.length === 0) return;
-    
-    // Use createMany for batch insert - much faster than individual creates
-    await prisma.groupNotification.createMany({
-      data: unmutedMemberIds.map(userId => ({
-        groupId,
-        userId,
-        type: GroupNotificationType.session_created,
-        params: {
-          eventTitle,
-          name: creatorName,
-          groupName
-        }
-      })),
-      skipDuplicates: true // Avoid errors on duplicate entries
+    await NotificationFactory.createGroupNotifications({
+      groupId,
+      type: GroupNotificationType.session_created,
+      userIds: memberIds,
+      params: {
+        eventTitle,
+        name: creatorName,
+        groupName,
+      },
     });
   } catch (error) {
     logger.error('Failed to create batch notifications', 'EventService', { 
@@ -170,23 +162,14 @@ export const createSessionUpdateNotifications = async (
   if (participantIds.length === 0) return;
 
   try {
-    // Filter out users who have muted session update notifications
-    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteSessionUpdates');
-    
-    if (unmutedParticipantIds.length === 0) return;
-    
-    // Use createMany for batch insert - much faster than individual creates
-    await prisma.sessionNotification.createMany({
-      data: unmutedParticipantIds.map(userId => ({
-        sessionId,
-        userId,
-        type: SessionNotificationType.session_updated,
-        params: {
-          eventTitle,
-          name: updaterName
-        }
-      })),
-      skipDuplicates: true // Avoid errors on duplicate entries
+    await NotificationFactory.createSessionNotifications({
+      sessionId,
+      type: SessionNotificationType.session_updated,
+      userIds: participantIds,
+      params: {
+        eventTitle,
+        name: updaterName,
+      },
     });
   } catch (error) {
     logger.error('Failed to create batch update notifications', 'EventService', { 
@@ -207,33 +190,22 @@ export const createSessionDeletionNotifications = async (
 ) => {
   if (participantIds.length === 0) return;
 
-  let unmutedParticipantCount = 0;
-
   try {
-    // Filter out users who have muted session cancellation notifications
-    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteSessionCancellations');
-    unmutedParticipantCount = unmutedParticipantIds.length;
-
-    if (unmutedParticipantIds.length === 0) return;
-
-    // Use createMany for batch insert - much faster than individual creates
-    await prisma.sessionNotification.createMany({
-      data: unmutedParticipantIds.map(userId => ({
-        sessionId,
-        userId,
-        type: SessionNotificationType.session_cancelled,
-        params: {
-          eventTitle,
-          name: deleterName
-        }
-      })),
-      skipDuplicates: true
+    const result = await NotificationFactory.createSessionNotifications({
+      sessionId,
+      type: SessionNotificationType.session_cancelled,
+      userIds: participantIds,
+      params: {
+        eventTitle,
+        name: deleterName,
+      },
     });
+
+    if (result.created === 0) return;
   } catch (error) {
     logger.error('Failed to create batch deletion notifications', 'EventService', {
       error,
       participantCount: participantIds.length,
-      unmutedParticipantCount
     });
   }
 };

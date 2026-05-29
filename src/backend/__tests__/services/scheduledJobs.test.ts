@@ -44,8 +44,15 @@ vi.mock('../../services/emailQueueService', () => ({
   sendEmailWithQueue: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../services/notificationFactory', () => ({
+  NotificationFactory: {
+    createTournamentNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+  },
+}));
+
 import { cleanupExpiredTokens } from '../../utils/jwt';
 import { cleanupOldEmails, sendEmailWithQueue } from '../../services/emailQueueService';
+import { NotificationFactory } from '../../services/notificationFactory';
 
 const db = prisma as unknown as {
   groupJoinRequest: { updateMany: ReturnType<typeof vi.fn> };
@@ -60,7 +67,6 @@ const db = prisma as unknown as {
   };
   tournamentNotification: {
     findFirst: ReturnType<typeof vi.fn>;
-    create: ReturnType<typeof vi.fn>;
   };
   tournament: {
     findMany: ReturnType<typeof vi.fn>;
@@ -72,7 +78,6 @@ describe('scheduledJobs', () => {
     vi.clearAllMocks();
     db.tournamentMatchIncident.findMany.mockResolvedValue([]);
     db.tournamentNotification.findFirst.mockResolvedValue(null);
-    db.tournamentNotification.create.mockResolvedValue({});
     db.tournament.findMany.mockResolvedValue([]);
   });
 
@@ -206,12 +211,11 @@ describe('scheduledJobs', () => {
 
       await checkIncidentSlas();
 
-      expect(db.tournamentNotification.create).toHaveBeenCalledWith(
+      expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            userId: 'user-1',
-            tournamentId: 'tournament-1',
-          }),
+          tournamentId: 'tournament-1',
+          userIds: ['user-1'],
+          type: 'tournament_updated',
         })
       );
     });
@@ -231,13 +235,11 @@ describe('scheduledJobs', () => {
 
       await sendTournamentPaymentDeadlineReminders();
 
-      expect(db.tournamentNotification.create).toHaveBeenCalledWith(
+      expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            userId: 'captain-1',
-            tournamentId: 'tournament-1',
-            type: 'payment_reminder',
-          }),
+          tournamentId: 'tournament-1',
+          userIds: ['captain-1'],
+          type: 'payment_reminder',
         })
       );
     });

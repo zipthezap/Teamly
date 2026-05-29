@@ -25,6 +25,7 @@ import {
   canTransitionTournamentStatus,
   isTerminalTournamentStatus,
 } from './tournamentLifecyclePolicy';
+import { NotificationFactory } from './notificationFactory';
 
 const ALLOWED_SPORT_TYPES = [
   'football',
@@ -2367,14 +2368,18 @@ export const sendTournamentCompletionNotifications = async (
 
   if (teams.length === 0) return;
 
-  await prisma.tournamentNotification.createMany({
-    data: teams.map((team) => ({
-      userId: team.captainUserId!,
-      tournamentId,
-      type: TournamentNotificationType.tournament_updated,
-      params: { tournamentName, lifecycleStatus: 'completed' },
-      metadata: { transitionKey },
-    })),
+  await NotificationFactory.createTournamentNotifications({
+    tournamentId,
+    type: TournamentNotificationType.tournament_updated,
+    userIds: teams.map((team) => team.captainUserId!),
+    params: {
+      tournamentName,
+      lifecycleStatus: 'completed',
+    },
+    metadata: {
+      transitionKey,
+    },
+    checkMutePreference: false,
   });
 };
 

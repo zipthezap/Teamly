@@ -15,9 +15,9 @@ final _profilePicturesProvider =
   final dio = ref.watch(dioProvider);
   final response =
       await dio.get<Map<String, dynamic>>('/auth/profile/pictures');
-  final items = response.data?['pictures'] as List<dynamic>?
-      ?? response.data?['data'] as List<dynamic>?
-      ?? [];
+  final items = response.data?['pictures'] as List<dynamic>? ??
+      response.data?['data'] as List<dynamic>? ??
+      [];
   return items
       .map((e) => ProfilePictureModel.fromJson(e as Map<String, dynamic>))
       .toList();
@@ -49,9 +49,11 @@ class ProfilePicturesPage extends ConsumerWidget {
         ),
         data: (pictures) {
           if (pictures.isEmpty) {
-            return const Center(
-              child: Text('No picture history available.',
-                  style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
+            return Center(
+              child: Text(
+                'No picture history available.',
+                style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+              ),
             );
           }
           return GridView.builder(
@@ -77,7 +79,8 @@ class ProfilePicturesPage extends ConsumerWidget {
                         pic.url,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
-                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          color:
+                              Theme.of(ctx).colorScheme.surfaceContainerHighest,
                           child: const Icon(Icons.broken_image_outlined),
                         ),
                       ),
@@ -94,8 +97,8 @@ class ProfilePicturesPage extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text('Current',
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 10)),
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 10)),
                         ),
                       ),
                     Positioned(
@@ -110,13 +113,14 @@ class ProfilePicturesPage extends ConsumerWidget {
                             end: Alignment.bottomCenter,
                             colors: [Colors.transparent, Colors.black54],
                           ),
-                          borderRadius: BorderRadius.vertical(
-                              bottom: Radius.circular(8)),
+                          borderRadius:
+                              BorderRadius.vertical(bottom: Radius.circular(8)),
                         ),
                         child: Text(
-                          DateFormat('MMM d, y').format(pic.createdAt.toLocal()),
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 9),
+                          DateFormat('MMM d, y')
+                              .format(pic.createdAt.toLocal()),
+                          style:
+                              const TextStyle(color: Colors.white, fontSize: 9),
                           textAlign: TextAlign.center,
                         ),
                       ),

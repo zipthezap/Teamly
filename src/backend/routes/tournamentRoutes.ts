@@ -8,7 +8,6 @@ import { requireTournamentPermission, requireTeamPermission } from '../middlewar
 import { Permission } from '../../shared/types/permissions.types';
 import { noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
-import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -316,30 +315,6 @@ router.post(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
   asyncHandler(tournamentController.registerTeamToPool)
-);
-
-// Admin: move a team from one pool to another (deprecated path; remove after mobile/web migration by 2026-09-30)
-// Prefer PUT /:id/teams/:teamId/pool-move for new clients.
-router.post(
-  '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',
-  noCache,
-  (req, _res, next) => {
-    logger.warn(
-      'Deprecated pool-move route used — migrate to PUT /:id/teams/:teamId/pool-move',
-      'TournamentRoutes',
-      {
-        tournamentId: req.params.id,
-        poolId: req.params.poolId,
-        teamId: req.params.teamId,
-        targetPoolId: req.params.targetPoolId,
-        userId: (req as any).user?.id,
-        path: req.path,
-      }
-    );
-    next();
-  },
-  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
-  asyncHandler(tournamentController.moveTeamToPool)
 );
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',

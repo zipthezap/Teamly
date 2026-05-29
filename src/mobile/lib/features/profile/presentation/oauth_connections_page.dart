@@ -7,11 +7,9 @@ import '../../../core/models/extended_models.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/error_display.dart';
 
-final _oauthStatusProvider =
-    FutureProvider<OAuthStatusModel>((ref) async {
+final _oauthStatusProvider = FutureProvider<OAuthStatusModel>((ref) async {
   final dio = ref.watch(dioProvider);
-  final response =
-      await dio.get<Map<String, dynamic>>('/auth/oauth/status');
+  final response = await dio.get<Map<String, dynamic>>('/auth/oauth/status');
   return OAuthStatusModel.fromJson(response.data!);
 });
 
@@ -46,7 +44,7 @@ class OAuthConnectionsPage extends ConsumerWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                  ?.copyWith(color: AppThemeTokens.textSecondary(context)),
             ),
             const SizedBox(height: 8),
             // Info banner explaining how to link a new account
@@ -112,14 +110,16 @@ class OAuthConnectionsPage extends ConsumerWidget {
                   color: AppThemeTokens.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.lock_outline, color: AppThemeTokens.success),
+                child: const Icon(Icons.lock_outline,
+                    color: AppThemeTokens.success),
               ),
               title: const Text('Password'),
               subtitle: Text(status.hasLocalPassword
                   ? 'Password is set'
                   : 'No password — sign in only via social accounts'),
               trailing: status.hasLocalPassword
-                  ? const Icon(Icons.check_circle, color: AppThemeTokens.success)
+                  ? const Icon(Icons.check_circle,
+                      color: AppThemeTokens.success)
                   : null,
             ),
 
@@ -130,7 +130,8 @@ class OAuthConnectionsPage extends ConsumerWidget {
                   padding: EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 18, color: AppThemeTokens.info),
+                      Icon(Icons.info_outline,
+                          size: 18, color: AppThemeTokens.info),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -240,9 +241,8 @@ class _ConnectionTile extends StatelessWidget {
                   child: const Text('Unlink',
                       style: TextStyle(color: AppThemeTokens.error)),
                 )
-          : const Icon(Icons.link_off_rounded,
-              color: AppThemeTokens.darkTextSecondary, size: 20),
+          : Icon(Icons.link_off_rounded,
+              color: AppThemeTokens.textSecondary(context), size: 20),
     );
   }
 }
-

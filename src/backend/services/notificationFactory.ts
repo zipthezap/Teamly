@@ -60,6 +60,10 @@ interface TournamentNotificationInput extends BaseNotificationInput {
   type: TournamentNotificationType;
 }
 
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
+const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
+const NOTIFICATION_SERVICE_TIMEOUT_MS = Number(process.env.NOTIFICATION_SERVICE_TIMEOUT_MS || 8000);
+
 const prismaTournamentNotificationTypeValues = new Set<string>(
   Object.values(PrismaTournamentNotificationType)
 );
@@ -79,6 +83,45 @@ export class NotificationFactory {
     input: SessionNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
+    if (!tx && NOTIFICATION_SERVICE_URL) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
+        const headers: Record<string, string> = { 'content-type': 'application/json' };
+        if (INTERNAL_SERVICE_TOKEN) {
+          headers['x-internal-service-token'] = INTERNAL_SERVICE_TOKEN;
+        }
+
+        let response: globalThis.Response;
+        try {
+          response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/session`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(input),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const payload = await response.json() as { created?: number; skipped?: number; error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+        }
+
+        return {
+          created: payload.created || 0,
+          skipped: payload.skipped || 0,
+        };
+      } catch (error) {
+        logger.warn('Notification service unavailable for createSessionNotifications, falling back to local implementation', 'NotificationFactory', {
+          error,
+          notificationType: input.type,
+          sessionId: input.sessionId,
+        });
+      }
+    }
+
     const client = tx || prisma;
     const {
       sessionId,
@@ -182,6 +225,45 @@ export class NotificationFactory {
     input: GroupNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
+    if (!tx && NOTIFICATION_SERVICE_URL) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
+        const headers: Record<string, string> = { 'content-type': 'application/json' };
+        if (INTERNAL_SERVICE_TOKEN) {
+          headers['x-internal-service-token'] = INTERNAL_SERVICE_TOKEN;
+        }
+
+        let response: globalThis.Response;
+        try {
+          response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/group`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(input),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const payload = await response.json() as { created?: number; skipped?: number; error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+        }
+
+        return {
+          created: payload.created || 0,
+          skipped: payload.skipped || 0,
+        };
+      } catch (error) {
+        logger.warn('Notification service unavailable for createGroupNotifications, falling back to local implementation', 'NotificationFactory', {
+          error,
+          notificationType: input.type,
+          groupId: input.groupId,
+        });
+      }
+    }
+
     const client = tx || prisma;
     const {
       groupId,
@@ -282,6 +364,45 @@ export class NotificationFactory {
     input: TeamUpNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
+    if (!tx && NOTIFICATION_SERVICE_URL) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
+        const headers: Record<string, string> = { 'content-type': 'application/json' };
+        if (INTERNAL_SERVICE_TOKEN) {
+          headers['x-internal-service-token'] = INTERNAL_SERVICE_TOKEN;
+        }
+
+        let response: globalThis.Response;
+        try {
+          response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/teamup`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(input),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const payload = await response.json() as { created?: number; skipped?: number; error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+        }
+
+        return {
+          created: payload.created || 0,
+          skipped: payload.skipped || 0,
+        };
+      } catch (error) {
+        logger.warn('Notification service unavailable for createTeamUpNotifications, falling back to local implementation', 'NotificationFactory', {
+          error,
+          notificationType: input.type,
+          teamUpRequestId: input.teamUpRequestId,
+        });
+      }
+    }
+
     const client = tx || prisma;
     const {
       teamUpRequestId,
@@ -379,6 +500,45 @@ export class NotificationFactory {
     input: TournamentNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
+    if (!tx && NOTIFICATION_SERVICE_URL) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
+        const headers: Record<string, string> = { 'content-type': 'application/json' };
+        if (INTERNAL_SERVICE_TOKEN) {
+          headers['x-internal-service-token'] = INTERNAL_SERVICE_TOKEN;
+        }
+
+        let response: globalThis.Response;
+        try {
+          response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/tournament`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(input),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const payload = await response.json() as { created?: number; skipped?: number; error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+        }
+
+        return {
+          created: payload.created || 0,
+          skipped: payload.skipped || 0,
+        };
+      } catch (error) {
+        logger.warn('Notification service unavailable for createTournamentNotifications, falling back to local implementation', 'NotificationFactory', {
+          error,
+          notificationType: input.type,
+          tournamentId: input.tournamentId,
+        });
+      }
+    }
+
     const client = tx || prisma;
     const {
       tournamentId,

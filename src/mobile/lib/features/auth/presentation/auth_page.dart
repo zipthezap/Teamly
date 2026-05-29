@@ -1,15 +1,51 @@
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show defaultTargetPlatform, kIsWeb, kReleaseMode, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/teamly_logo.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../state/auth_notifier.dart';
+
+class _ManualTestAccount {
+  const _ManualTestAccount({
+    required this.label,
+    required this.email,
+    required this.password,
+  });
+
+  final String label;
+  final String email;
+  final String password;
+}
+
+const _manualTestAccounts = <_ManualTestAccount>[
+  _ManualTestAccount(
+    label: 'Alice (seed)',
+    email: 'alice@example.com',
+    password: 'password123',
+  ),
+  _ManualTestAccount(
+    label: 'Bob (seed)',
+    email: 'bob@example.com',
+    password: 'password123',
+  ),
+  _ManualTestAccount(
+    label: 'Charlie (seed)',
+    email: 'charlie@example.com',
+    password: 'password123',
+  ),
+  _ManualTestAccount(
+    label: 'Diana (seed)',
+    email: 'diana@example.com',
+    password: 'password123',
+  ),
+];
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -26,6 +62,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   bool _isRegister = false;
   bool _obscurePassword = true;
+  String? _selectedManualTestEmail;
 
   InputDecoration _authFieldDecoration({
     required String hintText,
@@ -145,9 +182,25 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
+  void _applyManualTestAccount(String? email) {
+    setState(() => _selectedManualTestEmail = email);
+    if (email == null) return;
+
+    final selected = _manualTestAccounts.firstWhere(
+      (account) => account.email == email,
+      orElse: () => _manualTestAccounts.first,
+    );
+    _emailCtrl.text = selected.email;
+    _passwordCtrl.text = selected.password;
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
+    final appConfig = ref.watch(appConfigProvider);
+    final isProdEnv = appConfig.environment.toLowerCase() == 'prod';
+    final showManualTestingAutofill =
+        !_isRegister && !kReleaseMode && !isProdEnv;
 
     ref.listen<AuthState>(authNotifierProvider, (_, next) {
       if (next.isAuthenticated && mounted) {
@@ -288,6 +341,49 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                 return null;
                               },
                             ),
+                            if (showManualTestingAutofill) ...[
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<String>(
+                                value: _selectedManualTestEmail,
+                                isExpanded: true,
+                                decoration: _authFieldDecoration(
+                                  hintText: 'Manual test account',
+                                  prefixIcon:
+                                      const Icon(Icons.science_outlined),
+                                ),
+                                items: const [
+                                  DropdownMenuItem<String>(
+                                    value: null,
+                                    child:
+                                        Text('Select seeded user to autofill'),
+                                  ),
+                                  ...[
+                                    DropdownMenuItem<String>(
+                                      value: 'alice@example.com',
+                                      child: Text(
+                                          'Alice (seed) - alice@example.com'),
+                                    ),
+                                    DropdownMenuItem<String>(
+                                      value: 'bob@example.com',
+                                      child:
+                                          Text('Bob (seed) - bob@example.com'),
+                                    ),
+                                    DropdownMenuItem<String>(
+                                      value: 'charlie@example.com',
+                                      child: Text(
+                                          'Charlie (seed) - charlie@example.com'),
+                                    ),
+                                    DropdownMenuItem<String>(
+                                      value: 'diana@example.com',
+                                      child: Text(
+                                          'Diana (seed) - diana@example.com'),
+                                    ),
+                                  ],
+                                ],
+                                onChanged: (value) =>
+                                    _applyManualTestAccount(value),
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _passwordCtrl,
@@ -413,7 +509,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                         ),
                         TextButton(
                           onPressed: () {
-                            setState(() => _isRegister = !_isRegister);
+                            setState(() {
+                              _isRegister = !_isRegister;
+                              _selectedManualTestEmail = null;
+                            });
                             _formKey.currentState?.reset();
                           },
                           style: TextButton.styleFrom(

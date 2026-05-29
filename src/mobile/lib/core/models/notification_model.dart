@@ -66,10 +66,11 @@ class NotificationModel extends Equatable {
   /// Human-readable summary derived from the type and params.
   String get summary {
     final name = actorName ?? params?['name'] as String? ?? 'Someone';
-    final title =
-        eventTitle ?? params?['eventTitle'] as String? ?? 'an event';
+    final title = eventTitle ?? params?['eventTitle'] as String? ?? 'an event';
     final gName = groupName ?? params?['groupName'] as String? ?? 'a group';
-    final tName = tournamentName ?? params?['tournamentName'] as String? ?? 'a tournament';
+    final tName = tournamentName ??
+        params?['tournamentName'] as String? ??
+        'a tournament';
 
     switch (type) {
       case 'join':
@@ -112,10 +113,22 @@ class NotificationModel extends Equatable {
       case 'teamup_comment':
         return '$name commented on a TeamUp request';
       // Tournament types
+      case 'team_invited':
+        return 'You were invited to join "$tName"';
       case 'team_registered':
         return 'A team registered for "$tName"';
+      case 'tournament_updated':
+        return 'Tournament "$tName" was updated';
+      case 'match_scheduled':
+        return 'A match was scheduled in "$tName"';
       case 'score_submitted':
         return 'A score was submitted in "$tName"';
+      case 'score_disputed':
+        return 'A score dispute was opened in "$tName"';
+      case 'payment_reminder':
+        return 'Payment reminder for "$tName"';
+      case 'announcement':
+        return 'New announcement in "$tName"';
       case 'tournament_cancelled':
         return 'Tournament "$tName" was cancelled';
       default:

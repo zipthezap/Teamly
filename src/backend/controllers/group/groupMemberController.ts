@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger';
 import { Request, Response } from 'express';
 import * as permissionService from '../../services/permissionService';
 import { GroupNotificationType } from '../../../shared/types/event.types';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
@@ -162,19 +163,20 @@ export const removeMember = async (req: Request, res: Response) => {
 
   // Notify the removed member
   if (group) {
-    await prisma.groupNotification.create({
-      data: {
+    try {
+      await NotificationFactory.createGroupNotifications({
         groupId: id,
-        userId: memberToRemove.userId,
         type: GroupNotificationType.removed,
+        userIds: [memberToRemove.userId],
         params: {
           groupName: group.name,
-          name: req.user!.name
-        }
-      }
-    }).catch(error => {
+          name: req.user!.name,
+        },
+        checkMutePreference: false,
+      });
+    } catch (error) {
       logger.error('Failed to send removal notification', 'GroupController', { error });
-    });
+    }
   }
 
   // Invalidate group cache for all affected users

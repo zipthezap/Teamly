@@ -154,64 +154,66 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final confirmPwCtrl = TextEditingController();
     final dialogFormKey = GlobalKey<FormState>();
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Change Password'),
-        content: Form(
-          key: dialogFormKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: currentPwCtrl,
-                decoration: const InputDecoration(labelText: 'Current password'),
-                obscureText: true,
-                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: newPwCtrl,
-                decoration: const InputDecoration(labelText: 'New password'),
-                obscureText: true,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Required';
-                  if (v.length < 8) return 'At least 8 characters';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: confirmPwCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Confirm new password'),
-                obscureText: true,
-                validator: (v) =>
-                    v != newPwCtrl.text ? 'Passwords do not match' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (dialogFormKey.currentState?.validate() ?? false) {
-                Navigator.of(ctx).pop(true);
-              }
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
     try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Form(
+            key: dialogFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: currentPwCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Current password'),
+                  obscureText: true,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: newPwCtrl,
+                  decoration: const InputDecoration(labelText: 'New password'),
+                  obscureText: true,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Required';
+                    if (v.length < 8) return 'At least 8 characters';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: confirmPwCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Confirm new password'),
+                  obscureText: true,
+                  validator: (v) =>
+                      v != newPwCtrl.text ? 'Passwords do not match' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (dialogFormKey.currentState?.validate() ?? false) {
+                  Navigator.of(ctx).pop(true);
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+
       final dio = ref.read(dioProvider);
       await dio.put<void>(
         '/auth/password',
@@ -513,9 +515,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      await ref
-                          .read(authNotifierProvider.notifier)
-                          .logout();
+                      await ref.read(authNotifierProvider.notifier).logout();
                       if (context.mounted) context.go('/auth');
                     },
                     icon: const Icon(Icons.logout_rounded,
@@ -611,8 +611,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppThemeTokens.primary400),
+                          strokeWidth: 2, color: AppThemeTokens.primary400),
                     )
                   : const Text(
                       'Save',
@@ -665,9 +664,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 bottom: 2,
                 right: 2,
                 child: GestureDetector(
-                  onTap: _uploadingPicture
-                      ? null
-                      : _pickAndUploadProfilePicture,
+                  onTap:
+                      _uploadingPicture ? null : _pickAndUploadProfilePicture,
                   child: Container(
                     width: 34,
                     height: 34,
@@ -676,20 +674,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ? null
                           : AppThemeTokens.primaryGradient,
                       color: _uploadingPicture
-                          ? (isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated)
+                          ? (isDark
+                              ? AppThemeTokens.darkCardElevated
+                              : AppThemeTokens.lightCardElevated)
                           : null,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: isDark ? const Color(0xFF0D1B2E) : Colors.white, width: 2.5),
+                          color:
+                              isDark ? const Color(0xFF0D1B2E) : Colors.white,
+                          width: 2.5),
                     ),
                     child: _uploadingPicture
-                      ? Padding(
+                        ? Padding(
                             padding: EdgeInsets.all(8),
                             child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: isDark
-                            ? Colors.white
-                            : AppThemeTokens.primary400),
+                                strokeWidth: 2,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppThemeTokens.primary400),
                           )
                         : const Icon(Icons.camera_alt_rounded,
                             size: 16, color: Colors.white),
@@ -778,9 +780,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildEditForm() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sectionTitleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
-    final cancelBorderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
-    final cancelFgColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final sectionTitleColor =
+        isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final cancelBorderColor =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final cancelFgColor = isDark
+        ? AppThemeTokens.darkTextSecondary
+        : AppThemeTokens.lightTextSecondary;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -891,9 +897,8 @@ class _AppBarIconButton extends StatelessWidget {
     final buttonBg = isDark
         ? AppThemeTokens.darkCardElevated.withValues(alpha: 0.72)
         : AppThemeTokens.lightCard.withValues(alpha: 0.9);
-    final buttonBorder = isDark
-        ? AppThemeTokens.darkBorder
-        : AppThemeTokens.lightBorder;
+    final buttonBorder =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -918,10 +923,15 @@ class _StatPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
-    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
-    final valueColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
-    final labelColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final cardColor =
+        isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final valueColor =
+        isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final labelColor = isDark
+        ? AppThemeTokens.darkTextSecondary
+        : AppThemeTokens.lightTextSecondary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -967,7 +977,9 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
-          color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
+          color: isDark
+              ? AppThemeTokens.darkTextSecondary
+              : AppThemeTokens.lightTextSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
@@ -997,8 +1009,10 @@ class _SettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
-    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final cardColor =
+        isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     final dividerColor = isDark
         ? AppThemeTokens.darkBorder.withValues(alpha: 0.6)
         : AppThemeTokens.lightBorder;
@@ -1034,13 +1048,14 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
-    final arrowColor = isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted;
+    final titleColor =
+        isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final arrowColor =
+        isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted;
 
     return ListTile(
       onTap: data.onTap,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       leading: Container(
         width: 36,
         height: 36,
@@ -1089,7 +1104,11 @@ class _SendVerificationButtonState
       await ref
           .read(emailPreferencesRepositoryProvider)
           .sendVerificationEmail();
-      if (mounted) setState(() { _sent = true; _sending = false; });
+      if (mounted)
+        setState(() {
+          _sent = true;
+          _sending = false;
+        });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

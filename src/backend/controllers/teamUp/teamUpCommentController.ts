@@ -1,8 +1,9 @@
 import prisma from '../../config/database';
 import { Request, Response } from 'express';
 import * as teamUpService from '../../services/teamUpService';
-import { dispatchPushNotifications } from '../../services/pushNotificationService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
+import { TeamUpNotificationType } from '../../../shared/types/event.types';
 
 export const getTeamUpComments = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -83,37 +84,22 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
 
   // Create notification for TeamUp creator if commenter is not the creator
   if (req.user!.id !== teamUpRequest.creatorId) {
-    await prisma.teamUpNotification.create({
-      data: {
-        userId: teamUpRequest.creatorId,
-        teamUpRequestId: id,
-        type: 'teamup_comment',
-        params: {
-          name: req.user!.name,
-          title: teamUpRequest.title,
-          sportType: teamUpRequest.sportType,
-        },
-        metadata: {
-          commentId: comment.id,
-          commenterId: req.user!.id,
-          commenterName: req.user!.name,
-        }
-      }
-    });
-
-    await dispatchPushNotifications({
+    await NotificationFactory.createTeamUpNotifications({
+      teamUpRequestId: id,
+      type: TeamUpNotificationType.teamup_comment,
       userIds: [teamUpRequest.creatorId],
-      notificationKind: 'teamup',
-      notificationType: 'teamup_comment',
-      entityId: id,
       params: {
         name: req.user!.name,
         title: teamUpRequest.title,
         sportType: teamUpRequest.sportType,
       },
       metadata: {
+        commentId: comment.id,
+        commenterId: req.user!.id,
+        commenterName: req.user!.name,
         actionUrl: `/teamup/${id}`,
       },
+      checkMutePreference: false,
     });
   }
 

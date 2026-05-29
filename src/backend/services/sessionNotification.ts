@@ -8,6 +8,8 @@ import { SessionNotificationType } from '../../shared/types/event.types';
 import { sendEmailWithQueue } from './emailQueueService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { escapeHtml } from '../utils/validation';
+import { NotificationFactory } from './notificationFactory';
+import { NotificationMetadata, NotificationParams } from './notificationFactory';
 
 interface User {
   id: string;
@@ -175,18 +177,18 @@ export const createSessionNotifications = async (
   metadata?: Prisma.InputJsonValue,
   params?: Prisma.InputJsonValue
 ): Promise<void> => {
-  await Promise.all(
-    userIds.map(userId =>
-      prisma.sessionNotification.create({
-        data: {
-          sessionId,
-          userId,
-          type,
-          metadata: metadata || undefined,
-          params: params || undefined,
-        }
-      })
-    )
+  if (userIds.length === 0) return;
+
+  await NotificationFactory.createSessionNotifications(
+    {
+      sessionId,
+      type,
+      userIds,
+      metadata: (metadata as NotificationMetadata | undefined) || undefined,
+      params: (params as NotificationParams | undefined) || undefined,
+      checkMutePreference: false,
+    },
+    prisma as unknown as Prisma.TransactionClient
   );
 };
 
@@ -201,15 +203,17 @@ export const createActivityNotification = async (
   prisma: PrismaClient,
   params?: Prisma.InputJsonValue
 ): Promise<void> => {
-  await prisma.sessionNotification.create({
-    data: {
+  await NotificationFactory.createSessionNotifications(
+    {
       sessionId,
-      userId,
       type,
-      metadata,
-      params: params || undefined,
-    }
-  });
+      userIds: [userId],
+      metadata: (metadata as NotificationMetadata | undefined) || undefined,
+      params: (params as NotificationParams | undefined) || undefined,
+      checkMutePreference: false,
+    },
+    prisma as unknown as Prisma.TransactionClient
+  );
 };
 
 /**

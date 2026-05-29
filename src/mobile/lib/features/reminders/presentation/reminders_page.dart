@@ -59,7 +59,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
               DropdownButton<int>(
                 value: selectedMinutes,
                 isExpanded: true,
-                dropdownColor: AppThemeTokens.darkCardElevated,
+                dropdownColor: AppThemeTokens.cardElevated(context),
                 items: _minuteOptions
                     .map((m) => DropdownMenuItem(
                           value: m,
@@ -88,10 +88,26 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
 
     if (confirmed != true || !mounted) return;
 
+    final eventStartTime = reminder.eventStartTime;
+    if (eventStartTime == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Cannot update this reminder: event start time is missing.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final remindAt =
+        eventStartTime.subtract(Duration(minutes: selectedMinutes));
+
     try {
       await ref
           .read(reminderRepositoryProvider)
-          .updateReminder(reminder.id, selectedMinutes);
+          .updateReminder(reminder.id, remindAt);
       ref.invalidate(_remindersProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,9 +149,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
 
   Future<void> _deleteReminder(String reminderId) async {
     try {
-      await ref
-          .read(reminderRepositoryProvider)
-          .deleteReminder(reminderId);
+      await ref.read(reminderRepositoryProvider).deleteReminder(reminderId);
       ref.invalidate(_remindersProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -165,9 +179,9 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
             onPressed: () => ref.invalidate(_remindersProvider),
           ),
         ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: AppThemeTokens.darkBorder),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppThemeTokens.border(context)),
         ),
       ),
       body: remindersAsync.when(
@@ -182,17 +196,14 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
               ? const UiEmptyState(
                   icon: Icons.alarm_off_rounded,
                   title: 'No reminders',
-                  message:
-                      'Reminders you set for events\nwill appear here.',
+                  message: 'Reminders you set for events\nwill appear here.',
                 )
               : ListView.builder(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                   itemCount: reminders.length,
                   itemBuilder: (ctx, i) {
                     final r = reminders[i];
-                    final eventLabel =
-                        r.eventTitle ?? 'Event ${r.eventId}';
+                    final eventLabel = r.eventTitle ?? 'Event ${r.eventId}';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Dismissible(
@@ -200,10 +211,9 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                         direction: DismissDirection.endToStart,
                         background: Container(
                           decoration: BoxDecoration(
-                            color: AppThemeTokens.error
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(
-                                AppThemeTokens.radiusMd),
+                            color: AppThemeTokens.error.withValues(alpha: 0.15),
+                            borderRadius:
+                                BorderRadius.circular(AppThemeTokens.radiusMd),
                             border: Border.all(
                                 color: AppThemeTokens.error
                                     .withValues(alpha: 0.4)),
@@ -261,9 +271,9 @@ class _ReminderCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: AppThemeTokens.card(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -275,8 +285,7 @@ class _ReminderCard extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.12),
-                borderRadius:
-                    BorderRadius.circular(AppThemeTokens.radiusSm),
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
               ),
               child: Icon(
                 reminder.sent
@@ -299,7 +308,6 @@ class _ReminderCard extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: AppThemeTokens.darkText,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -309,15 +317,15 @@ class _ReminderCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: isPast
-                          ? AppThemeTokens.darkTextMuted
-                          : AppThemeTokens.darkTextSecondary,
+                          ? AppThemeTokens.textMuted(context)
+                          : AppThemeTokens.textSecondary(context),
                     ),
                   ),
                   const SizedBox(height: 4),
                   // Time-before pill
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: accentColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(100),

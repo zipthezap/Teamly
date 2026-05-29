@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
+import * as communityProxyController from '../controllers/proxies/communityProxyController';
+import * as groupProxyController from '../controllers/proxies/groupProxyController';
 import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { distributedAuthenticatedLimiter, distributedUploadLimiter, distributedApiLimiter } from '../middleware/distributedRateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
@@ -21,7 +23,7 @@ router.post('/join/:groupId', authMiddleware, distributedAuthenticatedLimiter, a
 
 // Public route to get all public groups (with optional auth to filter out user's groups)
 // SECURITY: Added rate limiting to prevent abuse of public discovery endpoint
-router.get('/public', optionalAuthMiddleware, distributedApiLimiter, asyncHandler(groupController.getPublicGroups));
+router.get('/public', optionalAuthMiddleware, distributedApiLimiter, asyncHandler(communityProxyController.getPublicGroups));
 
 router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
@@ -30,7 +32,7 @@ router.use(distributedAuthenticatedLimiter);
 router.get('/invitations/pending', asyncHandler(groupController.getUserInvitations));
 router.get('/my-join-requests', asyncHandler(groupController.getMyJoinRequests));
 
-router.post('/', asyncHandler(groupController.createGroup));
+router.post('/', asyncHandler(groupProxyController.createGroup));
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data; server-side cache (Redis/in-memory) remains active
 router.get('/', etagMiddleware({ weak: true }), asyncHandler(groupController.getGroups));
@@ -41,27 +43,27 @@ router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(groupController.
 // Get all members for a group
 router.get('/:id/members', asyncHandler(groupController.getGroupMembers));
 // Delete group (admin only)
-router.delete('/:id', asyncHandler(groupController.deleteGroup));
-router.put('/:id', asyncHandler(groupController.updateGroup));
-router.post('/:id/invite', asyncHandler(groupController.inviteMember));
-router.post('/:id/invitations/bulk', asyncHandler(groupController.bulkInviteMembers));
-router.post('/:id/invitations/revoke', asyncHandler(groupController.revokeInvitation));
+router.delete('/:id', asyncHandler(groupProxyController.deleteGroup));
+router.put('/:id', asyncHandler(groupProxyController.updateGroup));
+router.post('/:id/invite', asyncHandler(groupProxyController.inviteMember));
+router.post('/:id/invitations/bulk', asyncHandler(groupProxyController.bulkInviteMembers));
+router.post('/:id/invitations/revoke', asyncHandler(groupProxyController.revokeInvitation));
 router.get('/:id/invitations/analytics', asyncHandler(groupController.getInviteAnalytics));
-router.post('/:id/invitations/generate-token', asyncHandler(groupController.generateInviteToken));
-router.delete('/:id/members/:memberId', asyncHandler(groupController.removeMember));
+router.post('/:id/invitations/generate-token', asyncHandler(groupProxyController.generateInviteToken));
+router.delete('/:id/members/:memberId', asyncHandler(groupProxyController.removeMember));
 // Remove member by userId (admin only)
-router.delete('/:id/members/user/:userId', asyncHandler(groupController.removeMemberByUserId));
-router.put('/:id/members/:memberId/role', asyncHandler(groupController.updateMemberRole));
-router.delete('/:id/leave', asyncHandler(groupController.leaveGroup));
+router.delete('/:id/members/user/:userId', asyncHandler(groupProxyController.removeMemberByUserId));
+router.put('/:id/members/:memberId/role', asyncHandler(groupProxyController.updateMemberRole));
+router.delete('/:id/leave', asyncHandler(groupProxyController.leaveGroup));
 // Transfer admin before leaving
-router.post('/:id/transfer-admin', asyncHandler(groupController.transferAdmin));
-router.get('/:id/invite-link', asyncHandler(groupController.getInviteLink));
+router.post('/:id/transfer-admin', asyncHandler(groupProxyController.transferAdmin));
+router.get('/:id/invite-link', asyncHandler(groupProxyController.getInviteLink));
 
 // Generate or regenerate group invite token (admin/moderator only)
-router.post('/:id/invite-token', asyncHandler(groupController.generateGroupInviteToken));
+router.post('/:id/invite-token', asyncHandler(groupProxyController.generateGroupInviteToken));
 
 // Join group via invite token (authenticated)
-router.post('/join-by-token/:token', asyncHandler(groupController.joinGroupByInviteToken));
+router.post('/join-by-token/:token', asyncHandler(groupProxyController.joinGroupByInviteToken));
 
 // Group picture management (admin only)
 router.post(
@@ -73,11 +75,11 @@ router.post(
 router.delete('/:id/picture', asyncHandler(groupController.deleteGroupPicture));
 
 // Join request routes
-router.post('/:id/join-request', asyncHandler(groupController.requestJoinGroup));
-router.get('/:id/join-requests', asyncHandler(groupController.getJoinRequests));
-router.post('/:id/join-requests/:requestId', asyncHandler(groupController.handleJoinRequest));
-router.delete('/:id/join-requests/:requestId', asyncHandler(groupController.cancelMyJoinRequest));
+router.post('/:id/join-request', asyncHandler(groupProxyController.requestJoinGroup));
+router.get('/:id/join-requests', asyncHandler(groupProxyController.getJoinRequests));
+router.post('/:id/join-requests/:requestId', asyncHandler(groupProxyController.handleJoinRequest));
+router.delete('/:id/join-requests/:requestId', asyncHandler(groupProxyController.cancelMyJoinRequest));
 // Allow invited users to respond to their invitations
-router.post('/:id/invitations/:requestId/respond', asyncHandler(groupController.respondToInvitation));
+router.post('/:id/invitations/:requestId/respond', asyncHandler(groupProxyController.respondToInvitation));
 
 export default router;

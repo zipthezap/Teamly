@@ -255,19 +255,12 @@ describe('Tournament Routes', () => {
     expect(routeSecurityMocks.authenticatedLimiter).toHaveBeenCalled();
   });
 
-  it('POST /api/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId → 200 and preserves body', async () => {
-    const moveTeamToPoolMock = vi.mocked(tournamentController.moveTeamToPool);
-    moveTeamToPoolMock.mockImplementationOnce((req: any, res: any) =>
-      res.json({ body: req.body, params: req.params })
-    );
-
+  it('POST /api/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId → 404 (removed deprecated endpoint)', async () => {
     const res = await request(app)
       .post('/api/tournament-1/pools/pool-a/admin/teams/team-1/move/pool-b')
       .send({ keep: 'value' });
 
-    expect(res.status).toBe(200);
-    expect(res.body.body).toEqual({ keep: 'value' });
-    expect(res.body.params.targetPoolId).toBe('pool-b');
+    expect(res.status).toBe(404);
   });
 
   it('POST /api/:id/registration-waitlist/:teamId/promote → 200', async () => {

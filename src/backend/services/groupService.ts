@@ -4,6 +4,8 @@ import { sanitizeString } from '../utils/validation';
 import { CacheService } from './cacheService';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../utils/errors';
+import { NotificationFactory } from './notificationFactory';
+import { GroupNotificationType } from '../../shared/types/event.types';
 
 /**
  * Cache TTL for group details (5 minutes)
@@ -214,22 +216,23 @@ export const createJoinRequestNotification = async (
   groupName: string,
   adminIds: string[]
 ) => {
-  await Promise.all(adminIds.map(adminId =>
-    prisma.groupNotification.create({
-      data: {
-        groupId,
-        userId: adminId,
-        type: 'join_request',
-        params: {
-          requesterId,
-          requesterName,
-          groupName
-        }
-      }
-    }).catch(error => {
-      logger.error('Failed to create join request notification', 'GroupService', { error, adminId });
-    })
-  ));
+  if (adminIds.length === 0) return;
+
+  try {
+    await NotificationFactory.createGroupNotifications({
+      groupId,
+      type: GroupNotificationType.join_request,
+      userIds: adminIds,
+      params: {
+        requesterId,
+        requesterName,
+        groupName,
+      },
+      checkMutePreference: false,
+    });
+  } catch (error) {
+    logger.error('Failed to create join request notification', 'GroupService', { error });
+  }
 };
 
 /**
@@ -241,19 +244,20 @@ export const createInvitationNotification = async (
   invitedUserId: string,
   inviterName: string
 ) => {
-  await prisma.groupNotification.create({
-    data: {
+  try {
+    await NotificationFactory.createGroupNotifications({
       groupId,
-      userId: invitedUserId,
-      type: 'invited',
+      type: GroupNotificationType.invited,
+      userIds: [invitedUserId],
       params: {
         groupName,
-        inviterName
-      }
-    }
-  }).catch(error => {
+        inviterName,
+      },
+      checkMutePreference: false,
+    });
+  } catch (error) {
     logger.error('Failed to create invitation notification', 'GroupService', { error, invitedUserId });
-  });
+  }
 };
 
 /**
@@ -272,21 +276,22 @@ export const createMemberAddedNotification = async (
 
   if (!newMember) return;
 
-  await Promise.all(existingMemberIds.map(memberId =>
-    prisma.groupNotification.create({
-      data: {
-        groupId,
-        userId: memberId,
-        type: 'accepted',
-        params: {
-          memberName: newMember.name,
-          groupName
-        }
-      }
-    }).catch(error => {
-      logger.error('Failed to create member added notification', 'GroupService', { error, memberId });
-    })
-  ));
+  if (existingMemberIds.length === 0) return;
+
+  try {
+    await NotificationFactory.createGroupNotifications({
+      groupId,
+      type: GroupNotificationType.accepted,
+      userIds: existingMemberIds,
+      params: {
+        memberName: newMember.name,
+        groupName,
+      },
+      checkMutePreference: false,
+    });
+  } catch (error) {
+    logger.error('Failed to create member added notification', 'GroupService', { error });
+  }
 };
 
 /**

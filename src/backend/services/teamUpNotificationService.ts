@@ -9,7 +9,7 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { TeamUpNotificationType } from '../../shared/types/event.types';
-import { dispatchPushNotifications } from './pushNotificationService';
+import { NotificationFactory } from './notificationFactory';
 import { normalizeLocationToken } from './teamUpService';
 
 interface TeamUpRequest {
@@ -150,11 +150,10 @@ export async function notifyUsersAboutNewTeamUp(
       }
     });
 
-    // Create in-app notifications
-    const notifications = unmutedUsers.map(userId => ({
-      userId,
+    await NotificationFactory.createTeamUpNotifications({
       teamUpRequestId: teamUpRequest.id,
       type: TeamUpNotificationType.teamup_nearby,
+      userIds: unmutedUsers,
       params: {
         title: teamUpRequest.title,
         sportType: teamUpRequest.sportType,
@@ -163,26 +162,9 @@ export async function notifyUsersAboutNewTeamUp(
       metadata: {
         teamUpRequestId: teamUpRequest.id,
         dateTime: teamUpRequest.dateTime,
-      },
-    }));
-
-    await prisma.teamUpNotification.createMany({
-      data: notifications,
-      skipDuplicates: true,
-    });
-
-    await dispatchPushNotifications({
-      userIds: unmutedUsers,
-      notificationKind: 'teamup',
-      notificationType: TeamUpNotificationType.teamup_nearby,
-      entityId: teamUpRequest.id,
-      params: {
-        title: teamUpRequest.title,
-        sportType: teamUpRequest.sportType,
-      },
-      metadata: {
         actionUrl: `/teamup/${teamUpRequest.id}`,
       },
+      checkMutePreference: false,
     });
 
     // Queue email notifications

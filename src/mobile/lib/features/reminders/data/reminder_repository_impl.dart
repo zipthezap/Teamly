@@ -29,10 +29,10 @@ class ReminderRepositoryImpl implements ReminderRepository {
 
   @override
   Future<ReminderModel> updateReminder(
-      String reminderId, int minutesBefore) async {
+      String reminderId, DateTime remindAt) async {
     final response = await _dio.put<Map<String, dynamic>>(
       '/reminders/$reminderId',
-      data: {'minutesBefore': minutesBefore},
+      data: {'remindAt': remindAt.toUtc().toIso8601String()},
     );
     final data = response.data!;
     return ReminderModel.fromJson(

@@ -15,7 +15,7 @@
 
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
-import { Prisma, TournamentNotificationType as PrismaTournamentNotificationType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
@@ -23,6 +23,8 @@ import { validateEmail, isRequired, ValidationError, sanitizeString } from '../u
 import { BadRequestError, UnauthorizedError } from '../utils/errors';
 import { sendEmail } from '../utils/emailService';
 import * as authService from '../services/authService';
+import { NotificationFactory } from '../services/notificationFactory';
+import { TournamentNotificationType } from '../../shared/types/tournament.types';
 
 const toJsonObject = (value: Prisma.JsonValue | null): Prisma.JsonObject | undefined =>
   value && typeof value === 'object' && !Array.isArray(value)
@@ -112,14 +114,19 @@ export const register = async (req: Request, res: Response): Promise<void> => {
               }
             }
 
-            await prisma.tournamentNotification.create({
-              data: {
-                tournamentId: tournamentId,
-                userId: user.id,
-                type: PrismaTournamentNotificationType.team_invited,
-                params: { teamName, inviterId: finalInvite.inviterId, inviteId: finalInvite.id },
-                metadata: { inviteLogId: finalInvite.id }
-              }
+            await NotificationFactory.createTournamentNotifications({
+              tournamentId,
+              type: TournamentNotificationType.team_invited,
+              userIds: [user.id],
+              params: {
+                teamName,
+                inviterId: finalInvite.inviterId,
+                inviteId: finalInvite.id,
+              },
+              metadata: {
+                inviteLogId: finalInvite.id,
+              },
+              checkMutePreference: false,
             });
 
             // Mark invite log as notified (keep status 'sent' for now)

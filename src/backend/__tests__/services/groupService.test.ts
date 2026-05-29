@@ -77,10 +77,20 @@ vi.mock('../../services/locationService', () => ({
   }),
 }));
 
+vi.mock('../../services/notificationFactory', () => ({
+  NotificationFactory: {
+    createGroupNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+  },
+}));
+
+import { NotificationFactory } from '../../services/notificationFactory';
+
 describe('Group Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  const mockNotificationFactory = vi.mocked(NotificationFactory);
 
   describe('checkGroupAdmin', () => {
     it('should return true if user is group admin', async () => {
@@ -345,8 +355,6 @@ describe('Group Service', () => {
 
   describe('createJoinRequestNotification', () => {
     it('should create notifications for all admins', async () => {
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
-
       await createJoinRequestNotification(
         'group-1',
         'user-1',
@@ -355,16 +363,17 @@ describe('Group Service', () => {
         ['admin-1', 'admin-2']
       );
 
-      expect(prisma.groupNotification.create).toHaveBeenCalledTimes(2);
-      expect(prisma.groupNotification.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            groupId: 'group-1',
-            userId: 'admin-1',
-            type: 'join_request'
-          })
-        })
-      );
+      expect(mockNotificationFactory.createGroupNotifications).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        type: 'join_request',
+        userIds: ['admin-1', 'admin-2'],
+        params: {
+          requesterId: 'user-1',
+          requesterName: 'John Doe',
+          groupName: 'Test Group',
+        },
+        checkMutePreference: false,
+      });
     });
 
     it('should not create notifications if no admins', async () => {
@@ -376,14 +385,12 @@ describe('Group Service', () => {
         []
       );
 
-      expect(prisma.groupNotification.create).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createGroupNotifications).not.toHaveBeenCalled();
     });
   });
 
   describe('createInvitationNotification', () => {
     it('should create invitation notification', async () => {
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
-
       await createInvitationNotification(
         'group-1',
         'Test Group',
@@ -391,22 +398,22 @@ describe('Group Service', () => {
         'Inviter Name'
       );
 
-      expect(prisma.groupNotification.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            groupId: 'group-1',
-            userId: 'user-1',
-            type: 'invited'
-          })
-        })
-      );
+      expect(mockNotificationFactory.createGroupNotifications).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        type: 'invited',
+        userIds: ['user-1'],
+        params: {
+          groupName: 'Test Group',
+          inviterName: 'Inviter Name',
+        },
+        checkMutePreference: false,
+      });
     });
   });
 
   describe('createMemberAddedNotification', () => {
     it('should create notifications for all existing members', async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ id: 'user-1', name: 'New Member' } as unknown);
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
 
       await createMemberAddedNotification(
         'group-1',
@@ -419,7 +426,16 @@ describe('Group Service', () => {
         where: { id: 'user-1' },
         select: { name: true }
       });
-      expect(prisma.groupNotification.create).toHaveBeenCalledTimes(2);
+      expect(mockNotificationFactory.createGroupNotifications).toHaveBeenCalledWith({
+        groupId: 'group-1',
+        type: 'accepted',
+        userIds: ['member-1', 'member-2'],
+        params: {
+          memberName: 'New Member',
+          groupName: 'Test Group',
+        },
+        checkMutePreference: false,
+      });
     });
 
     it('should not create notifications if new member not found', async () => {
@@ -432,7 +448,7 @@ describe('Group Service', () => {
         ['member-1', 'member-2']
       );
 
-      expect(prisma.groupNotification.create).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createGroupNotifications).not.toHaveBeenCalled();
     });
   });
 

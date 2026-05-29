@@ -6,7 +6,6 @@ vi.mock('../../utils/logger', () => ({
 
 import {
   sendSuccess,
-  sendError,
   getUserId,
   validateRequiredFields,
   requireFields,
@@ -56,32 +55,6 @@ describe('sendSuccess', () => {
     sendSuccess(res, [], { pagination });
     const body = json.mock.calls[0][0];
     expect(body.meta.pagination).toEqual(pagination);
-  });
-});
-
-describe('sendError', () => {
-  let res: Response;
-  let json: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    ({ res, json } = makeMockRes());
-  });
-
-  it('defaults to status 500 with error message', () => {
-    sendError(res, 'Something broke');
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(json).toHaveBeenCalledWith({ error: 'Something broke' });
-  });
-
-  it('uses custom statusCode', () => {
-    sendError(res, 'Not found', 404);
-    expect(res.status).toHaveBeenCalledWith(404);
-  });
-
-  it('calls logger.error when context provided', async () => {
-    const { logger } = await import('../../utils/logger');
-    sendError(res, 'Something broke', 500, 'TestContext');
-    expect(logger.error).toHaveBeenCalled();
   });
 });
 

@@ -40,7 +40,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<TournamentModel>> getTournaments({String? status, String? sportType, String? search}) async {
+  Future<List<TournamentModel>> getTournaments(
+      {String? status, String? sportType, String? search}) async {
     final queryParams = <String, dynamic>{};
     if (status != null) queryParams['status'] = status;
     if (sportType != null) queryParams['sportType'] = sportType;
@@ -61,14 +62,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<TournamentModel> getTournament(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/tournaments/$id');
-    return TournamentModel.fromJson(_requireMapData(response, 'get tournament'));
+    return TournamentModel.fromJson(
+        _requireMapData(response, 'get tournament'));
   }
 
   @override
   Future<TournamentModel> createTournament(Map<String, dynamic> data) async {
     final response =
         await _dio.post<Map<String, dynamic>>('/tournaments', data: data);
-    return TournamentModel.fromJson(_requireMapData(response, 'create tournament'));
+    return TournamentModel.fromJson(
+        _requireMapData(response, 'create tournament'));
   }
 
   @override
@@ -113,8 +116,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
         await _dio.get<dynamic>('/tournaments/$tournamentId/pools');
     final items = _extractList(response.data, ['data']);
     return items
-        .map((e) =>
-            TournamentPoolModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TournamentPoolModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -124,7 +126,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/pools',
         data: data);
-    return TournamentPoolModel.fromJson(_requireMapData(response, 'create pool'));
+    return TournamentPoolModel.fromJson(
+        _requireMapData(response, 'create pool'));
   }
 
   @override
@@ -133,7 +136,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.put<Map<String, dynamic>>(
         '/tournaments/$tournamentId/pools/$poolId',
         data: data);
-    return TournamentPoolModel.fromJson(_requireMapData(response, 'update pool'));
+    return TournamentPoolModel.fromJson(
+        _requireMapData(response, 'update pool'));
   }
 
   @override
@@ -160,8 +164,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<void> removeTeamFromPool(
       String tournamentId, String poolId, String teamId) async {
-    await _dio.delete<void>(
-        '/tournaments/$tournamentId/pools/$poolId/teams/$teamId');
+    await _dio
+        .delete<void>('/tournaments/$tournamentId/pools/$poolId/teams/$teamId');
   }
 
   @override
@@ -172,11 +176,10 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<void> moveTeamToPoolAsAdmin(
-      String tournamentId, String sourcePoolId, String teamId, String targetPoolId) async {
+  Future<void> moveTeamToPoolAsAdmin(String tournamentId, String sourcePoolId,
+      String teamId, String targetPoolId) async {
     await _dio.post<void>(
-      '/tournaments/$tournamentId/pools/$sourcePoolId/admin/teams/$teamId/move/$targetPoolId'
-    );
+        '/tournaments/$tournamentId/pools/$sourcePoolId/admin/teams/$teamId/move/$targetPoolId');
   }
 
   @override
@@ -214,8 +217,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
         await _dio.get<dynamic>('/tournaments/$tournamentId/categories');
     final items = _extractList(response.data, ['data']);
     return items
-        .map((e) =>
-            TournamentCategoryModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TournamentCategoryModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -242,10 +244,9 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<void> deleteCategory(
-      String tournamentId, String categoryId) async {
-    await _dio.delete<void>(
-        '/tournaments/$tournamentId/categories/$categoryId');
+  Future<void> deleteCategory(String tournamentId, String categoryId) async {
+    await _dio
+        .delete<void>('/tournaments/$tournamentId/categories/$categoryId');
   }
 
   @override
@@ -267,8 +268,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
         await _dio.get<dynamic>('/tournaments/$tournamentId/admins');
     final items = _extractList(response.data);
     return items
-        .map((e) =>
-            TournamentAdminModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TournamentAdminModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -278,13 +278,13 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/admins',
         data: data);
-    return TournamentAdminModel.fromJson(_requireMapData(response, 'add admin'));
+    return TournamentAdminModel.fromJson(
+        _requireMapData(response, 'add admin'));
   }
 
   @override
   Future<void> removeAdmin(String tournamentId, String adminUserId) async {
-    await _dio
-        .delete<void>('/tournaments/$tournamentId/admins/$adminUserId');
+    await _dio.delete<void>('/tournaments/$tournamentId/admins/$adminUserId');
   }
 
   @override
@@ -360,8 +360,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<List<Map<String, dynamic>>> getTeamInvitations(
       String tournamentId, String teamId) async {
-    final response = await _dio.get<dynamic>(
-        '/tournaments/$tournamentId/teams/$teamId/invitations');
+    final response = await _dio
+        .get<dynamic>('/tournaments/$tournamentId/teams/$teamId/invitations');
     return (_extractList(response.data))
         .map((e) => e as Map<String, dynamic>)
         .toList();
@@ -369,8 +369,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getMyInvitations() async {
-    final response =
-        await _dio.get<dynamic>('/tournaments/invitations/my');
+    final response = await _dio.get<dynamic>('/tournaments/invitations/my');
     return (_extractList(response.data))
         .map((e) => e as Map<String, dynamic>)
         .toList();
@@ -378,19 +377,18 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<void> acceptInvitation(String inviteToken) async {
-    await _dio
-        .post<void>('/tournaments/invitations/$inviteToken/accept');
+    await _dio.post<void>('/tournaments/invitations/$inviteToken/accept');
   }
 
   @override
   Future<void> declineInvitation(String inviteToken) async {
-    await _dio
-        .post<void>('/tournaments/invitations/$inviteToken/decline');
+    await _dio.post<void>('/tournaments/invitations/$inviteToken/decline');
   }
 
   @override
   Future<Map<String, dynamic>> getInvitation(String inviteToken) async {
-    final response = await _dio.get<Map<String, dynamic>>('/tournaments/invitations/$inviteToken');
+    final response = await _dio
+        .get<Map<String, dynamic>>('/tournaments/invitations/$inviteToken');
     return _requireMapData(response, 'invitation');
   }
 
@@ -415,8 +413,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<List<Map<String, dynamic>>> getPlayers(
       String tournamentId, String teamId) async {
-    final response = await _dio.get<dynamic>(
-        '/tournaments/$tournamentId/teams/$teamId/players');
+    final response = await _dio
+        .get<dynamic>('/tournaments/$tournamentId/teams/$teamId/players');
     return (_extractList(response.data))
         .map((e) => e as Map<String, dynamic>)
         .toList();
@@ -453,9 +451,12 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data) async {
-    final response = await _dio.put<Map<String, dynamic>>('/tournaments/$id', data: data);
-    return TournamentModel.fromJson(_requireMapData(response, 'update tournament'));
+  Future<TournamentModel> updateTournament(
+      String id, Map<String, dynamic> data) async {
+    final response =
+        await _dio.put<Map<String, dynamic>>('/tournaments/$id', data: data);
+    return TournamentModel.fromJson(
+        _requireMapData(response, 'update tournament'));
   }
 
   @override
@@ -473,12 +474,14 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<void> createMatch(String tournamentId, Map<String, dynamic> data) async {
+  Future<void> createMatch(
+      String tournamentId, Map<String, dynamic> data) async {
     await _dio.post('/tournaments/$tournamentId/matches', data: data);
   }
 
   @override
-  Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data) async {
+  Future<void> updateMatch(
+      String tournamentId, String matchId, Map<String, dynamic> data) async {
     await _dio.put('/tournaments/$tournamentId/matches/$matchId', data: data);
   }
 
@@ -587,14 +590,19 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> generateBrackets(
-      String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, int? playoffSize, bool? doubleElimination, bool usePoolAssignments = false, bool forceGenerate = false}) async {
+  Future<Map<String, dynamic>> generateBrackets(String tournamentId,
+      {int? numberOfGroups,
+      int? teamsPerGroup,
+      int? playoffSize,
+      bool? doubleElimination,
+      bool usePoolAssignments = false,
+      bool forceGenerate = false}) async {
     final body = <String, dynamic>{};
     if (numberOfGroups != null) body['numberOfGroups'] = numberOfGroups;
     if (teamsPerGroup != null) body['teamsPerGroup'] = teamsPerGroup;
     if (playoffSize != null) body['playoffSize'] = playoffSize;
-    if (doubleElimination != null) body['doubleElimination'] = doubleElimination;
+    if (doubleElimination != null)
+      body['doubleElimination'] = doubleElimination;
     if (usePoolAssignments) body['usePoolAssignments'] = true;
     if (forceGenerate) body['forceGenerate'] = true;
     final response = await _dio.post<Map<String, dynamic>>(
@@ -606,13 +614,30 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<Map<String, dynamic>> generateGroupMatches(
-      String tournamentId,
-      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false}) async {
+    String tournamentId, {
+    int? numberOfGroups,
+    int? teamsPerGroup,
+    bool usePoolAssignments = false,
+    bool forceGenerate = false,
+    DateTime? scheduleStartAt,
+    int? gameDurationMinutes,
+    int? warmupMinutes,
+    int? breakMinutes,
+    int? minTeamRestMinutes,
+  }) async {
     final body = <String, dynamic>{};
     if (numberOfGroups != null) body['numberOfGroups'] = numberOfGroups;
     if (teamsPerGroup != null) body['teamsPerGroup'] = teamsPerGroup;
     if (usePoolAssignments) body['usePoolAssignments'] = true;
     if (forceGenerate) body['forceGenerate'] = true;
+    if (scheduleStartAt != null)
+      body['scheduleStartAt'] = scheduleStartAt.toUtc().toIso8601String();
+    if (gameDurationMinutes != null)
+      body['gameDurationMinutes'] = gameDurationMinutes;
+    if (warmupMinutes != null) body['warmupMinutes'] = warmupMinutes;
+    if (breakMinutes != null) body['breakMinutes'] = breakMinutes;
+    if (minTeamRestMinutes != null)
+      body['minTeamRestMinutes'] = minTeamRestMinutes;
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/generate-group-matches',
       data: body,
@@ -625,26 +650,33 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<TournamentAnnouncementModel>> getAnnouncements(String tournamentId) async {
-    final response = await _dio.get<dynamic>('/tournaments/$tournamentId/announcements');
+  Future<List<TournamentAnnouncementModel>> getAnnouncements(
+      String tournamentId) async {
+    final response =
+        await _dio.get<dynamic>('/tournaments/$tournamentId/announcements');
     return _extractList(response.data)
-        .map((e) => TournamentAnnouncementModel.fromJson(e as Map<String, dynamic>))
+        .map((e) =>
+            TournamentAnnouncementModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   @override
-  Future<TournamentAnnouncementModel> createAnnouncement(
-      String tournamentId, {required String title, required String body, bool isPinned = false}) async {
+  Future<TournamentAnnouncementModel> createAnnouncement(String tournamentId,
+      {required String title,
+      required String body,
+      bool isPinned = false}) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/announcements',
       data: {'title': title, 'body': body, 'isPinned': isPinned},
     );
-    return TournamentAnnouncementModel.fromJson(_requireMapData(response, 'create announcement'));
+    return TournamentAnnouncementModel.fromJson(
+        _requireMapData(response, 'create announcement'));
   }
 
   @override
   Future<TournamentAnnouncementModel> updateAnnouncement(
-      String tournamentId, String announcementId, {String? title, String? body, bool? isPinned}) async {
+      String tournamentId, String announcementId,
+      {String? title, String? body, bool? isPinned}) async {
     final data = <String, dynamic>{};
     if (title != null) data['title'] = title;
     if (body != null) data['body'] = body;
@@ -653,12 +685,15 @@ class TournamentRepositoryImpl implements TournamentRepository {
       '/tournaments/$tournamentId/announcements/$announcementId',
       data: data,
     );
-    return TournamentAnnouncementModel.fromJson(_requireMapData(response, 'update announcement'));
+    return TournamentAnnouncementModel.fromJson(
+        _requireMapData(response, 'update announcement'));
   }
 
   @override
-  Future<void> deleteAnnouncement(String tournamentId, String announcementId) async {
-    await _dio.delete<void>('/tournaments/$tournamentId/announcements/$announcementId');
+  Future<void> deleteAnnouncement(
+      String tournamentId, String announcementId) async {
+    await _dio.delete<void>(
+        '/tournaments/$tournamentId/announcements/$announcementId');
   }
 
   // ---------------------------------------------------------------------------
@@ -666,10 +701,13 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<TournamentRegistrationFieldModel>> getRegistrationFields(String tournamentId) async {
-    final response = await _dio.get<dynamic>('/tournaments/$tournamentId/registration-fields');
+  Future<List<TournamentRegistrationFieldModel>> getRegistrationFields(
+      String tournamentId) async {
+    final response = await _dio
+        .get<dynamic>('/tournaments/$tournamentId/registration-fields');
     return _extractList(response.data)
-        .map((e) => TournamentRegistrationFieldModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TournamentRegistrationFieldModel.fromJson(
+            e as Map<String, dynamic>))
         .toList();
   }
 
@@ -696,8 +734,10 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<void> deleteRegistrationField(String tournamentId, String fieldId) async {
-    await _dio.delete<void>('/tournaments/$tournamentId/registration-fields/$fieldId');
+  Future<void> deleteRegistrationField(
+      String tournamentId, String fieldId) async {
+    await _dio.delete<void>(
+        '/tournaments/$tournamentId/registration-fields/$fieldId');
   }
 
   // ---------------------------------------------------------------------------
@@ -705,15 +745,19 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<TournamentRegistrationWaitlistModel>> getRegistrationWaitlist(String tournamentId) async {
-    final response = await _dio.get<dynamic>('/tournaments/$tournamentId/registration-waitlist');
+  Future<List<TournamentRegistrationWaitlistModel>> getRegistrationWaitlist(
+      String tournamentId) async {
+    final response = await _dio
+        .get<dynamic>('/tournaments/$tournamentId/registration-waitlist');
     return _extractList(response.data)
-        .map((e) => TournamentRegistrationWaitlistModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TournamentRegistrationWaitlistModel.fromJson(
+            e as Map<String, dynamic>))
         .toList();
   }
 
   @override
-  Future<void> joinRegistrationWaitlist(String tournamentId, String teamName) async {
+  Future<void> joinRegistrationWaitlist(
+      String tournamentId, String teamName) async {
     await _dio.post<void>(
       '/tournaments/$tournamentId/registration-waitlist',
       data: {'teamName': teamName},
@@ -722,17 +766,22 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<void> leaveRegistrationWaitlist(String tournamentId) async {
-    await _dio.delete<void>('/tournaments/$tournamentId/registration-waitlist/me');
+    await _dio
+        .delete<void>('/tournaments/$tournamentId/registration-waitlist/me');
   }
 
   @override
-  Future<void> promoteFromRegistrationWaitlist(String tournamentId, String entryId) async {
-    await _dio.post<void>('/tournaments/$tournamentId/registration-waitlist/$entryId/promote');
+  Future<void> promoteFromRegistrationWaitlist(
+      String tournamentId, String entryId) async {
+    await _dio.post<void>(
+        '/tournaments/$tournamentId/registration-waitlist/$entryId/promote');
   }
 
   @override
-  Future<void> removeFromRegistrationWaitlist(String tournamentId, String entryId) async {
-    await _dio.delete<void>('/tournaments/$tournamentId/registration-waitlist/$entryId');
+  Future<void> removeFromRegistrationWaitlist(
+      String tournamentId, String entryId) async {
+    await _dio.delete<void>(
+        '/tournaments/$tournamentId/registration-waitlist/$entryId');
   }
 
   // ---------------------------------------------------------------------------
@@ -741,7 +790,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<List<TournamentCourtModel>> getCourts(String tournamentId) async {
-    final response = await _dio.get<dynamic>('/tournaments/$tournamentId/courts');
+    final response =
+        await _dio.get<dynamic>('/tournaments/$tournamentId/courts');
     return _extractList(response.data)
         .map((e) => TournamentCourtModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -754,7 +804,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
       '/tournaments/$tournamentId/courts',
       data: {'name': name, if (location != null) 'location': location},
     );
-    return TournamentCourtModel.fromJson(_requireMapData(response, 'create court'));
+    return TournamentCourtModel.fromJson(
+        _requireMapData(response, 'create court'));
   }
 
   @override
@@ -764,7 +815,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
       '/tournaments/$tournamentId/courts/$courtId',
       data: data,
     );
-    return TournamentCourtModel.fromJson(_requireMapData(response, 'update court'));
+    return TournamentCourtModel.fromJson(
+        _requireMapData(response, 'update court'));
   }
 
   @override
@@ -777,8 +829,10 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId, String matchId, String courtId,
       {DateTime? scheduledAt, int? durationMinutes}) async {
     final body = <String, dynamic>{'courtId': courtId};
-    if (scheduledAt != null) body['scheduledAt'] = scheduledAt.toUtc().toIso8601String();
-    if (durationMinutes != null) body['scheduledDurationMinutes'] = durationMinutes;
+    if (scheduledAt != null)
+      body['scheduledAt'] = scheduledAt.toUtc().toIso8601String();
+    if (durationMinutes != null)
+      body['scheduledDurationMinutes'] = durationMinutes;
     await _dio.put<void>(
       '/tournaments/$tournamentId/matches/$matchId/court',
       data: body,
@@ -792,16 +846,18 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<List<TournamentScoreDisputeModel>> getMatchDisputes(
       String tournamentId, String matchId) async {
-    final response = await _dio.get<dynamic>(
-        '/tournaments/$tournamentId/matches/$matchId/disputes');
+    final response = await _dio
+        .get<dynamic>('/tournaments/$tournamentId/matches/$matchId/disputes');
     return _extractList(response.data)
-        .map((e) => TournamentScoreDisputeModel.fromJson(e as Map<String, dynamic>))
+        .map((e) =>
+            TournamentScoreDisputeModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   @override
   Future<TournamentScoreDisputeModel> createScoreDispute(
-      String tournamentId, String matchId, {required String reason}) async {
+      String tournamentId, String matchId,
+      {required String reason}) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/matches/$matchId/disputes',
       data: {'reason': reason},
@@ -811,12 +867,14 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
-  Future<void> resolveScoreDispute(
-      String tournamentId, String disputeId,
+  Future<void> resolveScoreDispute(String tournamentId, String disputeId,
       {required String status, String? resolution}) async {
     await _dio.put<void>(
       '/tournaments/$tournamentId/disputes/$disputeId/resolve',
-      data: {'status': status, if (resolution != null) 'resolution': resolution},
+      data: {
+        'status': status,
+        if (resolution != null) 'resolution': resolution
+      },
     );
   }
 
@@ -825,25 +883,26 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<TournamentAnalyticsModel> getTournamentAnalytics(String tournamentId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-        '/tournaments/$tournamentId/analytics');
+  Future<TournamentAnalyticsModel> getTournamentAnalytics(
+      String tournamentId) async {
+    final response = await _dio
+        .get<Map<String, dynamic>>('/tournaments/$tournamentId/analytics');
     return TournamentAnalyticsModel.fromJson(
         _requireMapData(response, 'get tournament analytics'));
   }
 
   @override
   Future<String> generateShareToken(String tournamentId) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-        '/tournaments/$tournamentId/share-token');
+    final response = await _dio
+        .post<Map<String, dynamic>>('/tournaments/$tournamentId/share-token');
     final data = _requireMapData(response, 'generate share token');
     return data['shareToken'] as String;
   }
 
   @override
   Future<Map<String, dynamic>> getPublicPortal(String shareToken) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-        '/tournaments/portal/$shareToken');
+    final response =
+        await _dio.get<Map<String, dynamic>>('/tournaments/portal/$shareToken');
     return _requireMapData(response, 'get public portal');
   }
 
@@ -853,8 +912,8 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<void> acceptTeamWaiver(String tournamentId, String teamId) async {
-    await _dio.post<void>(
-        '/tournaments/$tournamentId/teams/$teamId/waiver/accept');
+    await _dio
+        .post<void>('/tournaments/$tournamentId/teams/$teamId/waiver/accept');
   }
 
   // ---------------------------------------------------------------------------
@@ -863,8 +922,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<void> checkInTeam(String tournamentId, String teamId) async {
-    await _dio.post<void>(
-        '/tournaments/$tournamentId/teams/$teamId/check-in');
+    await _dio.post<void>('/tournaments/$tournamentId/teams/$teamId/check-in');
   }
 
   // ---------------------------------------------------------------------------
@@ -873,9 +931,10 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<TournamentModel> cloneTournament(String tournamentId) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-        '/tournaments/$tournamentId/clone');
-    return TournamentModel.fromJson(_requireMapData(response, 'clone tournament'));
+    final response = await _dio
+        .post<Map<String, dynamic>>('/tournaments/$tournamentId/clone');
+    return TournamentModel.fromJson(
+        _requireMapData(response, 'clone tournament'));
   }
 }
 

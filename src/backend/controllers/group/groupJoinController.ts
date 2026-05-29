@@ -1,11 +1,12 @@
 import prisma from '../../config/database';
-import { filterUnmutedUsers } from '../../utils/notificationHelper';
 import { logger } from '../../utils/logger';
 import { Request, Response } from 'express';
 import * as permissionService from '../../services/permissionService';
 import * as groupService from '../../services/groupService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { CacheService } from '../../services/cacheService';
 import { Permission } from '../../../shared/types/permissions.types';
+import { GroupNotificationType } from '../../../shared/types/event.types';
 import { BadRequestError, NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
 import { groupBan, txAuditLog } from '../../utils/prismaExtended';
 
@@ -111,19 +112,20 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     });
 
     // Notify the user that they were accepted
-    await prisma.groupNotification.create({
-      data: {
+    try {
+      await NotificationFactory.createGroupNotifications({
         groupId: id,
-        userId: req.user!.id,
-        type: 'accepted',
+        type: GroupNotificationType.accepted,
+        userIds: [req.user!.id],
         params: {
           groupName: group.name,
-          name: group.name // Use group name to indicate automatic approval
-        }
-      }
-    }).catch((error: Error) => {
+          name: group.name,
+        },
+        checkMutePreference: false,
+      });
+    } catch (error) {
       logger.error('Failed to send auto-approval notification', 'GroupController', { error });
-    });
+    }
 
     // Invalidate group cache for all affected users
     await CacheService.invalidate('group', id);
@@ -161,23 +163,17 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     select: { userId: true }
   });
   
-  // Filter out admins who have muted group join request notifications
   const adminUserIds = admins.map(admin => admin.userId);
-  const unmutedAdminIds = await filterUnmutedUsers(adminUserIds, 'muteGroupRequests');
-  
-  await Promise.all(unmutedAdminIds.map((userId: string) =>
-    prisma.groupNotification.create({
-      data: {
-        groupId: id,
-        userId: userId,
-        type: 'join_request',
-        params: {
-          groupName: joinRequest.group.name,
-          name: req.user!.name
-        }
-      }
-    })
-  ));
+  await NotificationFactory.createGroupNotifications({
+    groupId: id,
+    type: GroupNotificationType.join_request,
+    userIds: adminUserIds,
+    params: {
+      groupName: joinRequest.group.name,
+      name: req.user!.name,
+    },
+    checkMutePreference: true,
+  });
 
   res.status(201).json(joinRequest);
 };
@@ -339,16 +335,15 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
     // Create notification for the user who was accepted
     if (groupName) {
-      await prisma.groupNotification.create({
-        data: {
-          groupId: id,
-          userId: joinRequest.userId,
-          type: 'accepted',
-          params: {
-            groupName,
-            name: req.user!.name
-          }
-        }
+      await NotificationFactory.createGroupNotifications({
+        groupId: id,
+        type: GroupNotificationType.accepted,
+        userIds: [joinRequest.userId],
+        params: {
+          groupName,
+          name: req.user!.name,
+        },
+        checkMutePreference: false,
       });
     }
 

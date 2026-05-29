@@ -40,7 +40,8 @@ class DashboardPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ErrorDisplay(
             message: extractErrorMessage(e),
-            onRetry: () => ref.read(dashboardNotifierProvider.notifier).reload(),
+            onRetry: () =>
+                ref.read(dashboardNotifierProvider.notifier).reload(),
           ),
           data: (dashboard) => _DashboardContent(
             user: authState.user,
@@ -76,23 +77,29 @@ class _DashboardContent extends StatelessWidget {
     final in7d = now.add(const Duration(days: 7));
 
     final upcomingThisWeek = dashboard.upcomingEvents
-        .where((event) => event.startTime.isAfter(now) && event.startTime.isBefore(in7d))
+        .where((event) =>
+            event.startTime.isAfter(now) && event.startTime.isBefore(in7d))
         .toList();
 
     final visibleUpcoming = upcomingThisWeek.take(2).toList();
     final remainingUpcoming = upcomingThisWeek.length - visibleUpcoming.length;
     final nearbyUpdates = nearbyNotifications
-      .where((notification) {
-        return notification.type == 'teamup_nearby' ||
-          notification.type == 'nearby_created' ||
-          notification.type == 'session_created' ||
-          notification.type == 'team_registered' ||
-          notification.type == 'tournament_updated' ||
-          notification.type == 'match_scheduled' ||
-          notification.type == 'announcement';
-      })
-      .take(4)
-      .toList();
+        .where((notification) {
+          return notification.type == 'teamup_nearby' ||
+              notification.type == 'nearby_created' ||
+              notification.type == 'session_created' ||
+              notification.type == 'team_invited' ||
+              notification.type == 'team_registered' ||
+              notification.type == 'tournament_updated' ||
+              notification.type == 'tournament_cancelled' ||
+              notification.type == 'match_scheduled' ||
+              notification.type == 'score_submitted' ||
+              notification.type == 'score_disputed' ||
+              notification.type == 'payment_reminder' ||
+              notification.type == 'announcement';
+        })
+        .take(4)
+        .toList();
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -106,7 +113,6 @@ class _DashboardContent extends StatelessWidget {
             totalSessions: dashboard.stats.totalSessions,
             groupCount: dashboard.stats.groupCount,
           ),
-
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: UiSectionTitle(
@@ -130,7 +136,6 @@ class _DashboardContent extends StatelessWidget {
               child: _UpcomingCompactTile(event: event),
             ),
           ),
-
         if (remainingUpcoming > 0)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -143,7 +148,6 @@ class _DashboardContent extends StatelessWidget {
               ),
             ),
           ),
-
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: UiSectionTitle(
@@ -153,7 +157,6 @@ class _DashboardContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-
         if (nearbyLoading)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -173,7 +176,6 @@ class _DashboardContent extends StatelessWidget {
               child: _NearbyUpdateTile(notification: notification),
             ),
           ),
-
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
           child: UiSectionTitle('Calendar'),
@@ -186,7 +188,8 @@ class _DashboardContent extends StatelessWidget {
             children: const [
               _CalendarLegendDot(label: 'Sessions', color: Color(0xFF4CAF50)),
               _CalendarLegendDot(label: 'TeamUp', color: Color(0xFF00BCD4)),
-              _CalendarLegendDot(label: 'Tournaments', color: Color(0xFFFF9800)),
+              _CalendarLegendDot(
+                  label: 'Tournaments', color: Color(0xFFFF9800)),
             ],
           ),
         ),
@@ -198,7 +201,6 @@ class _DashboardContent extends StatelessWidget {
             daysToShow: 14,
           ),
         ),
-
         const SizedBox(height: 32),
       ],
     );
@@ -214,7 +216,8 @@ String? _normalizeActionRoute(String? rawPath) {
     return rawPath.replaceFirst('/events/', '/sessions/');
   }
 
-  final inviteMatch = RegExp(r'^/tournaments/.+/invitations/([^/]+)').firstMatch(rawPath);
+  final inviteMatch =
+      RegExp(r'^/tournaments/.+/invitations/([^/]+)').firstMatch(rawPath);
   if (inviteMatch != null) {
     final token = inviteMatch.group(1);
     if (token != null && token.isNotEmpty) {
@@ -335,7 +338,8 @@ class _ContextStrip extends StatelessWidget {
             : AppThemeTokens.lightCard.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          color:
+              isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
         ),
       ),
       child: Row(
@@ -425,12 +429,15 @@ class _UpcomingCompactTile extends StatelessWidget {
                 : AppThemeTokens.lightCard.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
             border: Border.all(
-              color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+              color: isDark
+                  ? AppThemeTokens.darkBorder
+                  : AppThemeTokens.lightBorder,
             ),
           ),
           child: Row(
             children: [
-              Icon(_iconForEventType(event.eventType), size: 18, color: AppThemeTokens.primary400),
+              Icon(_iconForEventType(event.eventType),
+                  size: 18, color: AppThemeTokens.primary400),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -481,17 +488,21 @@ class _CollapsibleCalendarAgenda extends StatefulWidget {
   final int daysToShow;
 
   @override
-  State<_CollapsibleCalendarAgenda> createState() => _CollapsibleCalendarAgendaState();
+  State<_CollapsibleCalendarAgenda> createState() =>
+      _CollapsibleCalendarAgendaState();
 }
 
-class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> {
+class _CollapsibleCalendarAgendaState
+    extends State<_CollapsibleCalendarAgenda> {
   DateTime? _expandedDay;
+  int _windowStartOffsetDays = 0;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final now = DateTime.now();
-    final startDay = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final startDay = today.add(Duration(days: _windowStartOffsetDays));
     final days = List<DateTime>.generate(
       widget.daysToShow,
       (index) => startDay.add(Duration(days: index)),
@@ -505,11 +516,14 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
         event.startTime.month,
         event.startTime.day,
       );
-      eventsByDay.putIfAbsent(day, () => <DashboardUpcomingEventModel>[]).add(event);
+      eventsByDay
+          .putIfAbsent(day, () => <DashboardUpcomingEventModel>[])
+          .add(event);
     }
 
-    final expandedEvents =
-        _expandedDay == null ? const <DashboardUpcomingEventModel>[] : eventsByDay[_expandedDay] ?? const <DashboardUpcomingEventModel>[];
+    final expandedEvents = _expandedDay == null
+        ? const <DashboardUpcomingEventModel>[]
+        : eventsByDay[_expandedDay] ?? const <DashboardUpcomingEventModel>[];
 
     String rangeLabel;
     if (days.isEmpty) {
@@ -517,8 +531,11 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
     } else {
       final first = days.first;
       final last = days.last;
-      rangeLabel = '${DateFormat('MMM d').format(first)} - ${DateFormat('MMM d').format(last)}';
+      rangeLabel =
+          '${DateFormat('MMM d').format(first)} - ${DateFormat('MMM d').format(last)}';
     }
+
+    final canGoBack = _windowStartOffsetDays > 0;
 
     return Container(
       decoration: BoxDecoration(
@@ -527,7 +544,8 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
             : AppThemeTokens.lightCard.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          color:
+              isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
         ),
       ),
       child: Column(
@@ -536,6 +554,30 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
+                IconButton(
+                  tooltip: 'Back 1 week',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                  onPressed: canGoBack
+                      ? () {
+                          setState(() {
+                            _windowStartOffsetDays =
+                                (_windowStartOffsetDays - 7)
+                                    .clamp(0, 3650)
+                                    .toInt();
+                            final nextStart = today
+                                .add(Duration(days: _windowStartOffsetDays));
+                            final nextEnd = nextStart
+                                .add(Duration(days: widget.daysToShow - 1));
+                            if (_expandedDay != null &&
+                                (_expandedDay!.isBefore(nextStart) ||
+                                    _expandedDay!.isAfter(nextEnd))) {
+                              _expandedDay = null;
+                            }
+                          });
+                        }
+                      : null,
+                ),
                 Text(
                   rangeLabel,
                   style: TextStyle(
@@ -545,6 +587,25 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
                   ),
                 ),
                 const Spacer(),
+                IconButton(
+                  tooltip: 'Forward 1 week',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _windowStartOffsetDays += 7;
+                      final nextStart =
+                          today.add(Duration(days: _windowStartOffsetDays));
+                      final nextEnd =
+                          nextStart.add(Duration(days: widget.daysToShow - 1));
+                      if (_expandedDay != null &&
+                          (_expandedDay!.isBefore(nextStart) ||
+                              _expandedDay!.isAfter(nextEnd))) {
+                        _expandedDay = null;
+                      }
+                    });
+                  },
+                ),
                 Text(
                   _expandedDay == null
                       ? 'Tap a day'
@@ -616,45 +677,62 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Material(
                                     color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                                    borderRadius: BorderRadius.circular(
+                                        AppThemeTokens.radiusSm),
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-                                      onTap: () => context.push(event.destinationPath),
+                                      borderRadius: BorderRadius.circular(
+                                          AppThemeTokens.radiusSm),
+                                      onTap: () =>
+                                          context.push(event.destinationPath),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 7),
                                         decoration: BoxDecoration(
-                                          color: _colorForEventType(event.eventType).withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                                          color: _colorForEventType(
+                                                  event.eventType)
+                                              .withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                              AppThemeTokens.radiusSm),
                                         ),
                                         child: Row(
                                           children: [
                                             Icon(
-                                              _iconForEventType(event.eventType),
+                                              _iconForEventType(
+                                                  event.eventType),
                                               size: 14,
-                                              color: _colorForEventType(event.eventType),
+                                              color: _colorForEventType(
+                                                  event.eventType),
                                             ),
                                             const SizedBox(width: 7),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     event.title,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: AppThemeTokens.text(context),
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          AppThemeTokens.text(
+                                                              context),
                                                     ),
                                                   ),
                                                   Text(
                                                     '${DateFormat.jm().format(event.startTime.toLocal())} | ${event.contextName}',
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontSize: 10,
-                                                      color: AppThemeTokens.textSecondary(context),
+                                                      color: AppThemeTokens
+                                                          .textSecondary(
+                                                              context),
                                                     ),
                                                   ),
                                                 ],
@@ -663,7 +741,8 @@ class _CollapsibleCalendarAgendaState extends State<_CollapsibleCalendarAgenda> 
                                             Icon(
                                               Icons.chevron_right_rounded,
                                               size: 16,
-                                              color: AppThemeTokens.textMuted(context),
+                                              color: AppThemeTokens.textMuted(
+                                                  context),
                                             ),
                                           ],
                                         ),
@@ -772,39 +851,48 @@ class _CalendarDayDotCell extends StatelessWidget {
                 '${day.day}',
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: isToday || isExpanded ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight:
+                      isToday || isExpanded ? FontWeight.w700 : FontWeight.w600,
                   color: AppThemeTokens.text(context),
                 ),
               ),
               const SizedBox(height: 4),
-              if (events.isEmpty)
-                const SizedBox(height: 7)
-              else
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 3,
-                  runSpacing: 2,
-                  children: [
-                    for (final type in eventTypes.take(3))
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: _colorForEventType(type),
-                          shape: BoxShape.circle,
+              SizedBox(
+                height: 7,
+                child: events.isEmpty
+                    ? null
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (final type in eventTypes.take(3)) ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: _colorForEventType(type),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            if (type != eventTypes.take(3).last)
+                              const SizedBox(width: 3),
+                          ],
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 2),
+              SizedBox(
+                height: 10,
+                child: events.isEmpty
+                    ? null
+                    : Text(
+                        '${events.length}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: AppThemeTokens.textSecondary(context),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
-              if (events.isNotEmpty)
-                Text(
-                  '${events.length}',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: AppThemeTokens.textSecondary(context),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              ),
             ],
           ),
         ),
@@ -862,7 +950,9 @@ class _NearbyUpdateTile extends StatelessWidget {
                 : AppThemeTokens.lightCard.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
             border: Border.all(
-              color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+              color: isDark
+                  ? AppThemeTokens.darkBorder
+                  : AppThemeTokens.lightBorder,
             ),
           ),
           child: Row(
@@ -931,7 +1021,8 @@ class _NoNearbyUpdatesCard extends StatelessWidget {
             : AppThemeTokens.lightCard.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          color:
+              isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
         ),
       ),
       child: Row(
@@ -942,7 +1033,8 @@ class _NoNearbyUpdatesCard extends StatelessWidget {
               color: AppThemeTokens.primary500.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
             ),
-            child: const Icon(Icons.explore_outlined, size: 22, color: AppThemeTokens.primary400),
+            child: const Icon(Icons.explore_outlined,
+                size: 22, color: AppThemeTokens.primary400),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -954,7 +1046,9 @@ class _NoNearbyUpdatesCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                    color: isDark
+                        ? AppThemeTokens.darkText
+                        : AppThemeTokens.lightText,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -996,7 +1090,8 @@ class _NoEventsCard extends StatelessWidget {
             : AppThemeTokens.lightCard.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          color:
+              isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
         ),
       ),
       child: Row(
@@ -1007,7 +1102,8 @@ class _NoEventsCard extends StatelessWidget {
               color: AppThemeTokens.primary500.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
             ),
-            child: const Icon(Icons.event_outlined, size: 22, color: AppThemeTokens.primary400),
+            child: const Icon(Icons.event_outlined,
+                size: 22, color: AppThemeTokens.primary400),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1019,7 +1115,9 @@ class _NoEventsCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                    color: isDark
+                        ? AppThemeTokens.darkText
+                        : AppThemeTokens.lightText,
                   ),
                 ),
                 const SizedBox(height: 2),

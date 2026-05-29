@@ -55,6 +55,12 @@ services:
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
       FACEBOOK_CALLBACK_URL: ${FACEBOOK_CALLBACK_URL}
+      TOURNAMENT_SERVICE_URL: ${TOURNAMENT_SERVICE_URL:-}
+      COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      COMMUNITY_SERVICE_TIMEOUT_MS: ${COMMUNITY_SERVICE_TIMEOUT_MS:-8000}
+      NOTIFICATION_SERVICE_TIMEOUT_MS: ${NOTIFICATION_SERVICE_TIMEOUT_MS:-8000}
     volumes:
       - uploads_data:/app/uploads
       # Uncomment to mount SSL certificates for HTTPS
@@ -65,6 +71,81 @@ services:
       redis:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npx prisma generate && node prisma/seed.js && npm start"
+
+  tournament-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["microservices"]
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3001
+      TOURNAMENT_SERVICE_PORT: 3001
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+      TOURNAMENT_SERVICE_URL: ${TOURNAMENT_SERVICE_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run tournament-service:start"
+
+  community-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["microservices"]
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3002
+      COMMUNITY_SERVICE_PORT: 3002
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+      COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      COMMUNITY_SERVICE_TIMEOUT_MS: ${COMMUNITY_SERVICE_TIMEOUT_MS:-8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run community-service:start"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["microservices"]
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3003
+      NOTIFICATION_SERVICE_PORT: 3003
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      NOTIFICATION_SERVICE_TIMEOUT_MS: ${NOTIFICATION_SERVICE_TIMEOUT_MS:-8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run notification-service:start"
 
   # Flutter web application served by nginx.
   # The nginx config (nginx/flutter-web.conf) proxies /api/* requests to the

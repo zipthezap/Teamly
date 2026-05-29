@@ -54,18 +54,20 @@ class SessionsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
               'Your account is currently active on these devices.',
-              style: TextStyle(fontSize: 12, color: AppThemeTokens.darkTextSecondary),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemeTokens.textSecondary(context),
+              ),
             ),
           ),
           const Divider(),
           Expanded(
             child: sessionsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => ErrorDisplay(
                 message: extractErrorMessage(e),
                 onRetry: () => ref.invalidate(_sessionsProvider),
@@ -75,14 +77,13 @@ class SessionsPage extends ConsumerWidget {
                   return Center(
                     child: Text(
                       'No sessions found.',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppThemeTokens.textSecondary(context)),
                     ),
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async =>
-                      ref.invalidate(_sessionsProvider),
+                  onRefresh: () async => ref.invalidate(_sessionsProvider),
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     itemCount: sessions.length,
@@ -112,8 +113,7 @@ class SessionsPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Revoke session'),
-        content: const Text(
-            'This device will be signed out. Continue?'),
+        content: const Text('This device will be signed out. Continue?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -149,8 +149,7 @@ class SessionsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _revokeAllSessions(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _revokeAllSessions(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -177,8 +176,7 @@ class SessionsPage extends ConsumerWidget {
       ref.invalidate(_sessionsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Signed out of all other devices')),
+          const SnackBar(content: Text('Signed out of all other devices')),
         );
       }
     } on Exception catch (e) {

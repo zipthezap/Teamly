@@ -31,7 +31,16 @@ vi.mock('../../utils/logger', () => ({
   }
 }));
 
+vi.mock('../../services/notificationFactory', () => ({
+  NotificationFactory: {
+    createSessionNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+    createGroupNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+    createTeamUpNotifications: vi.fn().mockResolvedValue({ created: 0, skipped: 0 }),
+  },
+}));
+
 import prisma from '../../config/database';
+import { NotificationFactory } from '../../services/notificationFactory';
 import {
   createBulkEventNotifications,
   createBulkGroupNotifications,
@@ -41,6 +50,7 @@ import {
 } from '../../services/bulkNotificationService';
 
 const mockPrisma = vi.mocked(prisma);
+const mockNotificationFactory = vi.mocked(NotificationFactory);
 
 // Test constants
 const TEST_LARGE_BATCH_SIZE = 1000;
@@ -53,7 +63,6 @@ describe('BulkNotificationService', () => {
   describe('createBulkEventNotifications', () => {
     it('should create session notifications for multiple users', async () => {
       const userIds = ['user-1', 'user-2', 'user-3'];
-      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -62,22 +71,18 @@ describe('BulkNotificationService', () => {
         { eventTitle: 'Soccer Match' }
       );
 
-      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            sessionId: 'session-123',
-            userId: 'user-1',
-            type: 'session_created',
-            params: { eventTitle: 'Soccer Match' }
-          })
-        ]),
-        skipDuplicates: true
+      expect(mockNotificationFactory.createSessionNotifications).toHaveBeenCalledWith({
+        sessionId: 'session-123',
+        userIds,
+        type: 'session_created',
+        params: { eventTitle: 'Soccer Match' },
+        metadata: {},
+        checkMutePreference: false,
       });
     });
 
     it('should remove duplicate user IDs', async () => {
       const userIds = ['user-1', 'user-1', 'user-2', 'user-2', 'user-3'];
-      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -85,26 +90,26 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      const call = mockPrisma.sessionNotification.createMany.mock.calls[0][0];
-      expect(call.data).toHaveLength(3);
+      expect(mockNotificationFactory.createSessionNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userIds: ['user-1', 'user-2', 'user-3'],
+        })
+      );
     });
 
     it('should handle empty user list', async () => {
-      mockPrisma.sessionNotification.createMany = vi.fn();
-
       await createBulkEventNotifications(
         'session-123',
         [],
         'session_created'
       );
 
-      expect(mockPrisma.sessionNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createSessionNotifications).not.toHaveBeenCalled();
     });
 
     it('should process large batches in chunks', async () => {
       // Create large batch of user IDs
       const userIds = Array.from({ length: TEST_LARGE_BATCH_SIZE }, (_, i) => `user-${i}`);
-      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 500 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -113,13 +118,12 @@ describe('BulkNotificationService', () => {
       );
 
       // Should be called twice (default batch size is 500)
-      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledTimes(2);
+      expect(mockNotificationFactory.createSessionNotifications).toHaveBeenCalledTimes(2);
     });
 
     it('should include metadata when provided', async () => {
       const userIds = ['user-1'];
       const metadata = { groupName: 'Sports Group' };
-      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -129,19 +133,13 @@ describe('BulkNotificationService', () => {
         metadata
       );
 
-      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            metadata
-          })
-        ]),
-        skipDuplicates: true
-      });
+      expect(mockNotificationFactory.createSessionNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata })
+      );
     });
 
     it('should set default params and metadata', async () => {
       const userIds = ['user-1'];
-      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -149,22 +147,15 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            params: {},
-            metadata: {}
-          })
-        ]),
-        skipDuplicates: true
-      });
+      expect(mockNotificationFactory.createSessionNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({ params: {}, metadata: {} })
+      );
     });
   });
 
   describe('createBulkGroupNotifications', () => {
     it('should create group notifications for multiple users', async () => {
       const userIds = ['user-1', 'user-2'];
-      mockPrisma.groupNotification.createMany = vi.fn().mockResolvedValue({ count: 2 });
 
       await createBulkGroupNotifications(
         'group-123',
@@ -173,33 +164,27 @@ describe('BulkNotificationService', () => {
         { groupName: 'Sports Group' }
       );
 
-      expect(mockPrisma.groupNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            groupId: 'group-123',
-            userId: 'user-1',
-            type: 'session_created'
-          })
-        ]),
-        skipDuplicates: true
+      expect(mockNotificationFactory.createGroupNotifications).toHaveBeenCalledWith({
+        groupId: 'group-123',
+        userIds,
+        type: 'session_created',
+        params: { groupName: 'Sports Group' },
+        checkMutePreference: false,
       });
     });
 
     it('should handle empty user list', async () => {
-      mockPrisma.groupNotification.createMany = vi.fn();
-
       await createBulkGroupNotifications(
         'group-123',
         [],
         'session_created'
       );
 
-      expect(mockPrisma.groupNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createGroupNotifications).not.toHaveBeenCalled();
     });
 
     it('should remove duplicate user IDs', async () => {
       const userIds = ['user-1', 'user-1', 'user-2'];
-      mockPrisma.groupNotification.createMany = vi.fn().mockResolvedValue({ count: 2 });
 
       await createBulkGroupNotifications(
         'group-123',
@@ -207,15 +192,15 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      const call = mockPrisma.groupNotification.createMany.mock.calls[0][0];
-      expect(call.data).toHaveLength(2);
+      expect(mockNotificationFactory.createGroupNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({ userIds: ['user-1', 'user-2'] })
+      );
     });
   });
 
   describe('createBulkTeamUpNotifications', () => {
     it('should create TeamUp notifications for multiple users', async () => {
       const userIds = ['user-1', 'user-2'];
-      mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 2 });
 
       await createBulkTeamUpNotifications(
         'teamup-123',
@@ -224,22 +209,19 @@ describe('BulkNotificationService', () => {
         { title: 'Soccer Game' }
       );
 
-      expect(mockPrisma.teamUpNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            teamUpRequestId: 'teamup-123',
-            userId: 'user-1',
-            type: 'teamup_nearby'
-          })
-        ]),
-        skipDuplicates: true
+      expect(mockNotificationFactory.createTeamUpNotifications).toHaveBeenCalledWith({
+        teamUpRequestId: 'teamup-123',
+        userIds,
+        type: 'teamup_nearby',
+        params: { title: 'Soccer Game' },
+        metadata: {},
+        checkMutePreference: false,
       });
     });
 
     it('should include metadata when provided', async () => {
       const userIds = ['user-1'];
       const metadata = { location: 'New York' };
-      mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
 
       await createBulkTeamUpNotifications(
         'teamup-123',
@@ -249,26 +231,19 @@ describe('BulkNotificationService', () => {
         metadata
       );
 
-      expect(mockPrisma.teamUpNotification.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            metadata
-          })
-        ]),
-        skipDuplicates: true
-      });
+      expect(mockNotificationFactory.createTeamUpNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata })
+      );
     });
 
     it('should handle empty user list', async () => {
-      mockPrisma.teamUpNotification.createMany = vi.fn();
-
       await createBulkTeamUpNotifications(
         'teamup-123',
         [],
         'teamup_nearby'
       );
 
-      expect(mockPrisma.teamUpNotification.createMany).not.toHaveBeenCalled();
+      expect(mockNotificationFactory.createTeamUpNotifications).not.toHaveBeenCalled();
     });
   });
 

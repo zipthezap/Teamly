@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { logger } from '../utils/logger';
+import { NotificationFactory } from '../services/notificationFactory';
+import { SessionNotificationType } from '../../shared/types/event.types';
 
 const ATTENDANCE_STATUS_MAP = {
   'on-time': 'on_time',
@@ -102,16 +104,15 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
 
   // Create notification if marked as late
   if (prismaStatus === 'late') {
-    await prisma.sessionNotification.create({
-      data: {
-        sessionId,
-        userId: targetUserId,
-        type: 'late',
-        params: {
-          name: attendance.user.name,
-          eventTitle: session.title
-        }
-      }
+    await NotificationFactory.createSessionNotifications({
+      sessionId,
+      type: SessionNotificationType.late,
+      userIds: [targetUserId],
+      params: {
+        name: attendance.user.name,
+        eventTitle: session.title,
+      },
+      checkMutePreference: false,
     });
   }
 

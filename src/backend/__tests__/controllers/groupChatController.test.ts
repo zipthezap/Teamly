@@ -29,6 +29,7 @@ vi.mock('../../config/database', () => ({
       count: vi.fn(),
       updateMany: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn(),
       findFirst: vi.fn(),
       delete: vi.fn(),
     },
@@ -262,7 +263,7 @@ describe('GroupChat Controller', () => {
         .mockResolvedValueOnce({ title: 'Test Session' } as any);
       vi.mocked(prisma.sessionAttendance.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.sessionAttendance.upsert).mockResolvedValue(attendance as any);
-      vi.mocked(prisma.sessionNotification.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.sessionNotification.createMany).mockResolvedValue({ count: 1 } as any);
 
       const res = await request(app)
         .post('/api/chat/session/late')
