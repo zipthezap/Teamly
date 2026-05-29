@@ -34,13 +34,16 @@ class MobileShell extends ConsumerWidget {
         context.go('/dashboard');
         return;
       case 1:
-        context.go('/groups');
+        context.go('/play');
         return;
       case 2:
-        context.go('/sessions');
+        context.go('/groups');
         return;
       case 3:
-        context.go('/discover');
+        context.go('/compete');
+        return;
+      case 4:
+        context.go('/profile');
         return;
       default:
         return;
@@ -161,25 +164,32 @@ class _BottomNav extends StatelessWidget {
                 onTap: () => onTap(0),
               ),
               _NavItem(
-                icon: Icons.groups_2_outlined,
-                selectedIcon: Icons.groups_2_rounded,
-                label: 'Groups',
+                icon: Icons.sports_soccer_outlined,
+                selectedIcon: Icons.sports_soccer_rounded,
+                label: 'Play',
                 selected: currentIndex == 1,
                 onTap: () => onTap(1),
               ),
               _NavItem(
-                icon: Icons.event_outlined,
-                selectedIcon: Icons.event_rounded,
-                label: 'Sessions',
+                icon: Icons.groups_2_outlined,
+                selectedIcon: Icons.groups_2_rounded,
+                label: 'Groups',
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
               ),
               _NavItem(
-                icon: Icons.explore_outlined,
-                selectedIcon: Icons.explore_rounded,
-                label: 'Discover',
+                icon: Icons.emoji_events_outlined,
+                selectedIcon: Icons.emoji_events_rounded,
+                label: 'Compete',
                 selected: currentIndex == 3,
                 onTap: () => onTap(3),
+              ),
+              _NavItem(
+                icon: Icons.account_circle_outlined,
+                selectedIcon: Icons.account_circle_rounded,
+                label: 'Profile',
+                selected: currentIndex == 4,
+                onTap: () => onTap(4),
               ),
             ],
           ),

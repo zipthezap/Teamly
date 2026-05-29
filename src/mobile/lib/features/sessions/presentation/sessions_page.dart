@@ -92,7 +92,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
 
     return MobileShell(
       title: 'Sessions',
-      currentIndex: 2,
+      currentIndex: 1,
       actions: [
         IconButton(
           icon: const Icon(Icons.ios_share_outlined),

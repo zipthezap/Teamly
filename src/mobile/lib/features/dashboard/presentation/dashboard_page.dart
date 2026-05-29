@@ -115,7 +115,7 @@ class _DashboardContent extends StatelessWidget {
                   value: '${dashboard.stats.upcomingCount}',
                   icon: Icons.upcoming_rounded,
                   color: const Color(0xFF00BCD4),
-                  onTap: () => context.go('/discover'),
+                  onTap: () => context.go('/play'),
                 ),
               ),
             ],
@@ -128,7 +128,7 @@ class _DashboardContent extends StatelessWidget {
           child: UiSectionTitle(
             'Upcoming Events',
             trailingLabel: 'See all',
-            onTrailingTap: () => context.go('/discover'),
+            onTrailingTap: () => context.go('/play'),
           ),
         ),
         const SizedBox(height: 12),
@@ -227,10 +227,10 @@ class _DashboardContent extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _ActionTile(
-                      icon: Icons.explore_rounded,
-                      label: 'Discover',
+                      icon: Icons.sports_soccer_rounded,
+                      label: 'Play Hub',
                       color: const Color(0xFF00BCD4),
-                      onTap: () => context.go('/discover'),
+                      onTap: () => context.go('/play'),
                     ),
                   ),
                 ],

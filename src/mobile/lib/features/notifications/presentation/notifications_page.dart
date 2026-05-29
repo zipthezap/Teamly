@@ -64,7 +64,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       title: 'Notifications',
       currentIndex: -1,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        icon: const Icon(Icons.arrow_back_rounded),
         tooltip: 'Back',
         onPressed: () {
           if (context.canPop()) {
@@ -77,8 +77,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       actions: [
         IconButton(
           icon: Icon(
-            _includeRead ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-            size: 20,
+            _includeRead
+                ? Icons.visibility_rounded
+                : Icons.visibility_off_rounded,
           ),
           tooltip: _includeRead ? 'Hide read' : 'Show all',
           onPressed: () {
@@ -87,7 +88,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           },
         ),
         IconButton(
-          icon: const Icon(Icons.done_all_rounded, size: 20),
+          icon: const Icon(Icons.done_all_rounded),
           tooltip: 'Mark all read',
           onPressed: () async {
             await ref.read(notificationsNotifierProvider.notifier).markAllRead();
@@ -114,7 +115,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             onRefresh: () => ref.read(notificationsNotifierProvider.notifier).load(includeRead: _includeRead),
             child: ListView.builder(
               controller: _scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               itemCount: notifications.length + (_isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == notifications.length) {

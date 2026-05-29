@@ -12,6 +12,7 @@ import '../../../core/models/teamup_model.dart';
 import '../../../core/utils/geocoding_utils.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/location_search_form.dart';
+import '../../../shared/widgets/mobile_shell.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/state/auth_notifier.dart';
@@ -132,14 +133,13 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final divider =
         isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('TeamUp'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    return MobileShell(
+      title: 'TeamUp',
+      currentIndex: 1,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -178,22 +178,25 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
               ),
             ),
           ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          const _BrowseTab(),
-          const _NearbyTab(),
-          _MyRequestsTab(
-            onEdit: (request) {
-              ref.read(editingTeamUpRequestProvider.notifier).state = request;
-              _tabController.animateTo(5);
-            },
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                const _BrowseTab(),
+                const _NearbyTab(),
+                _MyRequestsTab(
+                  onEdit: (request) {
+                    ref.read(editingTeamUpRequestProvider.notifier).state =
+                        request;
+                    _tabController.animateTo(5);
+                  },
+                ),
+                const _IncomingResponsesTab(),
+                const _MyApplicationsTab(),
+                const _SubmitRequestTab(),
+              ],
+            ),
           ),
-          const _IncomingResponsesTab(),
-          const _MyApplicationsTab(),
-          const _SubmitRequestTab(),
         ],
       ),
     );

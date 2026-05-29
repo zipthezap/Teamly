@@ -78,7 +78,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
 
     return MobileShell(
       title: 'My Groups',
-      currentIndex: 1,
+      currentIndex: 2,
       actions: [
         Badge(
           isLabelVisible: totalPending > 0,

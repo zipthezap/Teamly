@@ -8,7 +8,9 @@ import '../features/auth/presentation/reset_password_page.dart';
 import '../features/auth/presentation/sessions_page.dart' as auth_presentation;
 import '../features/auth/state/auth_notifier.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
+import '../features/discover/presentation/compete_hub_page.dart';
 import '../features/discover/presentation/discover_page.dart';
+import '../features/discover/presentation/play_hub_page.dart';
 import '../features/sessions/presentation/session_detail_page.dart';
 import '../features/sessions/presentation/session_form_page.dart';
 import '../features/sessions/presentation/session_statistics_page.dart';
@@ -91,6 +93,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardPage(),
+      ),
+      GoRoute(
+        path: '/play',
+        builder: (context, state) => const PlayHubPage(),
+      ),
+      GoRoute(
+        path: '/compete',
+        builder: (context, state) => const CompeteHubPage(),
       ),
 
       // Groups
