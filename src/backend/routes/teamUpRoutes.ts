@@ -78,18 +78,19 @@ router.post('/:id/respond', noCache, teamUpRespondLimiter, asyncHandler(teamUpCo
 router.delete('/:id/respond', noCache, asyncHandler(teamUpController.withdrawTeamUpResponse));
 router.put('/:id/respond/rsvp', noCache, asyncHandler(teamUpController.updateTeamUpRsvp));
 
-// Accept or decline a response (creator only)
-router.post(
-  '/:id/responses/:responseId',
-  noCache,
-  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
-  asyncHandler(teamUpController.handleTeamUpResponse)
-);
+// Accept or decline multiple responses in one request (must be registered before :responseId)
 router.post(
   '/:id/responses/bulk-handle',
   noCache,
   requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
   asyncHandler(teamUpController.bulkHandleTeamUpResponses)
+);
+// Accept or decline a single response (creator only)
+router.post(
+  '/:id/responses/:responseId',
+  noCache,
+  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
+  asyncHandler(teamUpController.handleTeamUpResponse)
 );
 router.put(
   '/:id/responses/:responseId/attendance',

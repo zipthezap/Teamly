@@ -105,6 +105,7 @@ vi.mock('../../services/teamUpService', () => ({
   validateTeamUpTextLengths: vi.fn(),
   parseSkillLevel: vi.fn((value: any) => (typeof value === 'string' ? value : null)),
   VALID_REQUEST_TYPES: ['need_players', 'looking_for_play'],
+  VALID_SKILL_LEVELS: ['beginner', 'intermediate', 'advanced', 'pro'],
   TEAMUP_LIMITS: { message: 500 },
   parseTeamUpPositions: vi.fn(() => []),
   deriveRequestLevelFieldsFromPositions: vi.fn(() => ({
@@ -117,6 +118,7 @@ vi.mock('../../services/teamUpService', () => ({
 vi.mock('../../services/locationService', () => ({
   calculateDistance: vi.fn().mockReturnValue(5),
   calculateBoundingBox: vi.fn(() => ({ latDelta: 0.5, lonDelta: 0.5 })),
+  filterByLocation: vi.fn((requests: any[]) => requests),
   enrichWithLocationInfo: vi.fn((r: any) => r),
 }));
 vi.mock('../../services/teamUpNotificationService', () => ({
@@ -138,6 +140,9 @@ vi.mock('../../utils/validation', () => ({
   parseCoordinates: vi.fn((_lat: any, _lon: any) => ({ lat: 40.7, lon: -73.9 })),
   parseFloatStrict: vi.fn((v: any) => parseFloat(v)),
   sanitizeString: vi.fn((value: string) => value.trim()),
+  isValidUUID: vi.fn((value: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  ),
 }));
 
 import prisma from '../../config/database';
@@ -243,6 +248,51 @@ describe('TeamUpController', () => {
       const res = await request(app).get(`/api/teamup?fromDate=${from}&toDate=${to}`);
       expect(res.status).toBe(200);
     });
+
+    it('combines preferredSkillLevel and search filters without overwriting either', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([] as any);
+      vi.mocked(prisma.teamUpRequest.count).mockResolvedValueOnce(0);
+
+      const res = await request(app).get('/api/teamup?preferredSkillLevel=intermediate&search=park');
+      expect(res.status).toBe(200);
+
+      const findManyArgs = vi.mocked(prisma.teamUpRequest.findMany).mock.calls[0]?.[0] as any;
+      expect(findManyArgs?.where?.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({ skillLevel: 'intermediate' }),
+              expect.objectContaining({ positions: expect.any(Object) }),
+            ]),
+          }),
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({ title: expect.objectContaining({ contains: 'park' }) }),
+              expect.objectContaining({ description: expect.objectContaining({ contains: 'park' }) }),
+            ]),
+          }),
+        ])
+      );
+    });
+
+    it('uses createdAt cursor conditions for newest sort', async () => {
+      const cursor = Buffer.from(
+        JSON.stringify({ id: 'teamup-1', createdAt: new Date().toISOString() })
+      ).toString('base64');
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([] as any);
+      vi.mocked(prisma.teamUpRequest.count).mockResolvedValueOnce(0);
+
+      const res = await request(app).get(`/api/teamup?sortBy=newest&cursor=${encodeURIComponent(cursor)}`);
+      expect(res.status).toBe(200);
+
+      const findManyArgs = vi.mocked(prisma.teamUpRequest.findMany).mock.calls[0]?.[0] as any;
+      expect(findManyArgs?.where?.OR).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ createdAt: expect.objectContaining({ lt: expect.any(Date) }) }),
+          expect.objectContaining({ createdAt: expect.objectContaining({ equals: expect.any(Date) }) }),
+        ])
+      );
+    });
   });
 
   describe('POST /api/teamup', () => {
@@ -330,6 +380,40 @@ describe('TeamUpController', () => {
     it('returns 400 when coordinates are missing', async () => {
       const res = await request(app).get('/api/teamup/nearby');
       expect(res.status).toBe(400);
+    });
+
+    it('falls back to safe default when limit is invalid', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([] as any);
+
+      const res = await request(app)
+        .get('/api/teamup/nearby')
+        .query({ latitude: '40.785091', longitude: '-73.968285', limit: 'abc' });
+
+      expect(res.status).toBe(200);
+      const findManyArgs = vi.mocked(prisma.teamUpRequest.findMany).mock.calls[0]?.[0] as any;
+      expect(findManyArgs?.take).toBe(100);
+    });
+  });
+
+  describe('GET /api/teamup/analytics', () => {
+    it('applies date filter to attendance metrics', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([] as any);
+
+      const from = new Date(Date.now() - 86400000).toISOString();
+      const to = new Date().toISOString();
+      const res = await request(app).get(`/api/teamup/analytics?fromDate=${from}&toDate=${to}`);
+
+      expect(res.status).toBe(200);
+      const attendanceCountCall = vi
+        .mocked(prisma.teamUpResponse.count)
+        .mock.calls.find((call) => (call[0] as any)?.where?.attendanceStatus);
+      expect(attendanceCountCall).toBeDefined();
+      expect((attendanceCountCall?.[0] as any)?.where?.createdAt).toEqual(
+        expect.objectContaining({
+          gte: expect.any(Date),
+          lte: expect.any(Date),
+        })
+      );
     });
   });
 
@@ -540,6 +624,32 @@ describe('TeamUpController', () => {
 
       const res = await request(app).get('/api/teamup/my-applications');
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe('POST /api/teamup/:id/responses/bulk-handle', () => {
+    it('rejects bulk accept when one position would be overfilled', async () => {
+      const responseId1 = '11111111-1111-4111-8111-111111111111';
+      const responseId2 = '22222222-2222-4222-8222-222222222222';
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        creatorId: 'test-user-id',
+        playersNeeded: 10,
+        positions: [{ id: 'pos-1', slotsNeeded: 1 }],
+      } as any);
+      vi.mocked(prisma.teamUpResponse.findMany)
+        .mockResolvedValueOnce([
+          { id: responseId1, status: 'pending', requestPositionId: 'pos-1' },
+          { id: responseId2, status: 'pending', requestPositionId: 'pos-1' },
+        ] as any)
+        .mockResolvedValueOnce([] as any);
+      vi.mocked(prisma.teamUpResponse.count).mockResolvedValueOnce(0);
+
+      const res = await request(app)
+        .post('/api/teamup/teamup-1/responses/bulk-handle')
+        .send({ action: 'accept', responseIds: [responseId1, responseId2] });
+
+      expect(res.status).toBe(400);
+      expect(vi.mocked(prisma.teamUpResponse.updateMany)).not.toHaveBeenCalled();
     });
   });
 });

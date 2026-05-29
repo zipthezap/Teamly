@@ -17,14 +17,14 @@ void main() {
       expect(canRegisterTeam('registration', hasMyTeam: false, isOrganizer: false), isTrue);
     });
 
-    test('edit/admin actions are only enabled before the tournament starts', () {
+    test('edit actions lock after start but admin actions continue in progress', () {
       expect(canEditTournament('draft'), isTrue);
       expect(canEditTournament('registration'), isTrue);
       expect(canEditTournament('in_progress'), isFalse);
       expect(canEditTournament('completed'), isFalse);
       expect(canEditTournament('cancelled'), isFalse);
 
-      expect(canManageTournamentAdminActions('in_progress'), isFalse);
+      expect(canManageTournamentAdminActions('in_progress'), isTrue);
       expect(canManageTournamentAdminActions('completed'), isFalse);
       expect(canManageTournamentAdminActions('cancelled'), isFalse);
       expect(canManageTournamentAdminActions('registration'), isTrue);

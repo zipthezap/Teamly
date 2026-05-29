@@ -119,6 +119,7 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
       teamupId: n.teamupId,
       actorName: n.actorName,
       params: n.params,
+      metadata: n.metadata,
     );
   }
 }

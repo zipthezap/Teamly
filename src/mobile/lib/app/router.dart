@@ -7,6 +7,7 @@ import '../features/auth/presentation/auth_page.dart';
 import '../features/auth/presentation/reset_password_page.dart';
 import '../features/auth/presentation/sessions_page.dart' as auth_presentation;
 import '../features/auth/state/auth_notifier.dart';
+import '../features/dashboard/presentation/aware_events_calendar_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/discover/presentation/compete_hub_page.dart';
 import '../features/discover/presentation/discover_page.dart';
@@ -93,6 +94,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardPage(),
+      ),
+      GoRoute(
+        path: '/calendar',
+        builder: (context, state) => const AwareEventsCalendarPage(),
       ),
       GoRoute(
         path: '/play',

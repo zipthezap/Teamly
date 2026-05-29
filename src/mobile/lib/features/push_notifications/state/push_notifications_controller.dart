@@ -158,6 +158,9 @@ class PushNotificationsController {
     final data = message.data;
     final actionUrl = data['actionUrl']?.toString();
     if (actionUrl != null && actionUrl.startsWith('/')) {
+      if (actionUrl.startsWith('/events/')) {
+        return actionUrl.replaceFirst('/events/', '/sessions/');
+      }
       // Map known actionUrl patterns to app routes. If the backend provided
       // a direct invitation accept URL containing an invite token, extract
       // the token and route to the public tournament invite landing page.
@@ -176,6 +179,7 @@ class PushNotificationsController {
     if (entityId == null || entityId.isEmpty) return '/notifications';
 
     switch (kind) {
+      case 'session':
       case 'event':
         return '/sessions/$entityId';
       case 'group':

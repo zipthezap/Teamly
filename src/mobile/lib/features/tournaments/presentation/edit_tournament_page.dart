@@ -11,6 +11,7 @@ import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
+import 'tournament_form_payloads.dart';
 import '../state/tournaments_notifier.dart';
 
 
@@ -50,6 +51,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
   DateTime? _registrationStartDate;
   DateTime? _registrationDeadline;
   bool _useManualBrackets = false;
+  bool _selfRefEnabled = false;
   bool _requirePaymentForBrackets = false;
   bool _saving = false;
   bool _pageLoading = false;
@@ -74,12 +76,13 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
     _prizesCtrl.text = t.prizesDescription ?? '';
     _paymentInfoCtrl.text = t.paymentInfo ?? '';
     _sportType = t.sportType;
-    _format = t.format;
+    _format = normalizeTournamentFormat(t.format);
     _startDate = t.startDate;
     _endDate = t.endDate;
     _registrationStartDate = t.registrationStartDate;
     _registrationDeadline = t.registrationDeadline;
     _useManualBrackets = t.useManualBrackets;
+    _selfRefEnabled = t.selfRefEnabled;
     _feeCtrl.text = t.registrationFee != null ? t.registrationFee!.toString() : '';
     _requirePaymentForBrackets = t.requirePaymentForBrackets;
   }
@@ -164,24 +167,28 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(tournamentRepositoryProvider).updateTournament(widget.tournamentId, {
-        'name': _nameCtrl.text.trim(),
-        if (_sportType.isNotEmpty) 'sportType': _sportType,
-        'format': _format,
-        'description': _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
-        if (_maxTeamsCtrl.text.trim().isNotEmpty) 'maxTeams': int.tryParse(_maxTeamsCtrl.text.trim()),
-        if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
-        if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
-        if (_registrationStartDate != null) 'registrationStartDate': _registrationStartDate!.toIso8601String(),
-        if (_registrationDeadline != null) 'registrationDeadline': _registrationDeadline!.toIso8601String(),
-        'location': _locationCtrl.text.trim().isNotEmpty ? _locationCtrl.text.trim() : null,
-        'rulesDescription': _rulesCtrl.text.trim().isNotEmpty ? _rulesCtrl.text.trim() : null,
-        'prizesDescription': _prizesCtrl.text.trim().isNotEmpty ? _prizesCtrl.text.trim() : null,
-        'useManualBrackets': _useManualBrackets,
-        'registrationFee': _feeCtrl.text.trim().isNotEmpty ? double.tryParse(_feeCtrl.text.trim()) : null,
-        'requirePaymentForBrackets': _requirePaymentForBrackets,
-        'paymentInfo': _paymentInfoCtrl.text.trim().isNotEmpty ? _paymentInfoCtrl.text.trim() : null,
-      });
+      await ref.read(tournamentRepositoryProvider).updateTournament(
+            widget.tournamentId,
+            buildUpdateTournamentPayload(
+              name: _nameCtrl.text,
+              sportType: _sportType,
+              format: _format,
+              startDate: _startDate,
+              endDate: _endDate,
+              registrationStartDate: _registrationStartDate,
+              registrationDeadline: _registrationDeadline,
+              description: _descCtrl.text,
+              maxTeams: _maxTeamsCtrl.text,
+              location: _locationCtrl.text,
+              rulesDescription: _rulesCtrl.text,
+              prizesDescription: _prizesCtrl.text,
+              useManualBrackets: _useManualBrackets,
+              selfRefEnabled: _selfRefEnabled,
+              registrationFee: _feeCtrl.text,
+              requirePaymentForBrackets: _requirePaymentForBrackets,
+              paymentInfo: _paymentInfoCtrl.text,
+            ),
+          );
       ref.read(tournamentsNotifierProvider.notifier).reload();
       ref.invalidate(tournamentDetailProvider(widget.tournamentId));
       if (!mounted) return;
@@ -324,6 +331,12 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
               subtitle: const Text('Manually create pools and assign teams instead of auto-generating'),
               value: _useManualBrackets,
               onChanged: (v) => setState(() => _useManualBrackets = v),
+            ),
+            SwitchListTile(
+              title: const Text('Self-ref mode'),
+              subtitle: const Text('Teams can be assigned to referee other matches. Best when teams rotate and no dedicated officials are available.'),
+              value: _selfRefEnabled,
+              onChanged: (v) => setState(() => _selfRefEnabled = v),
             ),
             const SizedBox(height: 16),
             UiSectionTitle('Registration Fee'),

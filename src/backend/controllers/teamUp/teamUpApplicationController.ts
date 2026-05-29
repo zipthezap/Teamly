@@ -866,7 +866,17 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
 
   const requestRecord = await prisma.teamUpRequest.findUnique({
     where: { id },
-    select: { creatorId: true, playersNeeded: true },
+    select: {
+      creatorId: true,
+      playersNeeded: true,
+      // @ts-ignore
+      positions: {
+        select: {
+          id: true,
+          slotsNeeded: true,
+        },
+      },
+    },
   });
   if (!requestRecord) throw new NotFoundError(`TeamUp request ${id} not found`);
   if (requestRecord.creatorId !== req.user!.id) {
@@ -879,7 +889,7 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
       id: { in: uniqueResponseIds },
       teamUpRequestId: id,
     },
-    select: { id: true, status: true },
+    select: { id: true, status: true, requestPositionId: true },
   });
 
   const acceptedCount = await prisma.teamUpResponse.count({
@@ -888,6 +898,39 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
   const acceptedInPayload = responses.filter((item) => item.status !== 'accepted').length;
   if (action === 'accept' && acceptedCount + acceptedInPayload > requestRecord.playersNeeded) {
     throw new BadRequestError('Bulk accept exceeds available slots');
+  }
+
+  if (action === 'accept' && requestRecord.positions.length > 0) {
+    const acceptedByPosition = await prisma.teamUpResponse.findMany({
+      where: { teamUpRequestId: id, status: 'accepted' },
+      select: { requestPositionId: true },
+    });
+
+    const currentAcceptedCountByPosition = new Map<string, number>();
+    for (const item of acceptedByPosition) {
+      if (!item.requestPositionId) continue;
+      currentAcceptedCountByPosition.set(
+        item.requestPositionId,
+        (currentAcceptedCountByPosition.get(item.requestPositionId) ?? 0) + 1
+      );
+    }
+
+    const incomingAcceptedByPosition = new Map<string, number>();
+    for (const item of responses) {
+      if (item.status === 'accepted' || !item.requestPositionId) continue;
+      incomingAcceptedByPosition.set(
+        item.requestPositionId,
+        (incomingAcceptedByPosition.get(item.requestPositionId) ?? 0) + 1
+      );
+    }
+
+    for (const position of requestRecord.positions) {
+      const currentAccepted = currentAcceptedCountByPosition.get(position.id) ?? 0;
+      const incomingAccepted = incomingAcceptedByPosition.get(position.id) ?? 0;
+      if (currentAccepted + incomingAccepted > position.slotsNeeded) {
+        throw new BadRequestError('Bulk accept exceeds available slots for one or more positions');
+      }
+    }
   }
 
   const updateData: Prisma.TeamUpResponseUpdateManyMutationInput =
@@ -907,10 +950,28 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
   });
 
   if (action === 'accept') {
-    const refreshedAccepted = await prisma.teamUpResponse.count({
-      where: { teamUpRequestId: id, status: 'accepted' },
-    });
-    if (refreshedAccepted >= requestRecord.playersNeeded) {
+    let requestFilled = false;
+    if (requestRecord.positions.length > 0) {
+      const refreshedAcceptedByPosition = await prisma.teamUpResponse.findMany({
+        where: { teamUpRequestId: id, status: 'accepted' },
+        select: { requestPositionId: true },
+      });
+      const filledCounts = new Map<string, number>();
+      for (const item of refreshedAcceptedByPosition) {
+        if (!item.requestPositionId) continue;
+        filledCounts.set(item.requestPositionId, (filledCounts.get(item.requestPositionId) ?? 0) + 1);
+      }
+      requestFilled = requestRecord.positions.every(
+        (position) => (filledCounts.get(position.id) ?? 0) >= position.slotsNeeded
+      );
+    } else {
+      const refreshedAccepted = await prisma.teamUpResponse.count({
+        where: { teamUpRequestId: id, status: 'accepted' },
+      });
+      requestFilled = refreshedAccepted >= requestRecord.playersNeeded;
+    }
+
+    if (requestFilled) {
       await prisma.teamUpRequest.update({
         where: { id },
         data: { status: 'filled' },

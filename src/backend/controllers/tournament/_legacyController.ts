@@ -3226,6 +3226,10 @@ export const assignReferee = async (req: Request, res: Response) => {
 
   assertTournamentSetupEditable(tournament, 'Referees can only be assigned before the tournament starts');
 
+  if (tournament.selfRefEnabled === false) {
+    throw new BadRequestError('Self-ref mode is disabled for this tournament');
+  }
+
   const match = ensureResourceExists(
     await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
     'Match'
@@ -3342,6 +3346,12 @@ export const autoAssignReferees = async (req: Request, res: Response) => {
 
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can auto-assign referees');
+  }
+
+  assertTournamentSetupEditable(tournament, 'Referees can only be assigned before the tournament starts');
+
+  if (tournament.selfRefEnabled === false) {
+    throw new BadRequestError('Self-ref mode is disabled for this tournament');
   }
 
   // Fetch all non-cancelled matches in the tournament

@@ -16,6 +16,7 @@ class NotificationModel extends Equatable {
     this.teamupId,
     this.actorName,
     this.params,
+    this.metadata,
   });
 
   final String id;
@@ -32,14 +33,16 @@ class NotificationModel extends Equatable {
   final String? teamupId;
   final String? actorName;
   final Map<String, dynamic>? params;
+  final Map<String, dynamic>? metadata;
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    final event = json['event'] as Map<String, dynamic>?;
+    final event = (json['event'] ?? json['session']) as Map<String, dynamic>?;
     final group = json['group'] as Map<String, dynamic>?;
     final tournament = json['tournament'] as Map<String, dynamic>?;
     final teamUpRequest = json['teamUpRequest'] as Map<String, dynamic>?;
     final user = json['user'] as Map<String, dynamic>?;
     final rawParams = json['params'];
+    final rawMetadata = json['metadata'];
 
     return NotificationModel(
       id: json['id'] as String,
@@ -56,6 +59,7 @@ class NotificationModel extends Equatable {
       teamupId: teamUpRequest?['id'] as String?,
       actorName: user?['name'] as String?,
       params: rawParams is Map<String, dynamic> ? rawParams : null,
+      metadata: rawMetadata is Map<String, dynamic> ? rawMetadata : null,
     );
   }
 
@@ -72,6 +76,14 @@ class NotificationModel extends Equatable {
         return '$name joined $title';
       case 'leave':
         return '$name left $title';
+      case 'session_updated':
+        return 'Event "$title" was updated';
+      case 'session_cancelled':
+        return 'Event "$title" was cancelled';
+      case 'comment':
+        return '$name commented on $title';
+      case 'status_change':
+        return 'Status changed for "$title"';
       case 'created':
         return notificationType == 'group'
             ? 'New group "$gName" was created nearby'
@@ -106,13 +118,21 @@ class NotificationModel extends Equatable {
         return 'A score was submitted in "$tName"';
       case 'tournament_cancelled':
         return 'Tournament "$tName" was cancelled';
-      case 'tournament_started':
-        return 'Tournament "$tName" has started';
       default:
         return type.replaceAll('_', ' ');
     }
   }
 
   @override
-  List<Object?> get props => [id, type, notificationType, read, createdAt];
+  List<Object?> get props => [
+        id,
+        type,
+        notificationType,
+        read,
+        createdAt,
+        eventId,
+        groupId,
+        tournamentId,
+        teamupId,
+      ];
 }

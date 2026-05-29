@@ -34,7 +34,7 @@ const List<Map<String, String>> kEventTypes = [
 ];
 
 const List<Map<String, String>> kTournamentFormats = [
-  {'value': 'bracket', 'label': 'Single Elimination Bracket'},
-  {'value': 'pool', 'label': 'Pool (Round Robin)'},
+  {'value': 'single_elimination', 'label': 'Single Elimination'},
   {'value': 'round_robin', 'label': 'Full Round Robin'},
+  {'value': 'groups_knockout', 'label': 'Groups + Knockout'},
 ];

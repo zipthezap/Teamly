@@ -27,6 +27,11 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
     throw new BadRequestError('Radius must be between 0 and 100 kilometers');
   }
 
+  const parsedLimit = Number.parseInt(String(limit), 10);
+  const validatedLimit = Number.isNaN(parsedLimit)
+    ? 50
+    : Math.min(Math.max(parsedLimit, 1), 100);
+
   // Get all open TeamUp requests with location data
   const requests: any[] = await prisma.teamUpRequest.findMany({
     where: {
@@ -86,7 +91,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
       }
     },
     orderBy: { dateTime: 'asc' },
-    take: parseInt(limit as string) * 2 // Get more than needed for filtering
+    take: validatedLimit * 2 // Get more than needed for filtering
   });
 
   // Filter by location and add distance
@@ -95,7 +100,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
     lat,
     lon,
     radiusKm
-  ).slice(0, parseInt(limit as string)); // Limit after filtering
+  ).slice(0, validatedLimit); // Limit after filtering
 
   // Enrich with location info
   const enrichedRequests = nearbyRequests.map(request => 

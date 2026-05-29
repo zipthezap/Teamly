@@ -383,6 +383,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         padding: const EdgeInsets.all(16),
         children: [
           _InfoCard(children: [
+            _OfficiatingModeBadge(selfRefEnabled: t.selfRefEnabled),
+            const SizedBox(height: 8),
             _InfoRow(
                 icon: Icons.emoji_events_outlined,
                 label: 'Sport',
@@ -1757,6 +1759,54 @@ class _PaymentStatusBadge extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+}
+
+class _OfficiatingModeBadge extends StatelessWidget {
+  const _OfficiatingModeBadge({required this.selfRefEnabled});
+
+  final bool selfRefEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isSelfRef = selfRefEnabled;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isSelfRef
+            ? colorScheme.tertiaryContainer.withValues(alpha: 0.35)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isSelfRef
+              ? colorScheme.tertiary.withValues(alpha: 0.45)
+              : colorScheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isSelfRef ? Icons.sports : Icons.badge_outlined,
+            size: 16,
+            color: isSelfRef ? colorScheme.tertiary : colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isSelfRef
+                  ? 'Self-ref mode enabled'
+                  : 'Dedicated officiating mode',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

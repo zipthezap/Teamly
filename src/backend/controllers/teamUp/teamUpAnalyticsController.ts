@@ -46,6 +46,11 @@ export const getTeamUpAnalytics = async (req: Request, res: Response) => {
     prisma.teamUpResponse.count({
       where: {
         attendanceStatus: { in: ['attended', 'late'] },
+        ...(requestWhere
+          ? {
+              createdAt: dateFilter,
+            }
+          : {}),
       },
     }),
     prisma.teamUpRequest.findMany({

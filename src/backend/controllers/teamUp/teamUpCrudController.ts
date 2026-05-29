@@ -338,10 +338,20 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
 
   if (search && typeof search === 'string' && search.trim()) {
-    where.OR = [
+    const searchOr = [
       { title: { contains: search.trim(), mode: 'insensitive' } },
       { description: { contains: search.trim(), mode: 'insensitive' } },
     ];
+    const existingOr = Array.isArray(where.OR) ? (where.OR as unknown[]) : null;
+    if (existingOr) {
+      const existingAnd = Array.isArray(where.AND) ? (where.AND as unknown[]) : [];
+      where.AND = [...existingAnd, { OR: existingOr }, { OR: searchOr }];
+      delete where.OR;
+    } else if (Array.isArray(where.AND)) {
+      where.AND = [...(where.AND as unknown[]), { OR: searchOr }];
+    } else {
+      where.OR = searchOr;
+    }
   }
 
   // Date range filtering
@@ -360,19 +370,31 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
   where.dateTime = dateFilter;
 
-  // Decode cursor: encoded as base64 JSON {id, dateTime} for composite sort stability
+  const usingNewestSort = sortBy === 'newest';
+
+  // Decode cursor: encoded as base64 JSON with fields matching active sort
   let cursorCondition: Record<string, unknown> | undefined;
   if (cursor) {
     try {
-      const decoded = JSON.parse(Buffer.from(cursor as string, 'base64').toString('utf8')) as { id: string; dateTime: string };
-      const cursorDate = new Date(decoded.dateTime);
-      // Include rows where dateTime > cursorDate OR (dateTime == cursorDate AND id > cursorId)
-      cursorCondition = {
-        OR: [
-          { dateTime: { gt: cursorDate } },
-          { dateTime: { equals: cursorDate }, id: { gt: decoded.id } },
-        ],
-      };
+      if (usingNewestSort) {
+        const decoded = JSON.parse(Buffer.from(cursor as string, 'base64').toString('utf8')) as { id: string; createdAt: string };
+        const cursorCreatedAt = new Date(decoded.createdAt);
+        cursorCondition = {
+          OR: [
+            { createdAt: { lt: cursorCreatedAt } },
+            { createdAt: { equals: cursorCreatedAt }, id: { gt: decoded.id } },
+          ],
+        };
+      } else {
+        const decoded = JSON.parse(Buffer.from(cursor as string, 'base64').toString('utf8')) as { id: string; dateTime: string };
+        const cursorDate = new Date(decoded.dateTime);
+        cursorCondition = {
+          OR: [
+            { dateTime: { gt: cursorDate } },
+            { dateTime: { equals: cursorDate }, id: { gt: decoded.id } },
+          ],
+        };
+      }
     } catch {
       // Malformed cursor – ignore and start from the beginning
     }
@@ -531,10 +553,16 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     skipDuplicates: false,
   }).catch((_error: unknown): undefined => undefined);
 
-  // Calculate next cursor for cursor-based pagination – encode last item's (id, dateTime) as base64 JSON
+  // Calculate next cursor for cursor-based pagination – encode fields that match active sort
   const lastItem = teamUpRequests.length === validatedLimit ? teamUpRequests[teamUpRequests.length - 1] : null;
   const nextCursor = lastItem
-    ? Buffer.from(JSON.stringify({ id: lastItem.id, dateTime: lastItem.dateTime })).toString('base64')
+    ? Buffer.from(
+        JSON.stringify(
+          usingNewestSort
+            ? { id: lastItem.id, createdAt: lastItem.createdAt }
+            : { id: lastItem.id, dateTime: lastItem.dateTime }
+        )
+      ).toString('base64')
     : null;
 
   // Return paginated response with metadata

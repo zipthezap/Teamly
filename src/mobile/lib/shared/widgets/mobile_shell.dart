@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/state/auth_notifier.dart';
+import '../../features/dashboard/state/dashboard_notifier.dart';
 import '../../features/notifications/state/notifications_notifier.dart';
 import '../../features/tournaments/state/tournaments_notifier.dart';
 import 'teamly_logo.dart';
@@ -56,9 +57,37 @@ class MobileShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadAsync = ref.watch(unreadCountProvider);
     final unreadCount = unreadAsync.maybeWhen(data: (c) => c, orElse: () => 0);
+    final dashboardAsync = ref.watch(dashboardNotifierProvider);
+    final upcomingCount =
+      dashboardAsync.maybeWhen(data: (d) => d.stats.upcomingCount, orElse: () => 0);
     final currentPath = GoRouterState.of(context).uri.path;
+    final tabRootPath = switch (currentIndex) {
+      0 => '/dashboard',
+      1 => '/play',
+      2 => '/groups',
+      3 => '/compete',
+      4 => '/profile',
+      _ => null,
+    };
+    final shouldShowContextualBack =
+        tabRootPath != null && currentPath != tabRootPath;
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
+    final fallbackLeading = (currentIndex == -1 || shouldShowContextualBack)
+        ? IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Back',
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else if (shouldShowContextualBack && tabRootPath != null) {
+                context.go(tabRootPath);
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          )
+        : null;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final navBarColor =
         isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
@@ -78,7 +107,7 @@ class MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        leading: leading,
+        leading: leading ?? fallbackLeading,
         automaticallyImplyLeading: true,
         title: titleWidget ??
             (title == 'Teamly'
@@ -109,11 +138,41 @@ class MobileShell extends ConsumerWidget {
                 : () => context.push('/notifications'),
           ),
           IconButton(
-            tooltip: 'Profile',
-            onPressed: currentPath == '/profile'
+            tooltip: 'Calendar',
+            onPressed: currentPath == '/calendar'
                 ? null
-                : () => context.go('/profile'),
-            icon: const Icon(Icons.account_circle_outlined),
+                : () => context.push('/calendar'),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.calendar_month_outlined),
+                if (upcomingCount > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppThemeTokens.primary500,
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.surface,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        upcomingCount > 99 ? '99+' : '$upcomingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (actions != null) ...actions!,
           IconButton(

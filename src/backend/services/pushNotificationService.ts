@@ -41,7 +41,7 @@ const buildTitleAndBody = (
   params?: NotificationParams
 ): { title: string; body: string } => {
   const actor = String(params?.name ?? params?.actorName ?? 'Someone');
-  const eventTitle = String(params?.eventTitle ?? 'an session');
+  const eventTitle = String(params?.eventTitle ?? 'a session');
   const groupName = String(params?.groupName ?? 'a group');
   const requestTitle = String(params?.title ?? 'a request');
   const tournamentName = String(params?.tournamentName ?? 'a tournament');
@@ -79,6 +79,22 @@ const buildTitleAndBody = (
     title: 'Tournament update',
     body: `${tournamentName} has a new update`,
   };
+};
+
+const buildDefaultActionUrl = (kind: NotificationKind, entityId?: string): string => {
+  if (!entityId) return '/notifications';
+  switch (kind) {
+    case 'session':
+      return `/sessions/${entityId}`;
+    case 'group':
+      return `/groups/${entityId}`;
+    case 'teamup':
+      return `/teamup/${entityId}`;
+    case 'tournament':
+      return `/tournaments/${entityId}`;
+    default:
+      return '/notifications';
+  }
 };
 
 const getMessagingClient = (): Messaging | null => {
@@ -233,6 +249,7 @@ export const dispatchPushNotifications = async (input: PushDispatchInput): Promi
 
   const badgeByUser = new Map<string, number>(badgeCounts);
   const { title, body } = buildTitleAndBody(input.notificationKind, input.notificationType, input.params);
+  const resolvedActionUrl = input.metadata?.actionUrl ?? buildDefaultActionUrl(input.notificationKind, input.entityId);
 
   const payloads: PushPayload[] = devices.map((device) => ({
     token: device.token,
@@ -241,7 +258,7 @@ export const dispatchPushNotifications = async (input: PushDispatchInput): Promi
       notificationKind: input.notificationKind,
       notificationType: input.notificationType,
       entityId: input.entityId ?? '',
-      actionUrl: String(input.metadata?.actionUrl ?? ''),
+      actionUrl: resolvedActionUrl,
     },
     badge: badgeByUser.get(device.userId) ?? 0,
   }));

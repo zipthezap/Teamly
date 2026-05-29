@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/models/notification_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/mobile_shell.dart';
@@ -21,6 +22,76 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   bool _includeRead = false;
   final _scrollCtrl = ScrollController();
   bool _isLoadingMore = false;
+
+  String? _normalizeActionRoute(String? rawPath) {
+    if (rawPath == null || rawPath.isEmpty || !rawPath.startsWith('/')) {
+      return null;
+    }
+
+    if (rawPath.startsWith('/events/')) {
+      return rawPath.replaceFirst('/events/', '/sessions/');
+    }
+
+    final inviteMatch = RegExp(r'^/tournaments/.+/invitations/([^/]+)').firstMatch(rawPath);
+    if (inviteMatch != null) {
+      final token = inviteMatch.group(1);
+      if (token != null && token.isNotEmpty) {
+        return '/tournaments/invite/$token';
+      }
+    }
+
+    return rawPath;
+  }
+
+  String? _resolveNotificationRoute(NotificationModel notification) {
+    final params = notification.params;
+    final inviteToken = params?['inviteToken'] as String?;
+    if (inviteToken != null && inviteToken.isNotEmpty) {
+      return '/tournaments/invite/$inviteToken';
+    }
+
+    final metadataAction = _normalizeActionRoute(
+      notification.metadata?['actionUrl'] as String?,
+    );
+    if (metadataAction != null) {
+      return metadataAction;
+    }
+
+    if (notification.eventId != null) {
+      return '/sessions/${notification.eventId}';
+    }
+    if (notification.groupId != null) {
+      return '/groups/${notification.groupId}';
+    }
+    if (notification.tournamentId != null) {
+      return '/tournaments/${notification.tournamentId}';
+    }
+    if (notification.teamupId != null) {
+      return '/teamup/${notification.teamupId}';
+    }
+
+    return null;
+  }
+
+  String _actionLabelFor(NotificationModel notification) {
+    final actionText = notification.metadata?['actionText'] as String?;
+    if (actionText != null && actionText.isNotEmpty) {
+      return actionText;
+    }
+
+    switch (notification.notificationType) {
+      case 'session':
+        return 'View Event';
+      case 'group':
+        return 'View Group';
+      case 'teamup':
+        return 'View Request';
+      case 'tournament':
+        return 'View Tournament';
+      default:
+        return 'Open';
+    }
+  }
 
   @override
   void initState() {
@@ -126,31 +197,21 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 }
                 final n = notifications[index];
                 final isUnread = !n.read;
+                final route = _resolveNotificationRoute(n);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _NotificationCard(
                     notification: n,
                     isUnread: isUnread,
+                    actionLabel: route != null ? _actionLabelFor(n) : null,
                     onTap: () async {
                       if (!n.read) {
                         await ref.read(notificationsNotifierProvider.notifier).markRead(n.id);
                         ref.invalidate(unreadCountProvider);
                       }
                       if (!context.mounted) return;
-                      // If notification contains an invite token, deep-link to the
-                      // public tournament invite landing so the user can accept.
-                      final params = n.params as Map<String, dynamic>?;
-                      if (params != null && (params['inviteToken'] as String?) != null) {
-                        final token = (params['inviteToken'] as String?)!;
-                        context.push('/tournaments/invite/$token');
-                      } else if (n.eventId != null) {
-                        context.push('/sessions/${n.eventId}');
-                      } else if (n.groupId != null) {
-                        context.push('/groups/${n.groupId}');
-                      } else if (n.tournamentId != null) {
-                        context.push('/tournaments/${n.tournamentId}');
-                      } else if (n.teamupId != null) {
-                        context.push('/teamup/${n.teamupId}');
+                      if (route != null) {
+                        context.push(route);
                       }
                     },
                     onDismiss: () async {
@@ -174,12 +235,14 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.notification,
     required this.isUnread,
+    required this.actionLabel,
     required this.onTap,
     required this.onDismiss,
   });
 
-  final dynamic notification;
+  final NotificationModel notification;
   final bool isUnread;
+  final String? actionLabel;
   final VoidCallback onTap;
   final VoidCallback onDismiss;
 
@@ -334,6 +397,24 @@ class _NotificationCard extends StatelessWidget {
                             color: AppThemeTokens.textMuted(context),
                           ),
                         ),
+                        if (actionLabel != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              actionLabel!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

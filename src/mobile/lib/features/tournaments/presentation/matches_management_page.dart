@@ -558,6 +558,10 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
     );
     if (confirm != true || !mounted) return;
 
+    final unassignedBefore = tournament.matches
+        .where((m) => m.status != 'cancelled' && m.refereeTeamId == null)
+        .length;
+
     setState(() => _loading = true);
     try {
       final result = await ref
@@ -565,10 +569,22 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
           .autoAssignReferees(widget.tournamentId);
       _refresh();
       if (mounted) {
-        final assigned = result['assigned'] ?? 0;
+        final assigned = (result['assigned'] as num?)?.toInt() ?? 0;
+        final remaining = (unassignedBefore - assigned).clamp(0, unassignedBefore);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$assigned match(es) assigned a referee')),
         );
+        if (remaining > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '$remaining match(es) are still missing referees. '
+                'Assign manually or adjust schedule overlap so more teams are available.',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            ),
+          );
+        }
       }
     } on Exception catch (e) {
       if (mounted) {
@@ -670,6 +686,9 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
       data: (tournament) {
         final authState = ref.watch(authNotifierProvider);
         final currentUserId = authState.user?.id ?? '';
+        final isCreator = tournament.creatorId == currentUserId;
+        final isAdmin = tournament.admins.any((a) => a.userId == currentUserId);
+        final canManageReferees = isCreator || isAdmin;
         final matches = tournament.matches;
         final byRound = _matchesByRound(matches);
         final canManageStructure =
@@ -678,7 +697,7 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
           appBar: AppBar(
             title: const Text('Matches'),
             actions: [
-              if (tournament.selfRefEnabled && tournament.creatorId == currentUserId)
+              if (tournament.selfRefEnabled && canManageReferees)
                 IconButton(
                   icon: const Icon(Icons.assignment_ind_outlined),
                   tooltip: 'Auto-assign referees',
