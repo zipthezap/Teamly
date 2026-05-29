@@ -21,20 +21,7 @@ app.get('/', (_req: Request, res: Response) => {
     message: 'Tournament Service is running',
     endpoints: [
       'GET /health',
-      'GET /api/tournaments/public',
-      'GET /api/tournaments/invitations/preview/:inviteToken',
-      'GET /api/tournaments/invitations/my',
-      'POST /api/tournaments/invitations/:inviteToken/accept',
-      'POST /api/tournaments/invitations/:inviteToken/decline',
-      'GET /api/tournaments/invitations/:inviteToken',
-      'POST /api/tournaments/:id/teams/:teamId/invitations',
-      'GET /api/tournaments/:id/teams/:teamId/invitations',
-      'DELETE /api/tournaments/:id/teams/:teamId/invitations/:invitationId',
-      'POST /api/tournaments/:id/matches/:matchId/cancel',
-      'GET /api/tournaments/:id/summary',
-      'GET /api/tournaments/:id/matches',
-      'GET /api/tournaments/:id/standings',
-      'GET /api/tournaments/:id/match-count',
+      'All /api/tournaments/* endpoints (mirrored from monolith tournament router)',
     ],
   });
 });

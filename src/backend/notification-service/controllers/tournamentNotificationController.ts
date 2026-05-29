@@ -24,6 +24,7 @@ type TournamentNotificationRequestBody = {
   params?: Record<string, string | number | boolean | undefined>;
   metadata?: Record<string, string | number | boolean | Date | undefined>;
   deduplicateWindow?: number;
+  idempotencyKey?: string;
 };
 
 export const createTournamentNotifications = async (req: Request, res: Response): Promise<void> => {
@@ -34,6 +35,7 @@ export const createTournamentNotifications = async (req: Request, res: Response)
     params,
     metadata,
     deduplicateWindow = 0,
+    idempotencyKey,
   } = req.body as TournamentNotificationRequestBody;
 
   if (!tournamentId || !type || !Array.isArray(userIds)) {
@@ -48,6 +50,23 @@ export const createTournamentNotifications = async (req: Request, res: Response)
 
   const prismaTournamentType = toPrismaTournamentType(type);
   let targetUserIds = userIds;
+
+  if (idempotencyKey) {
+    const existingIdempotentNotifications = (await prisma.tournamentNotification.findMany({
+      where: {
+        tournamentId,
+        type: prismaTournamentType,
+        userId: { in: targetUserIds },
+        metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    })) || [];
+
+    if (existingIdempotentNotifications.length > 0) {
+      const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+      targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
+    }
+  }
 
   if (deduplicateWindow > 0) {
     const windowStart = new Date(Date.now() - deduplicateWindow);
@@ -74,7 +93,7 @@ export const createTournamentNotifications = async (req: Request, res: Response)
     userId,
     type: prismaTournamentType,
     params: params || {},
-    metadata: metadata || {},
+    metadata: { ...(metadata || {}), ...(idempotencyKey ? { idempotencyKey } : {}) },
   }));
 
   await prisma.tournamentNotification.createMany({

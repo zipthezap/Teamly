@@ -34,6 +34,10 @@ vi.mock('../../middleware/authorization', () => ({
   requireGroupPermission: () => (_req: any, _res: any, next: any) => next(),
 }));
 
+vi.mock('../../controllers/proxies/tournamentProxyController', () => ({
+  proxyTournamentHandler: (handler: any) => handler,
+}));
+
 vi.mock('../../services/notificationFactory', () => ({
   NotificationFactory: {
     createTournamentNotifications: vi.fn().mockResolvedValue(undefined),

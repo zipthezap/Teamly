@@ -72,6 +72,41 @@ vi.mock('../../controllers/groupController', () => ({
   joinGroupByInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true }))
 }));
 
+vi.mock('../../controllers/proxies/groupProxyController', () => ({
+  getGroupByInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getGroupForInvite: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  joinGroupByInvite: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  inviteMember: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  bulkInviteMembers: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  revokeInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getInviteAnalytics: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  generateInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  removeMember: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  removeMemberByUserId: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateMemberRole: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  leaveGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  transferAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getInviteLink: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  generateGroupInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  joinGroupByInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  requestJoinGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getJoinRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  handleJoinRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  cancelMyJoinRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  respondToInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getUserInvitations: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getMyJoinRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getGroupMembers: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getGroup: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getGroups: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getNearbyGroups: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  uploadGroupPicture: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteGroupPicture: vi.fn((req: any, res: any) => res.json({ ok: true })),
+}));
+
 describe('Group Routes', () => {
   const app = createTestApp(groupRoutes, '/api');
 

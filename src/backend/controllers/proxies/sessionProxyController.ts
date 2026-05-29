@@ -1,20 +1,46 @@
 import { Request, Response } from 'express';
 
 import {
+  addRecurringEventException as addRecurringEventExceptionLegacy,
+  createEvent as createEventLegacy,
+  deleteEvent as deleteEventLegacy,
+  exportEvents as exportEventsLegacy,
+  getEvent as getEventLegacy,
+  getEventByInviteToken as getEventByInviteTokenLegacy,
+  getEventInviteAnalytics as getEventInviteAnalyticsLegacy,
+  getEventParticipantsByStatus as getEventParticipantsByStatusLegacy,
+  getGuestParticipants as getGuestParticipantsLegacy,
   archiveEvent as archiveEventLegacy,
   generateEventInviteToken as generateEventInviteTokenLegacy,
   generateInviteToken as generateInviteTokenLegacy,
+  getRecurringEventInstances as getRecurringEventInstancesLegacy,
   inviteToEvent as inviteToEventLegacy,
   joinEvent as joinEventLegacy,
+  joinEventAsGuest as joinEventAsGuestLegacy,
   leaveEvent as leaveEventLegacy,
+  removeRecurringEventException as removeRecurringEventExceptionLegacy,
   removeGuestParticipant as removeGuestParticipantLegacy,
   revokeEventInvitation as revokeEventInvitationLegacy,
   unarchiveEvent as unarchiveEventLegacy,
+  getUserStatistics as getUserStatisticsLegacy,
+  getEventActivityFeed as getEventActivityFeedLegacy,
+  updateEvent as updateEventLegacy,
   updateGuestParticipant as updateGuestParticipantLegacy,
   updateGuestParticipantStatus as updateGuestParticipantStatusLegacy,
   updateParticipationStatus as updateParticipationStatusLegacy,
   updateSessionStatus as updateSessionStatusLegacy,
+  getNearbyEvents as getNearbyEventsLegacy,
 } from '../sessionController';
+import {
+  createReminder as createReminderLegacy,
+  getEventReminders as getEventRemindersLegacy,
+} from '../reminderController';
+import {
+  deleteAttendance as deleteAttendanceLegacy,
+  getAttendanceStats as getAttendanceStatsLegacy,
+  getEventAttendance as getEventAttendanceLegacy,
+  markAttendance as markAttendanceLegacy,
+} from '../attendanceController';
 import { logger } from '../../utils/logger';
 
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
@@ -35,10 +61,16 @@ const proxySessionRequest = async (
   req: Request,
   res: Response,
   path: string,
-  fallback: (req: Request, res: Response) => Promise<unknown>,
+  fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
+  const fallbackNext = (error?: unknown): void => {
+    if (error) {
+      throw error;
+    }
+  };
+
   if (!COMMUNITY_SERVICE_URL) {
-    await fallback(req, res);
+    await Promise.resolve(fallback(req, res, fallbackNext));
     return;
   }
 
@@ -61,6 +93,8 @@ const proxySessionRequest = async (
   }
 
   const baseUrl = COMMUNITY_SERVICE_URL.replace(/\/$/, '');
+  const queryIndex = req.originalUrl.indexOf('?');
+  const querySuffix = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
 
   try {
     const controller = new AbortController();
@@ -68,7 +102,7 @@ const proxySessionRequest = async (
 
     let response: globalThis.Response;
     try {
-      response = await fetch(`${baseUrl}${path}`, {
+      response = await fetch(`${baseUrl}${path}${querySuffix}`, {
         method: req.method,
         headers,
         body: ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ? JSON.stringify(req.body ?? {}) : undefined,
@@ -91,7 +125,7 @@ const proxySessionRequest = async (
       method: req.method,
       path,
     });
-    await fallback(req, res);
+    await Promise.resolve(fallback(req, res, fallbackNext));
   }
 };
 
@@ -133,3 +167,69 @@ export const archiveEvent = async (req: Request, res: Response) =>
 
 export const unarchiveEvent = async (req: Request, res: Response) =>
   proxySessionRequest(req, res, `/api/sessions/${req.params.id}/unarchive`, unarchiveEventLegacy);
+
+export const getUserStatistics = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, '/api/sessions/statistics', getUserStatisticsLegacy);
+
+export const getEventActivityFeed = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/activity`, getEventActivityFeedLegacy);
+
+export const getNearbyEvents = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, '/api/sessions/nearby', getNearbyEventsLegacy);
+
+export const getEventByInviteToken = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/invite/${req.params.token}`, getEventByInviteTokenLegacy);
+
+export const joinEventAsGuest = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/invite/${req.params.token}/join`, joinEventAsGuestLegacy);
+
+export const createEvent = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, '/api/sessions', createEventLegacy);
+
+export const getEvent = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, getEventLegacy);
+
+export const getEventParticipantsByStatus = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/participants`, getEventParticipantsByStatusLegacy);
+
+export const getGuestParticipants = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/guests`, getGuestParticipantsLegacy);
+
+export const updateEvent = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, updateEventLegacy);
+
+export const deleteEvent = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, deleteEventLegacy);
+
+export const getEventInviteAnalytics = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/invitations/analytics`, getEventInviteAnalyticsLegacy);
+
+export const getRecurringEventInstances = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/instances`, getRecurringEventInstancesLegacy);
+
+export const addRecurringEventException = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/exceptions`, addRecurringEventExceptionLegacy);
+
+export const removeRecurringEventException = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/exceptions`, removeRecurringEventExceptionLegacy);
+
+export const exportEvents = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, '/api/sessions/export', exportEventsLegacy);
+
+export const createReminder = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/reminders`, createReminderLegacy);
+
+export const getEventReminders = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/reminders`, getEventRemindersLegacy);
+
+export const markAttendance = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance`, markAttendanceLegacy);
+
+export const getEventAttendance = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance`, getEventAttendanceLegacy);
+
+export const getAttendanceStats = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance/stats`, getAttendanceStatsLegacy);
+
+export const deleteAttendance = async (req: Request, res: Response) =>
+  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance/${req.params.userId}`, deleteAttendanceLegacy);

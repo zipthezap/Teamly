@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger';
 import { pushNotificationToUser } from '../../services/sseService';
 import { GroupNotificationType } from '../../../shared/types/event.types';
 import { EmailPreference } from '@prisma/client';
+import { buildGroupIdempotencyKey } from './_idempotency';
 
 const getMuteKeyForGroupType = (type: GroupNotificationType): keyof EmailPreference | null => {
   switch (type) {
@@ -33,6 +34,7 @@ type GroupNotificationRequestBody = {
   params?: Record<string, string | number | boolean | undefined>;
   checkMutePreference?: boolean;
   deduplicateWindow?: number;
+  idempotencyKey?: string;
 };
 
 export const createGroupNotifications = async (req: Request, res: Response): Promise<void> => {
@@ -43,6 +45,7 @@ export const createGroupNotifications = async (req: Request, res: Response): Pro
     params,
     checkMutePreference = true,
     deduplicateWindow = 0,
+    idempotencyKey: requestIdempotencyKey,
   } = req.body as GroupNotificationRequestBody;
 
   if (!groupId || !type || !Array.isArray(userIds)) {
@@ -55,12 +58,35 @@ export const createGroupNotifications = async (req: Request, res: Response): Pro
     return;
   }
 
+  const idempotencyKey =
+    requestIdempotencyKey ||
+    buildGroupIdempotencyKey({
+      groupId,
+      type,
+      userIds,
+      params,
+    });
+
   let targetUserIds = userIds;
   if (checkMutePreference) {
     const muteKey = getMuteKeyForGroupType(type);
     if (muteKey) {
       targetUserIds = await filterUnmutedUsers(userIds, muteKey);
     }
+  }
+
+  if (targetUserIds.length > 0) {
+    const existingIdempotentNotifications = await prisma.groupNotification.findMany({
+      where: {
+        groupId,
+        type,
+        userId: { in: targetUserIds },
+        params: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    });
+    const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+    targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
   }
 
   if (deduplicateWindow > 0 && targetUserIds.length > 0) {
@@ -87,7 +113,7 @@ export const createGroupNotifications = async (req: Request, res: Response): Pro
     groupId,
     userId,
     type,
-    params: params || {},
+    params: { ...(params || {}), idempotencyKey },
   }));
 
   await prisma.groupNotification.createMany({

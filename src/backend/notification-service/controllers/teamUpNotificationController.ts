@@ -2,6 +2,7 @@ import { EmailPreference } from '@prisma/client';
 import { Request, Response } from 'express';
 
 import { TeamUpNotificationType } from '../../../shared/types/event.types';
+import { buildTeamUpIdempotencyKey } from './_idempotency';
 import prisma from '../../config/database';
 import { dispatchPushNotifications } from '../../services/pushNotificationService';
 import { filterUnmutedUsers } from '../../utils/notificationHelper';
@@ -29,6 +30,7 @@ type TeamUpNotificationRequestBody = {
   metadata?: Record<string, string | number | boolean | Date | undefined>;
   checkMutePreference?: boolean;
   deduplicateWindow?: number;
+  idempotencyKey?: string;
 };
 
 export const createTeamUpNotifications = async (req: Request, res: Response): Promise<void> => {
@@ -40,6 +42,7 @@ export const createTeamUpNotifications = async (req: Request, res: Response): Pr
     metadata,
     checkMutePreference = true,
     deduplicateWindow = 0,
+    idempotencyKey: requestIdempotencyKey,
   } = req.body as TeamUpNotificationRequestBody;
 
   if (!teamUpRequestId || !type || !Array.isArray(userIds)) {
@@ -52,12 +55,36 @@ export const createTeamUpNotifications = async (req: Request, res: Response): Pr
     return;
   }
 
+  const idempotencyKey =
+    requestIdempotencyKey ||
+    buildTeamUpIdempotencyKey({
+      teamUpRequestId,
+      type,
+      userIds,
+      params,
+      metadata,
+    });
+
   let targetUserIds = userIds;
   if (checkMutePreference) {
     const muteKey = getMuteKeyForTeamUpType(type);
     if (muteKey) {
       targetUserIds = await filterUnmutedUsers(userIds, muteKey);
     }
+  }
+
+  if (targetUserIds.length > 0) {
+    const existingIdempotentNotifications = await prisma.teamUpNotification.findMany({
+      where: {
+        teamUpRequestId,
+        type,
+        userId: { in: targetUserIds },
+        metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    });
+    const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+    targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
   }
 
   if (deduplicateWindow > 0 && targetUserIds.length > 0) {
@@ -85,7 +112,7 @@ export const createTeamUpNotifications = async (req: Request, res: Response): Pr
     userId,
     type,
     params: params || {},
-    metadata: metadata || {},
+    metadata: { ...(metadata || {}), idempotencyKey },
   }));
 
   await prisma.teamUpNotification.createMany({

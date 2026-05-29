@@ -43,26 +43,35 @@ interface BaseNotificationInput {
 interface SessionNotificationInput extends BaseNotificationInput {
   sessionId: string;
   type: SessionNotificationType;
+  idempotencyKey?: string;
 }
 
 interface GroupNotificationInput extends BaseNotificationInput {
   groupId: string;
   type: GroupNotificationType;
+  idempotencyKey?: string;
 }
 
 interface TeamUpNotificationInput extends BaseNotificationInput {
   teamUpRequestId: string;
   type: TeamUpNotificationType;
+  idempotencyKey?: string;
 }
 
 interface TournamentNotificationInput extends BaseNotificationInput {
   tournamentId: string;
   type: TournamentNotificationType;
+  idempotencyKey?: string;
 }
 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const NOTIFICATION_SERVICE_TIMEOUT_MS = Number(process.env.NOTIFICATION_SERVICE_TIMEOUT_MS || 8000);
+const NOTIFICATION_SERVICE_CANARY_PERCENT = Number(process.env.NOTIFICATION_SERVICE_CANARY_PERCENT || 100);
+const NOTIFICATION_SERVICE_SESSION_CANARY_PERCENT = Number(process.env.NOTIFICATION_SERVICE_SESSION_CANARY_PERCENT || NOTIFICATION_SERVICE_CANARY_PERCENT);
+const NOTIFICATION_SERVICE_GROUP_CANARY_PERCENT = Number(process.env.NOTIFICATION_SERVICE_GROUP_CANARY_PERCENT || NOTIFICATION_SERVICE_CANARY_PERCENT);
+const NOTIFICATION_SERVICE_TEAMUP_CANARY_PERCENT = Number(process.env.NOTIFICATION_SERVICE_TEAMUP_CANARY_PERCENT || NOTIFICATION_SERVICE_CANARY_PERCENT);
+const NOTIFICATION_SERVICE_TOURNAMENT_CANARY_PERCENT = Number(process.env.NOTIFICATION_SERVICE_TOURNAMENT_CANARY_PERCENT || NOTIFICATION_SERVICE_CANARY_PERCENT);
 
 const prismaTournamentNotificationTypeValues = new Set<string>(
   Object.values(PrismaTournamentNotificationType)
@@ -76,6 +85,130 @@ export class NotificationFactory {
     return type as PrismaTournamentNotificationType;
   }
 
+  private static normalizeCanaryPercent(rawPercent: number): number {
+    if (!Number.isFinite(rawPercent)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, Math.floor(rawPercent)));
+  }
+
+  private static hashBucket(value: string): number {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash % 100);
+  }
+
+  private static shouldUseNotificationService(
+    kind: 'session' | 'group' | 'teamup' | 'tournament',
+    sampleKey: string
+  ): boolean {
+    const percentByKind = {
+      session: NOTIFICATION_SERVICE_SESSION_CANARY_PERCENT,
+      group: NOTIFICATION_SERVICE_GROUP_CANARY_PERCENT,
+      teamup: NOTIFICATION_SERVICE_TEAMUP_CANARY_PERCENT,
+      tournament: NOTIFICATION_SERVICE_TOURNAMENT_CANARY_PERCENT,
+    };
+
+    const canaryPercent = this.normalizeCanaryPercent(percentByKind[kind]);
+    if (canaryPercent <= 0) {
+      return false;
+    }
+    if (canaryPercent >= 100) {
+      return true;
+    }
+
+    return this.hashBucket(sampleKey) < canaryPercent;
+  }
+
+  private static classifyNotificationServiceFallbackReason(error: unknown): string {
+    const maybeCode = (error as { reasonCode?: string } | null)?.reasonCode;
+    if (typeof maybeCode === 'string' && maybeCode.length > 0) {
+      return maybeCode;
+    }
+
+    const maybeStatus = (error as { status?: number } | null)?.status;
+    if (typeof maybeStatus === 'number') {
+      return `http_${maybeStatus}`;
+    }
+
+    const maybeName = (error as { name?: string } | null)?.name;
+    if (maybeName === 'AbortError') {
+      return 'timeout';
+    }
+
+    return 'unknown';
+  }
+
+  private static stableSerialize(value: unknown): string {
+    if (value === null || typeof value !== 'object') {
+      return JSON.stringify(value);
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableSerialize(item)).join(',')}]`;
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `${JSON.stringify(key)}:${this.stableSerialize(val)}`);
+
+    return `{${entries.join(',')}}`;
+  }
+
+  private static buildTournamentIdempotencyKey(input: TournamentNotificationInput): string {
+    const sortedUserIds = [...input.userIds].sort();
+    const payload = [
+      input.tournamentId,
+      input.type,
+      this.stableSerialize(sortedUserIds),
+      this.stableSerialize(input.params || {}),
+      this.stableSerialize(input.metadata || {}),
+    ].join('|');
+
+    return `tn_${this.hashBucket(payload)}_${payload.length}`;
+  }
+
+  private static buildSessionIdempotencyKey(input: SessionNotificationInput): string {
+    const sortedUserIds = [...input.userIds].sort();
+    const payload = [
+      input.sessionId,
+      input.type,
+      this.stableSerialize(sortedUserIds),
+      this.stableSerialize(input.params || {}),
+      this.stableSerialize(input.metadata || {}),
+    ].join('|');
+
+    return `sn_${this.hashBucket(payload)}_${payload.length}`;
+  }
+
+  private static buildGroupIdempotencyKey(input: GroupNotificationInput): string {
+    const sortedUserIds = [...input.userIds].sort();
+    const payload = [
+      input.groupId,
+      input.type,
+      this.stableSerialize(sortedUserIds),
+      this.stableSerialize(input.params || {}),
+    ].join('|');
+
+    return `gn_${this.hashBucket(payload)}_${payload.length}`;
+  }
+
+  private static buildTeamUpIdempotencyKey(input: TeamUpNotificationInput): string {
+    const sortedUserIds = [...input.userIds].sort();
+    const payload = [
+      input.teamUpRequestId,
+      input.type,
+      this.stableSerialize(sortedUserIds),
+      this.stableSerialize(input.params || {}),
+      this.stableSerialize(input.metadata || {}),
+    ].join('|');
+
+    return `tun_${this.hashBucket(payload)}_${payload.length}`;
+  }
+
   /**
    * Create session notifications for multiple users
    */
@@ -83,7 +216,9 @@ export class NotificationFactory {
     input: SessionNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
-    if (!tx && NOTIFICATION_SERVICE_URL) {
+    const idempotencyKey = input.idempotencyKey || this.buildSessionIdempotencyKey(input);
+
+    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('session', `${input.sessionId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -97,7 +232,7 @@ export class NotificationFactory {
           response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/session`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, idempotencyKey }),
             signal: controller.signal,
           });
         } finally {
@@ -106,7 +241,10 @@ export class NotificationFactory {
 
         const payload = await response.json() as { created?: number; skipped?: number; error?: string };
         if (!response.ok) {
-          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+          const error = new Error(payload.error || `Notification service request failed with status ${response.status}`) as Error & { status?: number; reasonCode?: string };
+          error.status = response.status;
+          error.reasonCode = `http_${response.status}`;
+          throw error;
         }
 
         return {
@@ -114,8 +252,10 @@ export class NotificationFactory {
           skipped: payload.skipped || 0,
         };
       } catch (error) {
+        const fallbackReason = this.classifyNotificationServiceFallbackReason(error);
         logger.warn('Notification service unavailable for createSessionNotifications, falling back to local implementation', 'NotificationFactory', {
           error,
+          fallbackReason,
           notificationType: input.type,
           sessionId: input.sessionId,
         });
@@ -146,6 +286,21 @@ export class NotificationFactory {
       }
     }
 
+    const existingIdempotentNotifications = await client.sessionNotification.findMany({
+      where: {
+        sessionId,
+        type,
+        userId: { in: targetUserIds },
+        metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    });
+
+    if (existingIdempotentNotifications.length > 0) {
+      const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+      targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
+    }
+
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
@@ -174,7 +329,7 @@ export class NotificationFactory {
         userId,
         type,
         params: params || {},
-        metadata: metadata || {}
+        metadata: { ...(metadata || {}), idempotencyKey }
       }));
 
       await client.sessionNotification.createMany({
@@ -225,7 +380,9 @@ export class NotificationFactory {
     input: GroupNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
-    if (!tx && NOTIFICATION_SERVICE_URL) {
+    const idempotencyKey = input.idempotencyKey || this.buildGroupIdempotencyKey(input);
+
+    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('group', `${input.groupId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -239,7 +396,7 @@ export class NotificationFactory {
           response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/group`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, idempotencyKey }),
             signal: controller.signal,
           });
         } finally {
@@ -248,7 +405,10 @@ export class NotificationFactory {
 
         const payload = await response.json() as { created?: number; skipped?: number; error?: string };
         if (!response.ok) {
-          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+          const error = new Error(payload.error || `Notification service request failed with status ${response.status}`) as Error & { status?: number; reasonCode?: string };
+          error.status = response.status;
+          error.reasonCode = `http_${response.status}`;
+          throw error;
         }
 
         return {
@@ -256,8 +416,10 @@ export class NotificationFactory {
           skipped: payload.skipped || 0,
         };
       } catch (error) {
+        const fallbackReason = this.classifyNotificationServiceFallbackReason(error);
         logger.warn('Notification service unavailable for createGroupNotifications, falling back to local implementation', 'NotificationFactory', {
           error,
+          fallbackReason,
           notificationType: input.type,
           groupId: input.groupId,
         });
@@ -287,6 +449,21 @@ export class NotificationFactory {
       }
     }
 
+    const existingIdempotentNotifications = await client.groupNotification.findMany({
+      where: {
+        groupId,
+        type,
+        userId: { in: targetUserIds },
+        params: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    });
+
+    if (existingIdempotentNotifications.length > 0) {
+      const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+      targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
+    }
+
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
@@ -314,7 +491,7 @@ export class NotificationFactory {
         groupId,
         userId,
         type,
-        params: params || {}
+        params: { ...(params || {}), idempotencyKey }
       }));
 
       await client.groupNotification.createMany({
@@ -364,7 +541,9 @@ export class NotificationFactory {
     input: TeamUpNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
-    if (!tx && NOTIFICATION_SERVICE_URL) {
+    const idempotencyKey = input.idempotencyKey || this.buildTeamUpIdempotencyKey(input);
+
+    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('teamup', `${input.teamUpRequestId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -378,7 +557,7 @@ export class NotificationFactory {
           response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/teamup`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, idempotencyKey }),
             signal: controller.signal,
           });
         } finally {
@@ -387,7 +566,10 @@ export class NotificationFactory {
 
         const payload = await response.json() as { created?: number; skipped?: number; error?: string };
         if (!response.ok) {
-          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+          const error = new Error(payload.error || `Notification service request failed with status ${response.status}`) as Error & { status?: number; reasonCode?: string };
+          error.status = response.status;
+          error.reasonCode = `http_${response.status}`;
+          throw error;
         }
 
         return {
@@ -395,8 +577,10 @@ export class NotificationFactory {
           skipped: payload.skipped || 0,
         };
       } catch (error) {
+        const fallbackReason = this.classifyNotificationServiceFallbackReason(error);
         logger.warn('Notification service unavailable for createTeamUpNotifications, falling back to local implementation', 'NotificationFactory', {
           error,
+          fallbackReason,
           notificationType: input.type,
           teamUpRequestId: input.teamUpRequestId,
         });
@@ -427,6 +611,21 @@ export class NotificationFactory {
       }
     }
 
+    const existingIdempotentNotifications = await client.teamUpNotification.findMany({
+      where: {
+        teamUpRequestId,
+        type,
+        userId: { in: targetUserIds },
+        metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    });
+
+    if (existingIdempotentNotifications.length > 0) {
+      const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+      targetUserIds = targetUserIds.filter((id) => !existingUserIds.has(id));
+    }
+
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
@@ -455,7 +654,7 @@ export class NotificationFactory {
         userId,
         type,
         params: params || {},
-        metadata: metadata || {}
+        metadata: { ...(metadata || {}), idempotencyKey }
       }));
 
       await client.teamUpNotification.createMany({
@@ -500,7 +699,9 @@ export class NotificationFactory {
     input: TournamentNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
-    if (!tx && NOTIFICATION_SERVICE_URL) {
+    const idempotencyKey = input.idempotencyKey || this.buildTournamentIdempotencyKey(input);
+
+    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('tournament', `${input.tournamentId}:${input.type}:${idempotencyKey}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -514,7 +715,7 @@ export class NotificationFactory {
           response = await fetch(`${NOTIFICATION_SERVICE_URL.replace(/\/$/, '')}/api/notifications/tournament`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(input),
+            body: JSON.stringify({ ...input, idempotencyKey }),
             signal: controller.signal,
           });
         } finally {
@@ -523,7 +724,10 @@ export class NotificationFactory {
 
         const payload = await response.json() as { created?: number; skipped?: number; error?: string };
         if (!response.ok) {
-          throw new Error(payload.error || `Notification service request failed with status ${response.status}`);
+          const error = new Error(payload.error || `Notification service request failed with status ${response.status}`) as Error & { status?: number; reasonCode?: string };
+          error.status = response.status;
+          error.reasonCode = `http_${response.status}`;
+          throw error;
         }
 
         return {
@@ -531,10 +735,13 @@ export class NotificationFactory {
           skipped: payload.skipped || 0,
         };
       } catch (error) {
+        const fallbackReason = this.classifyNotificationServiceFallbackReason(error);
         logger.warn('Notification service unavailable for createTournamentNotifications, falling back to local implementation', 'NotificationFactory', {
           error,
+          fallbackReason,
           notificationType: input.type,
           tournamentId: input.tournamentId,
+          idempotencyKey,
         });
       }
     }
@@ -573,20 +780,36 @@ export class NotificationFactory {
     // Deduplicate if window is specified
     let finalUserIds = targetUserIds;
     const prismaTournamentType = this.toPrismaTournamentType(type);
+
+    const existingIdempotentNotifications = (await client.tournamentNotification.findMany({
+      where: {
+        tournamentId,
+        type: prismaTournamentType,
+        userId: { in: targetUserIds },
+        metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
+      },
+      select: { userId: true },
+    })) || [];
+
+    if (existingIdempotentNotifications.length > 0) {
+      const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
+      finalUserIds = finalUserIds.filter((userId) => !existingUserIds.has(userId));
+    }
+
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
       const existingNotifications = await client.tournamentNotification.findMany({
         where: {
           tournamentId,
           type: prismaTournamentType,
-          userId: { in: targetUserIds },
+          userId: { in: finalUserIds },
           createdAt: { gte: windowStart }
         },
         select: { userId: true }
       });
       
       const existingUserIds = new Set(existingNotifications.map(n => n.userId));
-      finalUserIds = targetUserIds.filter(id => !existingUserIds.has(id));
+      finalUserIds = finalUserIds.filter(id => !existingUserIds.has(id));
     }
 
     if (finalUserIds.length === 0) {
@@ -600,7 +823,7 @@ export class NotificationFactory {
         userId,
         type: prismaTournamentType,
         params: params || {},
-        metadata: metadata || {}
+        metadata: { ...(metadata || {}), idempotencyKey }
       }));
 
       await client.tournamentNotification.createMany({

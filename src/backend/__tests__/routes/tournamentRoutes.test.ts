@@ -3,7 +3,6 @@ import request from 'supertest';
 import { createTestApp } from '../helpers/testApp';
 import { Permission } from '../../../shared/types/permissions.types';
 import tournamentRoutes from '../../routes/tournamentRoutes';
-import * as tournamentController from '../../controllers/tournamentController';
 
 const routeSecurityMocks = vi.hoisted(() => ({
   authenticatedLimiter: vi.fn((_: any, __: any, next: any) => next()),
@@ -46,7 +45,11 @@ vi.mock('../../middleware/authorization', () => ({
   requireTeamUpPermission: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/tournamentController', () => ({
+vi.mock('../../controllers/proxies/tournamentProxyController', () => ({
+  proxyTournamentHandler: (handler: any) => handler,
+}));
+
+vi.mock('../../tournament-service/controllers/tournament', () => ({
   createTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),

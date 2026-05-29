@@ -1,0 +1,28 @@
+import {
+  getTournamentMatches,
+  getStandings,
+  generateGroupMatches,
+  generateBrackets,
+  submitScore,
+  adminUpdateScore,
+  createMatch,
+  updateMatch,
+  deleteMatch,
+  assignReferee,
+  autoAssignReferees,
+  getRefereeDuties,
+} from './tournamentCoreController';
+export {
+  getTournamentMatches,
+  getStandings,
+  generateGroupMatches,
+  generateBrackets,
+  submitScore,
+  adminUpdateScore,
+  createMatch,
+  updateMatch,
+  deleteMatch,
+  assignReferee,
+  autoAssignReferees,
+  getRefereeDuties,
+};

@@ -1,0 +1,17 @@
+export {
+  selfRegisterTeam,
+  selfUnregisterTeam,
+  checkInTeam,
+  generateCheckInQrToken,
+  checkInViaQrToken,
+  getRegistrationWaitlist,
+  joinRegistrationWaitlist,
+  leaveRegistrationWaitlist,
+  promoteFromRegistrationWaitlist,
+  getRegistrationFields,
+  createRegistrationField,
+  updateRegistrationField,
+  deleteRegistrationField,
+  submitTeamAnswers,
+  getTeamAnswers,
+} from './tournamentCoreController';

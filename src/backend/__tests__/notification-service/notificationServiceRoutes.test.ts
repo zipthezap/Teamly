@@ -107,4 +107,91 @@ describe('Notification Service Routes', () => {
     expect(createManyArg.data).toHaveLength(1);
     expect(createManyArg.data[0].userId).toBe('u2');
   });
+
+  it('deduplicates tournament notifications with idempotencyKey across retries', async () => {
+    mockPrisma.tournamentNotification.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ userId: 'u1' }]);
+
+    const payload = {
+      tournamentId: 't1',
+      type: 'team_registered',
+      userIds: ['u1'],
+      idempotencyKey: 'tn_retry_1',
+    };
+
+    const firstResponse = await request(app)
+      .post('/api/notifications/tournament')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    const secondResponse = await request(app)
+      .post('/api/notifications/tournament')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.body).toEqual({ created: 1, skipped: 0 });
+    expect(secondResponse.status).toBe(200);
+    expect(secondResponse.body).toEqual({ created: 0, skipped: 1 });
+    expect(mockPrisma.tournamentNotification.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates session notifications with idempotencyKey across retries', async () => {
+    mockPrisma.sessionNotification.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ userId: 'u1' }]);
+
+    const payload = {
+      sessionId: 's1',
+      type: 'join',
+      userIds: ['u1'],
+      idempotencyKey: 'sn_retry_1',
+    };
+
+    const firstResponse = await request(app)
+      .post('/api/notifications/session')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    const secondResponse = await request(app)
+      .post('/api/notifications/session')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.body).toEqual({ created: 1, skipped: 0 });
+    expect(secondResponse.status).toBe(200);
+    expect(secondResponse.body).toEqual({ created: 0, skipped: 1 });
+    expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates group notifications with idempotencyKey across retries', async () => {
+    mockPrisma.groupNotification.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ userId: 'u1' }]);
+
+    const payload = {
+      groupId: 'g1',
+      type: 'invited',
+      userIds: ['u1'],
+      idempotencyKey: 'gn_retry_1',
+    };
+
+    const firstResponse = await request(app)
+      .post('/api/notifications/group')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    const secondResponse = await request(app)
+      .post('/api/notifications/group')
+      .set('x-internal-service-token', 'test-internal-token')
+      .send(payload);
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.body).toEqual({ created: 1, skipped: 0 });
+    expect(secondResponse.status).toBe(200);
+    expect(secondResponse.body).toEqual({ created: 0, skipped: 1 });
+    expect(mockPrisma.groupNotification.createMany).toHaveBeenCalledTimes(1);
+  });
 });
