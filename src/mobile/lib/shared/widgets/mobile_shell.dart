@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../features/auth/state/auth_notifier.dart';
 import '../../features/notifications/state/notifications_notifier.dart';
 import '../../features/tournaments/state/tournaments_notifier.dart';
 import 'teamly_logo.dart';
+import 'user_avatar.dart';
 
 class MobileShell extends ConsumerWidget {
   const MobileShell({
@@ -55,6 +57,8 @@ class MobileShell extends ConsumerWidget {
     final unreadAsync = ref.watch(unreadCountProvider);
     final unreadCount = unreadAsync.maybeWhen(data: (c) => c, orElse: () => 0);
     final currentPath = GoRouterState.of(context).uri.path;
+    final authState = ref.watch(authNotifierProvider);
+    final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final navBarColor =
         isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
@@ -112,6 +116,19 @@ class MobileShell extends ConsumerWidget {
             icon: const Icon(Icons.account_circle_outlined),
           ),
           if (actions != null) ...actions!,
+          IconButton(
+            tooltip: 'Profile',
+            onPressed: currentPath == '/profile'
+                ? null
+                : () => context.push('/profile'),
+            icon: user != null && user.profilePicture != null
+                ? UserAvatar(
+                    name: user.name,
+                    imageUrl: user.profilePicture,
+                    radius: 14,
+                  )
+                : const Icon(Icons.account_circle_outlined),
+          ),
           const SizedBox(width: 4),
         ],
         bottom: PreferredSize(
