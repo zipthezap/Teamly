@@ -39,9 +39,12 @@ vi.mock('../../middleware/authorization', () => ({
   requireTeamUpPermission: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/teamUpController', () => ({
-  createTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
+vi.mock('../../controllers/proxies/communityProxyController', () => ({
   getTeamUpRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
+}));
+
+vi.mock('../../controllers/proxies/teamUpProxyController', () => ({
+  createTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getNearbyTeamUpRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getMyTeamUpRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getMyTeamUpResponses: vi.fn((req: any, res: any) => res.json({ ok: true })),

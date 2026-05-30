@@ -32,7 +32,7 @@ vi.mock('../../middleware/cacheControl', () => ({
   cacheControl: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/twoFactorController', () => ({
+vi.mock('../../controllers/proxies/twoFactorProxyController', () => ({
   get2FAStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
   setup2FA: vi.fn((req: any, res: any) => res.json({ ok: true })),
   verify2FA: vi.fn((req: any, res: any) => res.json({ ok: true })),

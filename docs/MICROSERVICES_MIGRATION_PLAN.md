@@ -273,6 +273,18 @@ Exit criteria:
   - DELETE /api/teamup/:id
   - POST /api/teamup/saved-searches
   - DELETE /api/teamup/saved-searches/:searchId
+- Completed: TeamUp read/analytics/discovery slice proxy cutover to Community Service:
+  - Monolith `teamUpRoutes` now proxy nearby/my-requests/my-applications/attendance-history/saved-searches/analytics/my-responses/read-detail/replacement-suggestions/comments endpoints through `teamUpProxyController` with fallback.
+  - Community Service now owns the full TeamUp route surface, with monolith remaining only as a thin proxy facade.
+- Completed: Reminder management proxy cutover to Community Service:
+  - Monolith `reminderRoutes` now proxy list/update/delete reminder endpoints through `reminderProxyController` with fallback.
+  - Community Service now owns `/api/reminders/*` directly.
+- Completed: Session request workflow proxy cutover to Community Service:
+  - Monolith `sessionRequestRoutes` now proxy create/group lookup/detail/statistics/vote/finalize/cancel endpoints through `sessionRequestProxyController` with fallback.
+  - Community Service now owns `/api/session-requests/*` directly.
+- Completed: Admin teamup utility proxy cutover to Community Service:
+  - Monolith `adminRoutes` now proxy invite-resend/teamup delete/teamup status endpoints through `adminProxyController` with fallback.
+  - Community Service now owns `/api/admin/*` for these TeamUp maintenance utilities.
 - Completed: Service-to-service hardening for Community Service:
   - Internal service token header validation added on Community Service /api/* routes.
   - Monolith proxy calls now include internal service token when configured.
@@ -350,10 +362,32 @@ Exit criteria:
 - Completed: Auth browser OAuth callback flow cutover:
   - Monolith `/api/auth/google`, `/api/auth/google/callback`, `/api/auth/facebook`, and `/api/auth/facebook/callback` now route via Auth proxy passthrough to Auth Service.
   - Auth Service now owns browser OAuth start/callback handlers with Passport/session middleware in-service, preserving inviteGroupId session propagation and frontend redirect behavior.
+- Completed: Auth 2FA proxy cutover:
+  - Monolith `twoFactorRoutes` now proxy 2FA status/setup/verify/disable through `twoFactorProxyController` with fallback.
+  - Auth Service now owns `/api/two-factor/*` directly.
+- Completed: League route proxy cutover to Tournament Service:
+  - Monolith `leagueRoutes` now proxy league CRUD/team/standings/session-link/match update endpoints through `leagueProxyController` with fallback.
+  - Tournament Service now owns `/api/leagues/*` directly.
 - Completed: Group/community legacy deprecation closure + observability hardening:
   - Remaining monolith invite/join preview routes now proxy to Community Service (`GET /api/groups/join/:token`, `GET /api/groups/invite/:groupId`, `POST /api/groups/join/:groupId`).
   - Group picture endpoints now proxy to Community Service, with multipart upload passthrough for `POST /api/groups/:id/picture` and service-owned handler parity.
   - `groupProxyController` fallback logs now include normalized reason classification (`service_url_missing`, `timeout`, `network`, `unknown`) to support rollout observability and deprecation readiness.
-- Next: Execute Notification Service canary + idempotency rollout, then keep the remaining monolith controller files as thin proxy facades while the service becomes the primary implementation.
+- Next: Continue rollout monitoring for the newly proxied TeamUp, reminder, session-request, admin, 2FA, and league routes, then keep the remaining monolith controller files as thin proxy facades while the service becomes the primary implementation.
+- Completed: Proxy observability baseline for microservice cutovers:
+  - Added centralized proxy outcome metrics via `service_proxy_outcomes_total` with labels (`proxy`, `service`, `outcome`, `reason`).
+  - Instrumented Community/Session/Notification/Auth/Group/TeamUp/Tournament proxy controllers plus shared `ServiceProxy` helper for remote-success, fallback, and fail-closed outcomes.
+  - Normalized fallback reasons (`service_url_missing`, `timeout`, `network`, `unknown`) for dashboarding and alerting.
+- Completed: First low-risk fail-closed fallback removals:
+  - Shared `ServiceProxy` now supports configurable fail-closed execution (`failClosed`, status, and message) with explicit fail-closed metric emission.
+  - Admin utility endpoints (`/api/admin/*`) now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path).
+  - Two-factor endpoints (`/api/two-factor/*`) now fail closed when Auth Service is unavailable (legacy monolith execution removed from runtime path).
+  - League endpoints (`/api/leagues/*`) now fail closed when Tournament Service is unavailable (legacy monolith execution removed from runtime path).
+- Completed: Second low-risk fail-closed fallback removals:
+  - Reminder endpoints (`/api/reminders/*`) now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path).
+  - Session request endpoints (`/api/session-requests/*`) now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path).
+- Completed: Third low-risk fail-closed fallback removals:
+  - TeamUp proxy-backed endpoints now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path for TeamUp proxy handlers).
+- Completed: Fourth low-risk fail-closed fallback removals:
+  - Session proxy-backed endpoints now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path for Session proxy handlers).
 - Next (Tournament): continue operational hardening for service-only mode (SLO dashboards, alerting, and incident runbook verification for tournament-service `503` scenarios).
 - Next (Groups): Monitor fallback-rate/error-budget SLOs for the newly proxied invite/join/picture endpoints and remove remaining legacy fallback paths after stabilization.

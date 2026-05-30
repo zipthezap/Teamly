@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as eventRequestController from '../controllers/sessionRequestController';
+import * as sessionRequestProxyController from '../controllers/proxies/sessionRequestProxyController';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -13,26 +13,26 @@ router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
 // Create session request (members can create, admins approve)
-router.post('/', noCache, asyncHandler(eventRequestController.createEventRequest));
+router.post('/', noCache, asyncHandler(sessionRequestProxyController.createEventRequest));
 
 // Get session requests for a group
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data
-router.get('/group/:groupId', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequests));
+router.get('/group/:groupId', etagMiddleware({ weak: true }), asyncHandler(sessionRequestProxyController.getEventRequests));
 
 // Get a specific session request
-router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequest));
+router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(sessionRequestProxyController.getEventRequest));
 
 // Get voting statistics for an session request
-router.get('/:id/statistics', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequestStatistics));
+router.get('/:id/statistics', etagMiddleware({ weak: true }), asyncHandler(sessionRequestProxyController.getEventRequestStatistics));
 
 // Vote on an session request
-router.post('/:id/vote', noCache, asyncHandler(eventRequestController.voteOnEventRequest));
+router.post('/:id/vote', noCache, asyncHandler(sessionRequestProxyController.voteOnEventRequest));
 
 // Finalize session request (admin only)
-router.post('/:id/finalize', noCache, asyncHandler(eventRequestController.finalizeEventRequest));
+router.post('/:id/finalize', noCache, asyncHandler(sessionRequestProxyController.finalizeEventRequest));
 
 // Cancel session request (admin only)
-router.post('/:id/cancel', noCache, asyncHandler(eventRequestController.cancelEventRequest));
+router.post('/:id/cancel', noCache, asyncHandler(sessionRequestProxyController.cancelEventRequest));
 
 export default router;

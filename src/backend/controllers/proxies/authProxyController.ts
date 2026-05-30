@@ -30,6 +30,12 @@ import {
   verifyEmail as verifyEmailLegacy,
 } from '../authController';
 import { logger } from '../../utils/logger';
+import {
+  getProxyFallbackReason,
+  recordProxyFallback,
+  recordProxyFailClosed,
+  recordProxyRemoteSuccess,
+} from './proxyTelemetry';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
@@ -47,6 +53,7 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
 
 const proxyAuthPassthrough = (req: Request, res: Response, path: string): Promise<boolean> => {
   if (!AUTH_SERVICE_URL) {
+    recordProxyFallback('AuthProxyController', 'auth-service', 'service_url_missing');
     return Promise.resolve(false);
   }
 
@@ -120,13 +127,19 @@ const proxyAuthPassthrough = (req: Request, res: Response, path: string): Promis
         }
 
         upstreamRes.pipe(res);
-        upstreamRes.on('end', () => resolve(true));
+        upstreamRes.on('end', () => {
+          recordProxyRemoteSuccess('AuthProxyController', 'auth-service');
+          resolve(true);
+        });
       }
     );
 
     upstreamReq.on('error', (error) => {
+      const reason = getProxyFallbackReason(error);
+      recordProxyFallback('AuthProxyController', 'auth-service', reason);
       logger.warn('Auth service passthrough failed, falling back to monolith', 'AuthProxyController', {
         error,
+        reason,
         method: req.method,
         path,
       });
@@ -150,6 +163,7 @@ const proxyAuthRequest = async (
   };
 
   if (!AUTH_SERVICE_URL) {
+    recordProxyFallback('AuthProxyController', 'auth-service', 'service_url_missing');
     await Promise.resolve(fallback(req, res, fallbackNext));
     return;
   }
@@ -211,13 +225,18 @@ const proxyAuthRequest = async (
     const payload = await parseResponsePayload(response);
     if (payload === null) {
       res.status(response.status).end();
+      recordProxyRemoteSuccess('AuthProxyController', 'auth-service');
       return;
     }
 
     res.status(response.status).json(payload);
+    recordProxyRemoteSuccess('AuthProxyController', 'auth-service');
   } catch (error) {
+    const reason = getProxyFallbackReason(error);
+    recordProxyFallback('AuthProxyController', 'auth-service', reason);
     logger.warn('Auth service unavailable for endpoint, falling back to monolith', 'AuthProxyController', {
       error,
+      reason,
       method: req.method,
       path,
     });
@@ -303,6 +322,7 @@ export const deleteAccount = async (req: Request, res: Response) =>
 export const startGoogleOAuth = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/google');
   if (!proxied) {
+    recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
     res.status(503).json({ error: 'Auth OAuth route unavailable without auth-service' });
   }
 };
@@ -310,6 +330,7 @@ export const startGoogleOAuth = async (req: Request, res: Response): Promise<voi
 export const handleGoogleOAuthCallback = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/google/callback');
   if (!proxied) {
+    recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     res.redirect(`${frontendUrl}/login?error=google_auth_unavailable`);
   }
@@ -318,6 +339,7 @@ export const handleGoogleOAuthCallback = async (req: Request, res: Response): Pr
 export const startFacebookOAuth = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/facebook');
   if (!proxied) {
+    recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
     res.status(503).json({ error: 'Auth OAuth route unavailable without auth-service' });
   }
 };
@@ -325,6 +347,7 @@ export const startFacebookOAuth = async (req: Request, res: Response): Promise<v
 export const handleFacebookOAuthCallback = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/facebook/callback');
   if (!proxied) {
+    recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     res.redirect(`${frontendUrl}/login?error=facebook_auth_unavailable`);
   }
@@ -333,6 +356,7 @@ export const handleFacebookOAuthCallback = async (req: Request, res: Response): 
 export const uploadProfilePicture = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/profile/picture');
   if (!proxied) {
+    recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
     res.status(503).json({ error: 'Profile picture upload is unavailable without auth-service' });
   }
 };

@@ -1,6 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from 'express';
 
 import tournamentRoutes from './routes/tournamentRoutes';
+import leagueRoutes from './routes/leagueRoutes';
 
 const app: Application = express();
 
@@ -15,6 +16,7 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/leagues', leagueRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
@@ -22,6 +24,7 @@ app.get('/', (_req: Request, res: Response) => {
     endpoints: [
       'GET /health',
       'All /api/tournaments/* endpoints (mirrored from monolith tournament router)',
+      'All /api/leagues/* endpoints (mirrored from monolith league router)',
     ],
   });
 });

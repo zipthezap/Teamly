@@ -189,6 +189,13 @@ export const searchQueries = new Counter({
   registers: [register],
 });
 
+export const serviceProxyOutcomes = new Counter({
+  name: 'service_proxy_outcomes_total',
+  help: 'Total number of service proxy outcomes',
+  labelNames: ['proxy', 'service', 'outcome', 'reason'],
+  registers: [register],
+});
+
 /**
  * Middleware to track HTTP metrics
  */
@@ -315,6 +322,15 @@ export const recordEmailSent = (status: 'success' | 'failed'): void => {
 
 export const recordSearchQuery = (type: 'sessions' | 'groups' | 'users'): void => {
   searchQueries.labels(type).inc();
+};
+
+export const recordServiceProxyOutcome = (
+  proxy: string,
+  service: string,
+  outcome: 'remote_success' | 'fallback' | 'fail_closed',
+  reason: string = 'none'
+): void => {
+  serviceProxyOutcomes.labels(proxy, service, outcome, reason).inc();
 };
 
 /**

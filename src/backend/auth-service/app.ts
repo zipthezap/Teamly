@@ -4,6 +4,7 @@ import passport from '../config/passport';
 
 import { requireInternalServiceAuth } from './internalAuth';
 import authRoutes from './routes/authRoutes';
+import twoFactorRoutes from './routes/twoFactorRoutes';
 
 const app: Application = express();
 
@@ -52,6 +53,7 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 app.use('/api/auth', requireInternalServiceAuth, authRoutes);
+app.use('/api/two-factor', requireInternalServiceAuth, twoFactorRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
@@ -62,6 +64,7 @@ app.get('/', (_req: Request, res: Response) => {
       'GET /api/auth/profile',
       'GET /api/auth/sessions',
       'GET /api/auth/oauth/status',
+      'GET /api/two-factor/status',
     ],
   });
 });

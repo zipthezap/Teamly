@@ -10,6 +10,11 @@ import {
   streamNotifications as streamNotificationsLegacy,
 } from '../notificationController';
 import { logger } from '../../utils/logger';
+import {
+  getProxyFallbackReason,
+  recordProxyFallback,
+  recordProxyRemoteSuccess,
+} from './proxyTelemetry';
 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
@@ -38,6 +43,7 @@ const proxyNotificationRequest = async (
   };
 
   if (!NOTIFICATION_SERVICE_URL) {
+    recordProxyFallback('NotificationProxyController', 'notification-service', 'service_url_missing');
     await Promise.resolve(fallback(req, res, fallbackNext));
     return;
   }
@@ -83,13 +89,18 @@ const proxyNotificationRequest = async (
     const payload = await parseResponsePayload(response);
     if (payload === null) {
       res.status(response.status).end();
+      recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
       return;
     }
 
     res.status(response.status).json(payload);
+    recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
   } catch (error) {
+    const reason = getProxyFallbackReason(error);
+    recordProxyFallback('NotificationProxyController', 'notification-service', reason);
     logger.warn('Notification service unavailable for endpoint, falling back to monolith', 'NotificationProxyController', {
       error,
+      reason,
       method: req.method,
       path,
     });
@@ -117,6 +128,7 @@ export const deleteAllReadNotificationsEndpoint = async (req: Request, res: Resp
 
 export const streamNotifications = async (req: Request, res: Response): Promise<void> => {
   if (!NOTIFICATION_SERVICE_URL) {
+    recordProxyFallback('NotificationProxyController', 'notification-service', 'service_url_missing');
     streamNotificationsLegacy(req, res);
     return;
   }
@@ -175,9 +187,13 @@ export const streamNotifications = async (req: Request, res: Response): Promise<
     }
 
     res.end();
+    recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
   } catch (error) {
+    const reason = getProxyFallbackReason(error);
+    recordProxyFallback('NotificationProxyController', 'notification-service', reason);
     logger.warn('Notification service SSE unavailable, falling back to monolith stream', 'NotificationProxyController', {
       error,
+      reason,
       path: '/api/notifications/stream',
     });
     streamNotificationsLegacy(req, res);

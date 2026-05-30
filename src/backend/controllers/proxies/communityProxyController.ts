@@ -4,6 +4,11 @@ import { getPublicGroups as getPublicGroupsLegacy } from '../groupController';
 import { getEvents as getEventsLegacy } from '../sessionController';
 import { getTeamUpRequests as getTeamUpRequestsLegacy } from '../teamUpController';
 import { logger } from '../../utils/logger';
+import {
+  getProxyFallbackReason,
+  recordProxyFallback,
+  recordProxyRemoteSuccess,
+} from './proxyTelemetry';
 
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
@@ -41,6 +46,7 @@ const proxyGet = async (
   options?: { includeUserId?: boolean; includeUserName?: boolean },
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
+    recordProxyFallback('CommunityProxyController', 'community-service', 'service_url_missing');
     await fallback(req, res);
     return;
   }
@@ -80,13 +86,18 @@ const proxyGet = async (
     const payload = await parseResponsePayload(response);
     if (payload === null) {
       res.status(response.status).end();
+      recordProxyRemoteSuccess('CommunityProxyController', 'community-service');
       return;
     }
 
     res.status(response.status).json(payload);
+    recordProxyRemoteSuccess('CommunityProxyController', 'community-service');
   } catch (error) {
+    const reason = getProxyFallbackReason(error);
+    recordProxyFallback('CommunityProxyController', 'community-service', reason);
     logger.warn('Community service unavailable, falling back to monolith endpoint', 'CommunityProxyController', {
       error,
+      reason,
       method: req.method,
       path: req.path,
       proxiedPath: servicePath,

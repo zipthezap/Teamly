@@ -32,7 +32,7 @@ vi.mock('../../middleware/cacheControl', () => ({
   cacheControl: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/reminderController', () => ({
+vi.mock('../../controllers/proxies/reminderProxyController', () => ({
   createReminder: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventReminders: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getUserReminders: vi.fn((req: any, res: any) => res.json({ ok: true })),

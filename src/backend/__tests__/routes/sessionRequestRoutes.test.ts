@@ -32,7 +32,7 @@ vi.mock('../../middleware/cacheControl', () => ({
   cacheControl: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/sessionRequestController', () => ({
+vi.mock('../../controllers/proxies/sessionRequestProxyController', () => ({
   createEventRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),

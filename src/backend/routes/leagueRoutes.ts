@@ -1,24 +1,24 @@
 import { Router } from 'express';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
-import * as leagueController from '../controllers/leagueController';
+import * as leagueProxyController from '../controllers/proxies/leagueProxyController';
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
-router.get('/', leagueController.getLeagues);
-router.post('/', leagueController.createLeague);
-router.get('/:id', leagueController.getLeagueById);
-router.put('/:id', leagueController.updateLeague);
-router.delete('/:id', leagueController.deleteLeague);
+router.get('/', leagueProxyController.getLeagues);
+router.post('/', leagueProxyController.createLeague);
+router.get('/:id', leagueProxyController.getLeagueById);
+router.put('/:id', leagueProxyController.updateLeague);
+router.delete('/:id', leagueProxyController.deleteLeague);
 
-router.post('/:id/teams', leagueController.addTeam);
-router.delete('/:id/teams/:teamId', leagueController.removeTeam);
+router.post('/:id/teams', leagueProxyController.addTeam);
+router.delete('/:id/teams/:teamId', leagueProxyController.removeTeam);
 
-router.get('/:id/standings', leagueController.getStandings);
-router.post('/:id/sessions', leagueController.linkSession);
-router.put('/:id/matches/:matchId', leagueController.updateMatch);
+router.get('/:id/standings', leagueProxyController.getStandings);
+router.post('/:id/sessions', leagueProxyController.linkSession);
+router.put('/:id/matches/:matchId', leagueProxyController.updateMatch);
 
 export default router;

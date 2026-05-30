@@ -32,23 +32,30 @@ vi.mock('../../middleware/cacheControl', () => ({
   cacheControl: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/sessionController', () => ({
-  createEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
+vi.mock('../../controllers/proxies/communityProxyController', () => ({
   getEvents: vi.fn((req: any, res: any) => res.json({ ok: true })),
+}));
+
+vi.mock('../../controllers/proxies/sessionProxyController', () => ({
+  createEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  exportEvents: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getNearbyEvents: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getUserStatistics: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getEventByInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  joinEventAsGuest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getEventParticipantsByStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getGuestParticipants: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  generateInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   joinEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   leaveEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getEventByInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  joinEventAsGuest: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getNearbyEvents: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  exportEvents: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getUserStatistics: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getEventParticipantsByStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getGuestParticipants: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  inviteToEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  revokeEventInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventActivityFeed: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  generateInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getEventInviteAnalytics: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  generateEventInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateParticipationStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateSessionStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateGuestParticipant: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -59,25 +66,12 @@ vi.mock('../../controllers/sessionController', () => ({
   getRecurringEventInstances: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addRecurringEventException: vi.fn((req: any, res: any) => res.json({ ok: true })),
   removeRecurringEventException: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  inviteToEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  revokeEventInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getEventInviteAnalytics: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  generateEventInviteToken: vi.fn((req: any, res: any) => res.json({ ok: true }))
-}));
-
-vi.mock('../../controllers/reminderController', () => ({
   createReminder: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventReminders: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getUserReminders: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  updateReminder: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  deleteReminder: vi.fn((req: any, res: any) => res.json({ ok: true }))
-}));
-
-vi.mock('../../controllers/attendanceController', () => ({
   markAttendance: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getEventAttendance: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getAttendanceStats: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  deleteAttendance: vi.fn((req: any, res: any) => res.json({ ok: true }))
+  deleteAttendance: vi.fn((req: any, res: any) => res.json({ ok: true })),
 }));
 
 describe('Session Routes', () => {

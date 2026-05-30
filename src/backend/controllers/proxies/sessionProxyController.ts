@@ -42,10 +42,16 @@ import {
   markAttendance as markAttendanceLegacy,
 } from '../attendanceController';
 import { logger } from '../../utils/logger';
+import {
+  getProxyFallbackReason,
+  recordProxyFailClosed,
+  recordProxyRemoteSuccess,
+} from './proxyTelemetry';
 
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const COMMUNITY_SERVICE_TIMEOUT_MS = Number(process.env.COMMUNITY_SERVICE_TIMEOUT_MS || 8000);
+const SESSION_FAIL_CLOSED_MESSAGE = 'Session routes are unavailable without community-service';
 
 const parseResponsePayload = async (response: globalThis.Response): Promise<unknown> => {
   const text = await response.text();
@@ -61,16 +67,11 @@ const proxySessionRequest = async (
   req: Request,
   res: Response,
   path: string,
-  fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
+  _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
-  const fallbackNext = (error?: unknown): void => {
-    if (error) {
-      throw error;
-    }
-  };
-
   if (!COMMUNITY_SERVICE_URL) {
-    await Promise.resolve(fallback(req, res, fallbackNext));
+    recordProxyFailClosed('SessionProxyController', 'community-service', 'service_url_missing');
+    res.status(503).json({ error: SESSION_FAIL_CLOSED_MESSAGE });
     return;
   }
 
@@ -115,17 +116,22 @@ const proxySessionRequest = async (
     const payload = await parseResponsePayload(response);
     if (payload === null) {
       res.status(response.status).end();
+      recordProxyRemoteSuccess('SessionProxyController', 'community-service');
       return;
     }
 
     res.status(response.status).json(payload);
+    recordProxyRemoteSuccess('SessionProxyController', 'community-service');
   } catch (error) {
-    logger.warn('Community service unavailable for session endpoint, falling back to monolith', 'SessionProxyController', {
+    const reason = getProxyFallbackReason(error);
+    recordProxyFailClosed('SessionProxyController', 'community-service', reason);
+    logger.error('Community service unavailable for session endpoint (fail-closed)', 'SessionProxyController', {
       error,
+      reason,
       method: req.method,
       path,
     });
-    await Promise.resolve(fallback(req, res, fallbackNext));
+    res.status(503).json({ error: SESSION_FAIL_CLOSED_MESSAGE });
   }
 };
 

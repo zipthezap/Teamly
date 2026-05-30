@@ -24,7 +24,7 @@ vi.mock('../../utils/logger', () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
-vi.mock('../../controllers/leagueController', () => ({
+vi.mock('../../controllers/proxies/leagueProxyController', () => ({
   createLeague: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getLeagues: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getLeagueById: vi.fn((req: any, res: any) => res.json({ ok: true })),

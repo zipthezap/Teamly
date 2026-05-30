@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import * as teamUpController from '../controllers/teamUpController';
 import * as communityProxyController from '../controllers/proxies/communityProxyController';
 import * as teamUpProxyController from '../controllers/proxies/teamUpProxyController';
 import authMiddleware from '../middleware/auth';
@@ -28,34 +27,34 @@ router.post('/', noCache, teamUpCreateLimiter, asyncHandler(teamUpProxyControlle
 router.get('/', cacheControl(60, { private: true, staleWhileRevalidate: 30 }), asyncHandler(communityProxyController.getTeamUpRequests));
 
 // Get nearby TeamUp requests - cache for 5 minutes (location queries are expensive)
-router.get('/nearby', cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(teamUpController.getNearbyTeamUpRequests));
+router.get('/nearby', cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(teamUpProxyController.getNearbyTeamUpRequests));
 
 // Get user's own TeamUp requests - cache for 2 minutes
-router.get('/my-requests', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpController.getMyTeamUpRequests));
+router.get('/my-requests', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpProxyController.getMyTeamUpRequests));
 
 // Get applications I submitted (responder view: responses I submitted to others' requests)
-router.get('/my-applications', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpApplications));
+router.get('/my-applications', cacheControl(60, { private: true }), asyncHandler(teamUpProxyController.getMyTeamUpApplications));
 
 // Attendance history for current user
-router.get('/attendance-history', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpAttendanceHistory));
+router.get('/attendance-history', cacheControl(60, { private: true }), asyncHandler(teamUpProxyController.getMyTeamUpAttendanceHistory));
 
 // Saved searches
-router.get('/saved-searches', cacheControl(60, { private: true }), asyncHandler(teamUpController.listTeamUpSavedSearches));
+router.get('/saved-searches', cacheControl(60, { private: true }), asyncHandler(teamUpProxyController.listTeamUpSavedSearches));
 router.post('/saved-searches', noCache, asyncHandler(teamUpProxyController.createTeamUpSavedSearch));
 router.delete('/saved-searches/:searchId', noCache, asyncHandler(teamUpProxyController.deleteTeamUpSavedSearch));
 
 // Operational analytics
-router.get('/analytics', cacheControl(120, { private: true }), asyncHandler(teamUpController.getTeamUpAnalytics));
+router.get('/analytics', cacheControl(120, { private: true }), asyncHandler(teamUpProxyController.getTeamUpAnalytics));
 
 // Moderation queue (admin)
 router.get('/moderation/reports', noCache, asyncHandler(teamUpProxyController.listTeamUpModerationCases));
 router.put('/moderation/reports/:caseId', noCache, asyncHandler(teamUpProxyController.updateTeamUpModerationCase));
 
 // Get responses for user's TeamUp requests - cache for 1 minute
-router.get('/my-responses', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpResponses));
+router.get('/my-responses', cacheControl(60, { private: true }), asyncHandler(teamUpProxyController.getMyTeamUpResponses));
 
 // Get a specific TeamUp request - cache for 2 minutes
-router.get('/:id', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpController.getTeamUpRequest));
+router.get('/:id', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpProxyController.getTeamUpRequest));
 
 // Update a TeamUp request (creator only)
 router.put(
@@ -110,11 +109,11 @@ router.get(
   '/:id/replacements/suggestions',
   cacheControl(30, { private: true }),
   requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
-  asyncHandler(teamUpController.getTeamUpReplacementSuggestions)
+  asyncHandler(teamUpProxyController.getTeamUpReplacementSuggestions)
 );
 
 // Get comments for a TeamUp request - cache for 1 minute
-router.get('/:id/comments', cacheControl(60, { private: true }), asyncHandler(teamUpController.getTeamUpComments));
+router.get('/:id/comments', cacheControl(60, { private: true }), asyncHandler(teamUpProxyController.getTeamUpComments));
 
 // Add a comment to a TeamUp request (authenticated users can comment)
 router.post('/:id/comments', noCache, teamUpCommentLimiter, asyncHandler(teamUpProxyController.addTeamUpComment));

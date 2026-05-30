@@ -4,6 +4,9 @@ import groupRoutes from './routes/groupRoutes';
 import { requireInternalServiceAuth } from './headerAuth';
 import sessionRoutes from './routes/sessionRoutes';
 import teamUpRoutes from './routes/teamUpRoutes';
+import reminderRoutes from './routes/reminderRoutes';
+import sessionRequestRoutes from './routes/sessionRequestRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 const app: Application = express();
 
@@ -21,6 +24,9 @@ app.use('/api', requireInternalServiceAuth);
 app.use('/api/groups', groupRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/teamup', teamUpRoutes);
+app.use('/api/reminders', reminderRoutes);
+app.use('/api/session-requests', sessionRequestRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
@@ -90,6 +96,19 @@ app.get('/', (_req: Request, res: Response) => {
       'POST /api/teamup/:id/comments',
       'DELETE /api/teamup/:id/comments/:commentId',
       'POST /api/teamup/:id/report',
+      'GET /api/reminders',
+      'PUT /api/reminders/:reminderId',
+      'DELETE /api/reminders/:reminderId',
+      'POST /api/session-requests',
+      'GET /api/session-requests/group/:groupId',
+      'GET /api/session-requests/:id',
+      'GET /api/session-requests/:id/statistics',
+      'POST /api/session-requests/:id/vote',
+      'POST /api/session-requests/:id/finalize',
+      'POST /api/session-requests/:id/cancel',
+      'POST /api/admin/invite-resend',
+      'DELETE /api/admin/teamup/:id',
+      'PUT /api/admin/teamup/:id/status',
     ],
   });
 });

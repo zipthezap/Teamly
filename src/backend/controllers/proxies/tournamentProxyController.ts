@@ -1,6 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { logger } from '../../utils/logger';
+import {
+  getProxyFallbackReason,
+  recordProxyFailClosed,
+  recordProxyRemoteSuccess,
+} from './proxyTelemetry';
 
 const TOURNAMENT_SERVICE_URL = process.env.TOURNAMENT_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
@@ -31,6 +36,7 @@ const buildTournamentProxyPath = (req: Request): string => {
 export const proxyTournamentHandler = (_fallback: AsyncProxyHandler): AsyncProxyHandler => {
   return async (req: Request, res: Response, _next: NextFunction): Promise<void | Response> => {
     if (!TOURNAMENT_SERVICE_URL) {
+      recordProxyFailClosed('TournamentProxyController', 'tournament-service', 'service_url_missing');
       logger.error('Tournament service URL is not configured', 'TournamentProxyController', {
         method: req.method,
         originalUrl: req.originalUrl,
@@ -80,12 +86,17 @@ export const proxyTournamentHandler = (_fallback: AsyncProxyHandler): AsyncProxy
       const payload = await parseResponsePayload(response);
       if (payload === null) {
         res.status(response.status).end();
+        recordProxyRemoteSuccess('TournamentProxyController', 'tournament-service');
         return;
       }
+      recordProxyRemoteSuccess('TournamentProxyController', 'tournament-service');
       return res.status(response.status).json(payload);
     } catch (error) {
+      const reason = getProxyFallbackReason(error);
+      recordProxyFailClosed('TournamentProxyController', 'tournament-service', reason);
       logger.error('Tournament service request failed', 'TournamentProxyController', {
         error,
+        reason,
         method: req.method,
         targetUrl,
       });

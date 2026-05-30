@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as adminController from '../controllers/adminController';
+import * as adminProxyController from '../controllers/proxies/adminProxyController';
 import authMiddleware from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
@@ -11,19 +11,19 @@ router.post(
   '/invite-resend',
   authenticatedLimiter,
   authMiddleware,
-  asyncHandler(adminController.resendInviteNotifications)
+  asyncHandler(adminProxyController.resendInviteNotifications)
 );
 router.delete(
   '/teamup/:id',
   authenticatedLimiter,
   authMiddleware,
-  asyncHandler(adminController.deleteTeamUpRequestAdmin)
+  asyncHandler(adminProxyController.deleteTeamUpRequestAdmin)
 );
 router.put(
   '/teamup/:id/status',
   authenticatedLimiter,
   authMiddleware,
-  asyncHandler(adminController.updateTeamUpStatusAdmin)
+  asyncHandler(adminProxyController.updateTeamUpStatusAdmin)
 );
 
 export default router;
