@@ -2,6 +2,8 @@
 
 A sports event organization app that allows individuals to set and organize small sports matches. Similar to how Tricount works for expense tracking, Teamly helps you invite friends, create groups, and organize sports events.
 
+> 📖 **Full project details:** See **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)** — mission, architecture, tested/untested areas, priority roadmap, and work remaining.
+>
 > 💡 **New Contributor?** Check out **[NEXT_STEPS.md](NEXT_STEPS.md)** for immediate priorities and how to get started!
 
 ## Features
