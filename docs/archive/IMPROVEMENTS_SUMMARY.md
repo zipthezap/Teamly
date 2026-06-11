@@ -1,269 +1,162 @@
-# Security and Functionality Improvements Summary
+# Roles, Permissions, and Invites Improvements Summary
 
-This document summarizes all the security improvements and new features implemented in this PR.
+This document summarizes the improvements made to the roles, permissions, and invitation system following PR #242.
 
-## 🔒 Critical Security Fixes
+## Critical Security Fixes
 
-### 1. Exposed API Key Removal
-**Issue**: Google API key was hardcoded in `.env.example` file
-- **Exposed Key**: `AIzaSyAZ0hupVrJt8m-av5dYJrjffdRe-IvhT2g`
-- **Impact**: High - Anyone with access to the repository could use this key
-- **Fix**: Replaced with placeholder and added security warning
-- **File**: `.env.example`
+### 1. Invite Token Expiration Validation
+**Problem:** The `joinGroupByInviteToken()` function was not validating token expiration, allowing users to join groups with expired invite links.
 
-### 2. XSS Prevention
-**Issue**: User-generated content was not sanitized
-- **Impact**: Medium-High - Cross-site scripting vulnerabilities
-- **Fix**: Implemented `sanitizeUserInput()` and `escapeHtml()` functions
-- **Applied to**:
-  - Comments (`commentController.ts`)
-  - Group chat messages (`groupChatController.ts`)
-  - Group names and descriptions (`groupController.ts`)
-- **Files**: `src/backend/utils/validation.ts`, controller files
+**Solution:** Added call to `InviteService.validateInviteToken()` before processing the join request, which properly checks both token validity and expiration.
 
-## 🛡️ Security Enhancements
+**Impact:** Prevents unauthorized access via expired invite links.
 
-### 3. Account Lockout Protection
-**Feature**: Prevent brute force attacks
-- **Implementation**: Track failed login attempts
-- **Threshold**: 5 failed attempts
-- **Lockout Duration**: 15 minutes
-- **Auto-reset**: Counter resets on successful login
-- **File**: `src/backend/controllers/authController.ts`
+**Files Modified:**
+- `src/backend/controllers/groupController.ts` (lines 2068-2080)
 
-### 4. Strong Password Requirements
-**Feature**: Enforce password complexity
-- **Minimum Length**: 8 characters
-- **Requirements**:
-  - At least one uppercase letter (A-Z)
-  - At least one lowercase letter (a-z)
-  - At least one number (0-9)
-  - At least one special character (!@#$%^&*()...)
-- **Function**: `validateStrongPassword()`
-- **File**: `src/backend/utils/validation.ts`
+### 2. Invitation Expiration on Acceptance
+**Problem:** Users could accept expired invitations.
 
-### 5. Password Reset Functionality
-**Feature**: Secure password recovery via email
-- **Token Generation**: Cryptographically secure (SHA-256)
-- **Token Expiration**: 1 hour
-- **Endpoints**:
-  - `POST /api/auth/forgot-password` - Request reset
-  - `POST /api/auth/reset-password` - Reset with token
-- **Security**: Doesn't reveal if email exists
-- **File**: `src/backend/controllers/authController.ts`
+**Solution:** Added expiration check in `respondToInvitation()` that validates `invitation.expiresAt` before allowing acceptance. Expired invitations are automatically marked as rejected.
 
-### 6. Security Headers (Helmet)
-**Feature**: HTTP security headers via Helmet middleware
-- **Content-Security-Policy**: Restricts resource loading
-- **HSTS**: Forces HTTPS (1-year max-age, includes subdomains)
-- **X-Content-Type-Options**: Prevents MIME sniffing
-- **X-Frame-Options**: Prevents clickjacking
-- **X-XSS-Protection**: Browser XSS protection
-- **Dependency**: `helmet@8.0.0`
-- **File**: `src/backend/server.ts`
+**Impact:** Ensures expired invitations cannot be accepted.
 
-### 7. Request Size Limits
-**Feature**: Prevent memory exhaustion attacks
-- **JSON Body Limit**: 10MB
-- **URL-encoded Body Limit**: 10MB
-- **Purpose**: Mitigate DoS attacks
-- **File**: `src/backend/server.ts`
+**Files Modified:**
+- `src/backend/controllers/groupController.ts` (lines 1261-1278)
 
-### 8. Improved CORS Configuration
-**Feature**: Production-ready CORS settings
-- **Development**: Allow all origins (*)
-- **Production**: Restrict to `FRONTEND_URL` environment variable
-- **Credentials**: Enabled for cookie support
-- **File**: `src/backend/server.ts`
+### 3. Event Invite Permission Check Upgrade
+**Problem:** The `inviteToEvent()` function used the weaker `canUserInvite()` check instead of the proper permission system.
 
-### 9. Rate Limiting
-**Already Implemented**: Enhanced protection
-- **Authentication Routes**: 5 requests per 15 minutes
-- **General API Routes**: 300 requests per 15 minutes
-- **File**: `src/backend/middleware/rateLimiter.ts`
+**Solution:** Replaced with `permissionService.hasEventPermission()` check for `EVENT_INVITE_MEMBERS` permission, matching the group invite pattern.
 
-## 📊 Database Changes
+**Impact:** Consistent, role-based permission checking across all invite endpoints.
 
-### 10. New Security Fields
-**Schema Updates**: `prisma/schema.prisma`
+**Files Modified:**
+- `src/backend/controllers/eventController.ts` (lines 2021-2030)
 
-Added to User model:
-```prisma
-passwordResetToken       String?
-passwordResetExpires     DateTime?
-failedLoginAttempts      Int      @default(0)
-accountLockedUntil       DateTime?
-```
+### 4. Self-Invite Prevention
+**Problem:** No validation prevented users from inviting themselves to groups or events.
 
-**Migration**: `prisma/migrations/20260108194200_add_security_fields/migration.sql`
+**Solution:** Added check `if (userToInvite.id === req.user!.id)` in both group and event invite functions.
 
-## 📝 Code Quality Improvements
+**Impact:** Prevents invalid self-invitations.
 
-### 11. Structured Logging
-**Issue**: Console.log statements throughout backend
-- **Fix**: Replaced all `console.log`/`console.error` with logger utility
-- **Files Updated**:
-  - `src/backend/utils/eventStatusUpdater.ts`
-  - `src/backend/utils/recurrenceService.ts`
-  - `src/backend/utils/notificationHelper.ts`
-- **Benefits**:
-  - Consistent log format
-  - Timestamps on all logs
-  - Contextual information
-  - Log levels (ERROR, WARN, INFO, DEBUG)
+**Files Modified:**
+- `src/backend/controllers/groupController.ts` (lines 546-560)
+- `src/backend/controllers/eventController.ts` (lines 2041-2044)
 
-### 12. Input Validation Improvements
-**Enhancements**: Better validation utilities
-- Added `validateStrongPassword()` function
-- Added `escapeHtml()` function
-- Added `sanitizeUserInput()` function
-- Fixed regex pattern for special characters
-- Consistent validation across all endpoints
+## Data Integrity Improvements
 
-## 📚 Documentation
+### 5. Transaction Wrapping for Event Invites
+**Problem:** Race condition in event invite creation - check for existing participant and creation were separate operations.
 
-### 13. Security Documentation
-**New File**: `docs/SECURITY.md` (7,136 characters)
+**Solution:** Wrapped invitation creation in a transaction to ensure atomicity.
 
-Comprehensive security guide covering:
-- All security features and their usage
-- Password requirements and reset flow
-- Account protection mechanisms
-- Input validation and XSS prevention
-- Security headers explanation
-- JWT token security
-- Database security
-- Environment variable best practices
-- Developer best practices
-- Security audit checklist
-- Compliance standards
+**Impact:** Prevents duplicate event invitations under concurrent requests.
 
-### 14. API Documentation Updates
-**Updated File**: `API_DOCUMENTATION.md`
+**Files Modified:**
+- `src/backend/controllers/eventController.ts` (lines 2046-2093)
 
-Added documentation for:
-- `PUT /auth/profile` - Update profile
-- `PUT /auth/password` - Change password
-- `POST /auth/forgot-password` - Request password reset
-- `POST /auth/reset-password` - Reset password with token
+### 6. Member Capacity Checks
+**Problem:** No capacity validation when accepting invitations or approving join requests.
 
-### 15. README Updates
-**Updated File**: `README.md`
+**Solution:** Added `maxMembers` checks in three locations:
+1. Admin approval of join requests (`handleJoinRequest`)
+2. User acceptance of invitations (`respondToInvitation`)
+3. Join via invite token (already existed, verified)
 
-Added security improvements section:
-- Rate limiting details
-- Security headers
-- Password requirements
-- Account lockout protection
-- Password reset functionality
-- Request size limits
-- Link to security documentation
+**Impact:** Prevents groups from exceeding their maximum member capacity.
 
-## 🧪 Testing & Validation
+**Files Modified:**
+- `src/backend/controllers/groupController.ts` (lines 1152-1195, 1282-1332)
 
-### Security Scanning
-- **CodeQL**: ✅ 0 vulnerabilities found
-- **Build**: ✅ TypeScript compilation successful
-- **Code Review**: ✅ All issues addressed
+## Code Quality Enhancements
 
-### Code Review Fixes
-1. Use `validateStrongPassword()` in registration
-2. Use `validateStrongPassword()` in password reset
-3. Fix regex pattern for special character validation
+### 7. Improved Error Messages
+**Changes:**
+- "Invalid token" → "Invalid invite link"
+- "Token expired" → "This invite link has expired"
+- "Validation failed" → "Failed to validate invite link"
 
-## 📦 Dependencies Added
+**Impact:** More user-friendly error messages.
 
-### New Production Dependency
-- **helmet@8.0.0**: Security headers middleware
-  - No known vulnerabilities
-  - Actively maintained
-  - Industry standard for Express.js security
+**Files Modified:**
+- `src/backend/services/inviteService.ts` (lines 753-796)
 
-## 🎯 Impact Assessment
+### 8. Enhanced Logging
+**Added:**
+- `logger.warn()` for invalid token attempts
+- `logger.info()` for expired token usage with context (groupId, groupName, expiresAt)
+- Removed sensitive token data from logs
 
-### Security Impact: HIGH
-- **Fixed**: Critical exposed API key vulnerability
-- **Added**: Multiple layers of authentication security
-- **Protected**: Against XSS, brute force, and DoS attacks
-- **Improved**: Overall security posture significantly
+**Impact:** Better observability without security risks.
 
-### User Experience Impact: POSITIVE
-- **Added**: Password reset functionality (user convenience)
-- **Minimal**: Strong password requirements (industry standard)
-- **Transparent**: Security improvements are mostly backend
+**Files Modified:**
+- `src/backend/services/inviteService.ts` (lines 753-796)
 
-### Performance Impact: MINIMAL
-- Request body parsing limits may slightly reduce memory usage
-- Rate limiting already existed, no change
-- Helmet adds negligible overhead
-- Input sanitization adds minimal processing time
+### 9. Database Query Optimization
+**Problem:** Redundant group lookups in join request approval flow.
 
-## 🔄 Migration Guide
+**Solution:** Combined group lookup for `maxMembers` check and notification in single query within transaction.
 
-### For Existing Deployments
+**Impact:** Reduced database queries, improved performance.
 
-1. **Update Environment Variables**:
-   ```bash
-   # Replace placeholder with actual Google API key
-   GOOGLE_API_KEY=your-actual-api-key
-   ```
+**Files Modified:**
+- `src/backend/controllers/groupController.ts` (lines 1152-1195)
 
-2. **Run Database Migration**:
-   ```bash
-   npm run prisma:migrate
-   ```
+## Test Updates
 
-3. **Update Dependencies**:
-   ```bash
-   npm install
-   ```
+### Updated Tests
+- `src/backend/__tests__/services/inviteService.test.ts`
+  - Updated error message assertions for new validation messages
+  - Added `logger.warn` to mocks
+  - All 620 tests pass
 
-4. **Test Password Requirements**:
-   - New registrations require strong passwords
-   - Existing users can still log in
-   - Existing users will need strong password when changing
+## Security Verification
 
-### For New Deployments
+- ✅ **CodeQL Scan:** 0 alerts found
+- ✅ **All Tests Passing:** 620/620 tests pass
+- ✅ **No Token Leakage:** Removed sensitive data from logs
+- ✅ **Proper Authorization:** All invite endpoints use permission system
 
-Follow the standard setup process. All security features are enabled by default.
+## Migration Notes
 
-## 📋 Security Checklist for Production
+No database schema changes required. All improvements work with existing schema from PR #242.
 
-Before deploying to production, ensure:
+## API Behavior Changes
 
-- [ ] Change `JWT_SECRET` to a strong random value
-- [ ] Replace all placeholder API keys with production keys
-- [ ] Configure email service for password reset emails
-- [ ] Set `NODE_ENV=production`
-- [ ] Configure proper `FRONTEND_URL` for CORS
-- [ ] Enable HTTPS/TLS
-- [ ] Test password reset flow
-- [ ] Verify rate limiting is working
-- [ ] Check security headers in browser
-- [ ] Review logs for proper formatting
+### Breaking Changes
+None - all changes are backward compatible.
 
-## 🔗 Related Documentation
+### New Validations (May Reject Previously Allowed Requests)
+1. Self-invitations now return 400 error
+2. Expired invite tokens now rejected on join
+3. Expired invitations rejected on acceptance
+4. Capacity limits enforced on all join flows
 
-- [docs/SECURITY.md](SECURITY.md) - Comprehensive security guide
-- [API_DOCUMENTATION.md](../API_DOCUMENTATION.md) - API reference
-- [README.md](../README.md) - Project overview
+## Files Changed Summary
 
-## 📞 Support
+| File | Lines Changed | Type |
+|------|---------------|------|
+| `src/backend/controllers/groupController.ts` | +70, -34 | Controllers |
+| `src/backend/controllers/eventController.ts` | +58, -34 | Controllers |
+| `src/backend/services/inviteService.ts` | +11, -17 | Services |
+| `src/backend/__tests__/services/inviteService.test.ts` | +4, -3 | Tests |
 
-For questions or concerns about these security improvements:
-1. Review the security documentation
-2. Check the API documentation
-3. Contact the development team
+**Total:** 4 files changed, 143 insertions(+), 88 deletions(-)
 
-## ⚠️ Important Notes
+## Recommendations for Future Improvements
 
-1. **Password Changes**: Existing users are not required to change passwords, but new passwords must meet strong requirements
-2. **Email Configuration**: Password reset requires email service configuration
-3. **Database**: Migration adds new columns with default values
-4. **Backwards Compatible**: All changes are backwards compatible with existing data
+1. **Event Participant Schema Enhancement:** Add `invitedBy` field to `EventParticipant` model to track who sent event invitations (like groups have `invitedBy` in `GroupJoinRequest`)
 
----
+2. **Private Group Invite Tokens:** Fully implement private group joining via invite tokens (currently limited to public groups)
 
-**Last Updated**: January 8, 2026
-**PR**: Improve functionality and implement security enhancements for backend
-**Status**: Complete ✅
+3. **Invite Analytics Enhancement:** Separate "pending" count from "sent" count in analytics (some sent invites may be expired)
+
+4. **Email Verification:** Add check to prevent inviting users with unverified emails
+
+5. **Bulk Invite Improvements:** Add rollback on partial failures in batch invites
+
+## Conclusion
+
+This PR successfully addresses the critical security gaps and inconsistencies identified in the invite and permission system. All changes maintain backward compatibility while significantly improving security, data integrity, and code quality.
