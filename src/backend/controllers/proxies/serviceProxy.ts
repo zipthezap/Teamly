@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import {
   getProxyFallbackReason,
-  recordProxyFallback,
   recordProxyFailClosed,
   recordProxyRemoteSuccess,
 } from './proxyTelemetry';
@@ -22,23 +21,17 @@ export const proxyJsonServiceRequest = async (
   res: Response,
   serviceUrl: string | undefined,
   path: string,
-  fallback: FallbackHandler,
+  _fallback: FallbackHandler,
   serviceName: string,
   options?: ProxyOptions,
 ): Promise<void> => {
   const proxyName = options?.proxyName || 'ServiceProxy';
 
   if (!serviceUrl) {
-    if (options?.failClosed) {
-      recordProxyFailClosed(proxyName, serviceName, 'service_url_missing');
-      res.status(options.failClosedStatus || 503).json({
-        error: options.failClosedMessage || `${serviceName} is unavailable`,
-      });
-      return;
-    }
-
-    recordProxyFallback(proxyName, serviceName, 'service_url_missing');
-    await fallback(req, res);
+    recordProxyFailClosed(proxyName, serviceName, 'service_url_missing');
+    res.status(options?.failClosedStatus || 503).json({
+      error: options?.failClosedMessage || `${serviceName} is unavailable`,
+    });
     return;
   }
 
@@ -73,27 +66,15 @@ export const proxyJsonServiceRequest = async (
     recordProxyRemoteSuccess(proxyName, serviceName);
   } catch (error) {
     const reason = getProxyFallbackReason(error);
-    if (options?.failClosed) {
-      recordProxyFailClosed(proxyName, serviceName, reason);
-      logger.error(`${serviceName} unavailable for proxied route (fail-closed)`, proxyName, {
-        error,
-        reason,
-        method: req.method,
-        path,
-      });
-      res.status(options.failClosedStatus || 503).json({
-        error: options.failClosedMessage || `${serviceName} is unavailable`,
-      });
-      return;
-    }
-
-    recordProxyFallback(proxyName, serviceName, reason);
-    logger.warn(`${serviceName} unavailable for proxied route, falling back to monolith`, 'ServiceProxy', {
+    recordProxyFailClosed(proxyName, serviceName, reason);
+    logger.error(`${serviceName} unavailable for proxied route (fail-closed)`, proxyName, {
       error,
       reason,
       method: req.method,
       path,
     });
-    await fallback(req, res);
+    res.status(options?.failClosedStatus || 503).json({
+      error: options?.failClosedMessage || `${serviceName} is unavailable`,
+    });
   }
 };

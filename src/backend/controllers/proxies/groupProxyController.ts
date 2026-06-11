@@ -38,7 +38,6 @@ import {
 import { logger } from '../../utils/logger';
 import {
   getProxyFallbackReason,
-  recordProxyFallback,
   recordProxyFailClosed,
   recordProxyRemoteSuccess,
 } from './proxyTelemetry';
@@ -46,6 +45,7 @@ import {
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const COMMUNITY_SERVICE_TIMEOUT_MS = Number(process.env.COMMUNITY_SERVICE_TIMEOUT_MS || 8000);
+const GROUP_FAIL_CLOSED_MESSAGE = 'Group routes are unavailable without community-service';
 
 const getQuerySuffix = (url: string): string => (url.includes('?') ? url.slice(url.indexOf('?')) : '');
 
@@ -63,16 +63,16 @@ const proxyGroupRequest = async (
   req: Request,
   res: Response,
   path: string,
-  fallback: (req: Request, res: Response) => Promise<unknown>,
+  _fallback: (req: Request, res: Response) => Promise<unknown>,
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
-    recordProxyFallback('GroupProxyController', 'community-service', 'service_url_missing');
-    logger.warn('Community service URL missing for group endpoint, falling back to monolith', 'GroupProxyController', {
+    recordProxyFailClosed('GroupProxyController', 'community-service', 'service_url_missing');
+    logger.error('Community service URL missing for group endpoint (fail-closed)', 'GroupProxyController', {
       reason: 'service_url_missing',
       method: req.method,
       path,
     });
-    await fallback(req, res);
+    res.status(503).json({ error: GROUP_FAIL_CLOSED_MESSAGE });
     return;
   }
 
@@ -122,20 +122,20 @@ const proxyGroupRequest = async (
     recordProxyRemoteSuccess('GroupProxyController', 'community-service');
   } catch (error) {
     const reason = getProxyFallbackReason(error);
-    recordProxyFallback('GroupProxyController', 'community-service', reason);
-    logger.warn('Community service unavailable for group endpoint, falling back to monolith', 'GroupProxyController', {
+    recordProxyFailClosed('GroupProxyController', 'community-service', reason);
+    logger.error('Community service unavailable for group endpoint (fail-closed)', 'GroupProxyController', {
       error,
       reason,
       method: req.method,
       path,
     });
-    await fallback(req, res);
+    res.status(503).json({ error: GROUP_FAIL_CLOSED_MESSAGE });
   }
 };
 
 const proxyGroupPassthrough = (req: Request, res: Response, path: string): Promise<boolean> => {
   if (!COMMUNITY_SERVICE_URL) {
-    recordProxyFallback('GroupProxyController', 'community-service', 'service_url_missing');
+    recordProxyFailClosed('GroupProxyController', 'community-service', 'service_url_missing');
     return Promise.resolve(false);
   }
 
@@ -181,8 +181,8 @@ const proxyGroupPassthrough = (req: Request, res: Response, path: string): Promi
 
     upstreamReq.on('error', (error: unknown) => {
       const reason = getProxyFallbackReason(error);
-      recordProxyFallback('GroupProxyController', 'community-service', reason);
-      logger.warn('Community service passthrough failed, falling back to monolith', 'GroupProxyController', {
+      recordProxyFailClosed('GroupProxyController', 'community-service', reason);
+      logger.error('Community service passthrough failed (fail-closed)', 'GroupProxyController', {
         error,
         reason,
         method: req.method,
@@ -288,8 +288,7 @@ export const getNearbyGroups = async (req: Request, res: Response) =>
 export const uploadGroupPicture = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyGroupPassthrough(req, res, `/api/groups/${req.params.id}/picture`);
   if (!proxied) {
-    recordProxyFailClosed('GroupProxyController', 'community-service', 'service_url_missing');
-    res.status(503).json({ error: 'Group picture upload is unavailable without community-service' });
+    res.status(503).json({ error: GROUP_FAIL_CLOSED_MESSAGE });
   }
 };
 

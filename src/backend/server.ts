@@ -267,6 +267,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/2fa', twoFactorRoutes);
+app.use('/api/two-factor', twoFactorRoutes);
 app.use('/api/session-requests', sessionRequestRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/comments', commentRoutes);

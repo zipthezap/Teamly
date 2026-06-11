@@ -55,10 +55,12 @@ services:
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
       FACEBOOK_CALLBACK_URL: ${FACEBOOK_CALLBACK_URL}
-      TOURNAMENT_SERVICE_URL: ${TOURNAMENT_SERVICE_URL:-}
-      COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-}
-      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:3004}
+      TOURNAMENT_SERVICE_URL: ${TOURNAMENT_SERVICE_URL:-http://tournament-service:3001}
+      COMMUNITY_SERVICE_URL: ${COMMUNITY_SERVICE_URL:-http://community-service:3002}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:3003}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      AUTH_SERVICE_TIMEOUT_MS: ${AUTH_SERVICE_TIMEOUT_MS:-8000}
       COMMUNITY_SERVICE_TIMEOUT_MS: ${COMMUNITY_SERVICE_TIMEOUT_MS:-8000}
       NOTIFICATION_SERVICE_TIMEOUT_MS: ${NOTIFICATION_SERVICE_TIMEOUT_MS:-8000}
     volumes:
@@ -95,6 +97,31 @@ services:
     volumes:
       - uploads_data:/app/uploads
     command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run tournament-service:start"
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["microservices"]
+    ports:
+      - "3004:3004"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3004
+      AUTH_SERVICE_PORT: 3004
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      AUTH_SERVICE_TIMEOUT_MS: ${AUTH_SERVICE_TIMEOUT_MS:-8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run auth-service:start"
 
   community-service:
     build:

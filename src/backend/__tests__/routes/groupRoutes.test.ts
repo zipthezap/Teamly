@@ -107,6 +107,10 @@ vi.mock('../../controllers/proxies/groupProxyController', () => ({
   deleteGroupPicture: vi.fn((req: any, res: any) => res.json({ ok: true })),
 }));
 
+vi.mock('../../controllers/proxies/communityProxyController', () => ({
+  getPublicGroups: vi.fn((req: any, res: any) => res.json({ ok: true })),
+}));
+
 describe('Group Routes', () => {
   const app = createTestApp(groupRoutes, '/api');
 

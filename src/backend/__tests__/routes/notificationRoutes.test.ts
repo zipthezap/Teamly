@@ -32,7 +32,7 @@ vi.mock('../../middleware/cacheControl', () => ({
   cacheControl: () => (_: any, __: any, next: any) => next()
 }));
 
-vi.mock('../../controllers/notificationController', () => ({
+vi.mock('../../controllers/proxies/notificationProxyController', () => ({
   getNotifications: vi.fn((req: any, res: any) => res.json({ ok: true })),
   markAsRead: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getStats: vi.fn((req: any, res: any) => res.json({ ok: true })),

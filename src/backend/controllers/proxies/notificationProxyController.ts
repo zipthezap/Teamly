@@ -7,18 +7,18 @@ import {
   getStats as getStatsLegacy,
   getUnreadCount as getUnreadCountLegacy,
   markAsRead as markAsReadLegacy,
-  streamNotifications as streamNotificationsLegacy,
 } from '../notificationController';
 import { logger } from '../../utils/logger';
 import {
   getProxyFallbackReason,
-  recordProxyFallback,
+  recordProxyFailClosed,
   recordProxyRemoteSuccess,
 } from './proxyTelemetry';
 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const NOTIFICATION_SERVICE_TIMEOUT_MS = Number(process.env.NOTIFICATION_SERVICE_TIMEOUT_MS || 8000);
+const NOTIFICATION_FAIL_CLOSED_MESSAGE = 'Notification routes are unavailable without notification-service';
 
 const parseResponsePayload = async (response: globalThis.Response): Promise<unknown> => {
   const text = await response.text();
@@ -34,17 +34,11 @@ const proxyNotificationRequest = async (
   req: Request,
   res: Response,
   path: string,
-  fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
+  _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
-  const fallbackNext = (error?: unknown): void => {
-    if (error) {
-      throw error;
-    }
-  };
-
   if (!NOTIFICATION_SERVICE_URL) {
-    recordProxyFallback('NotificationProxyController', 'notification-service', 'service_url_missing');
-    await Promise.resolve(fallback(req, res, fallbackNext));
+    recordProxyFailClosed('NotificationProxyController', 'notification-service', 'service_url_missing');
+    res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
     return;
   }
 
@@ -97,14 +91,14 @@ const proxyNotificationRequest = async (
     recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
   } catch (error) {
     const reason = getProxyFallbackReason(error);
-    recordProxyFallback('NotificationProxyController', 'notification-service', reason);
-    logger.warn('Notification service unavailable for endpoint, falling back to monolith', 'NotificationProxyController', {
+    recordProxyFailClosed('NotificationProxyController', 'notification-service', reason);
+    logger.error('Notification service unavailable for endpoint (fail-closed)', 'NotificationProxyController', {
       error,
       reason,
       method: req.method,
       path,
     });
-    await Promise.resolve(fallback(req, res, fallbackNext));
+    res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
   }
 };
 
@@ -128,8 +122,8 @@ export const deleteAllReadNotificationsEndpoint = async (req: Request, res: Resp
 
 export const streamNotifications = async (req: Request, res: Response): Promise<void> => {
   if (!NOTIFICATION_SERVICE_URL) {
-    recordProxyFallback('NotificationProxyController', 'notification-service', 'service_url_missing');
-    streamNotificationsLegacy(req, res);
+    recordProxyFailClosed('NotificationProxyController', 'notification-service', 'service_url_missing');
+    res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
     return;
   }
 
@@ -190,12 +184,16 @@ export const streamNotifications = async (req: Request, res: Response): Promise<
     recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
   } catch (error) {
     const reason = getProxyFallbackReason(error);
-    recordProxyFallback('NotificationProxyController', 'notification-service', reason);
-    logger.warn('Notification service SSE unavailable, falling back to monolith stream', 'NotificationProxyController', {
+    recordProxyFailClosed('NotificationProxyController', 'notification-service', reason);
+    logger.error('Notification service SSE unavailable (fail-closed)', 'NotificationProxyController', {
       error,
       reason,
       path: '/api/notifications/stream',
     });
-    streamNotificationsLegacy(req, res);
+    if (!res.headersSent) {
+      res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
+      return;
+    }
+    res.end();
   }
 };

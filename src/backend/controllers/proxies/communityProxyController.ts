@@ -6,13 +6,14 @@ import { getTeamUpRequests as getTeamUpRequestsLegacy } from '../teamUpControlle
 import { logger } from '../../utils/logger';
 import {
   getProxyFallbackReason,
-  recordProxyFallback,
+  recordProxyFailClosed,
   recordProxyRemoteSuccess,
 } from './proxyTelemetry';
 
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const COMMUNITY_SERVICE_TIMEOUT_MS = Number(process.env.COMMUNITY_SERVICE_TIMEOUT_MS || 8000);
+const COMMUNITY_FAIL_CLOSED_MESSAGE = 'Community routes are unavailable without community-service';
 
 const buildQueryString = (query: Request['query']): string => {
   const params = new URLSearchParams();
@@ -42,12 +43,12 @@ const proxyGet = async (
   req: Request,
   res: Response,
   servicePath: string,
-  fallback: (req: Request, res: Response) => Promise<unknown>,
+  _fallback: (req: Request, res: Response) => Promise<unknown>,
   options?: { includeUserId?: boolean; includeUserName?: boolean },
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
-    recordProxyFallback('CommunityProxyController', 'community-service', 'service_url_missing');
-    await fallback(req, res);
+    recordProxyFailClosed('CommunityProxyController', 'community-service', 'service_url_missing');
+    res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
     return;
   }
 
@@ -94,16 +95,15 @@ const proxyGet = async (
     recordProxyRemoteSuccess('CommunityProxyController', 'community-service');
   } catch (error) {
     const reason = getProxyFallbackReason(error);
-    recordProxyFallback('CommunityProxyController', 'community-service', reason);
-    logger.warn('Community service unavailable, falling back to monolith endpoint', 'CommunityProxyController', {
+    recordProxyFailClosed('CommunityProxyController', 'community-service', reason);
+    logger.error('Community service unavailable for endpoint (fail-closed)', 'CommunityProxyController', {
       error,
       reason,
       method: req.method,
       path: req.path,
       proxiedPath: servicePath,
     });
-    await fallback(req, res);
-    return;
+    res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
   }
 };
 

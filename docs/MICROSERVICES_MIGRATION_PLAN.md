@@ -389,5 +389,16 @@ Exit criteria:
   - TeamUp proxy-backed endpoints now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path for TeamUp proxy handlers).
 - Completed: Fourth low-risk fail-closed fallback removals:
   - Session proxy-backed endpoints now fail closed when Community Service is unavailable (legacy monolith execution removed from runtime path for Session proxy handlers).
-- Next (Tournament): continue operational hardening for service-only mode (SLO dashboards, alerting, and incident runbook verification for tournament-service `503` scenarios).
-- Next (Groups): Monitor fallback-rate/error-budget SLOs for the newly proxied invite/join/picture endpoints and remove remaining legacy fallback paths after stabilization.
+- Completed: Fifth low-risk fail-closed fallback removals:
+  - Notification JSON proxy endpoints (`/api/notifications`, `/api/notifications/read`, `/api/notifications/stats`, `/api/notifications/unread-count`) now fail closed when Notification Service is unavailable (legacy monolith execution removed from runtime path for those handlers).
+- Completed: Sixth low-risk fail-closed fallback removals:
+  - Notification SSE stream endpoint (`GET /api/notifications/stream`) now fails closed when Notification Service is unavailable (legacy monolith stream fallback removed from runtime path).
+- Completed: Seventh fail-closed fallback removals (remaining proxy families):
+  - Auth proxy JSON endpoints now fail closed when Auth Service is unavailable (legacy monolith execution removed from runtime path for auth proxy handlers).
+  - Auth passthrough endpoints (OAuth start/callback and profile picture upload) now fail closed when Auth Service passthrough fails.
+  - Community read proxy endpoints (`/api/groups/public`, `/api/sessions`, `/api/teamup`) now fail closed when Community Service is unavailable.
+  - Group proxy endpoints now fail closed when Community Service is unavailable, including group picture passthrough uploads.
+- Completed: Eighth migration-closure slice:
+  - Shared `ServiceProxy` helper no longer executes monolith fallback paths; helper behavior is now uniformly fail-closed with explicit fail-closed telemetry.
+  - Remaining proxy controllers now operate as thin service facades without runtime legacy execution fallback.
+- Next (Operations): migration execution is complete for current proxy-owned route families; focus on service-only operational hardening (SLO dashboards, alerting thresholds on `service_proxy_outcomes_total{outcome="fail_closed"}`, and incident runbook verification for expected `503` behavior/rollback toggles).
