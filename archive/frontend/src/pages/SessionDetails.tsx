@@ -115,6 +115,16 @@ const SessionDetails = () => {
     await unmarkLateMutation.mutateAsync();
   }, [unmarkLateMutation]);
 
+  const undoAttendanceMutation = useApiMutation({
+    mutationFn: async () => sessionsAPI.deleteAttendance(id!, user!.id),
+    invalidateKeys: [['eventDetails', id], ['events']],
+    onSuccess: () => showSuccess(t('sessionDetails.attendanceUndone')),
+    onError: (error) => showError(error || t('sessionDetails.failedToUndoAttendance')),
+  });
+  const handleUndoAttendance = useCallback(async () => {
+    await undoAttendanceMutation.mutateAsync();
+  }, [undoAttendanceMutation]);
+
   const generateInviteLinkMutation = useApiMutation({
     mutationFn: async () => sessionsAPI.generateInviteToken(id!),
     invalidateKeys: [['eventDetails', id]],
@@ -484,6 +494,7 @@ const SessionDetails = () => {
                       onDelete={handleDelete}
                       onMarkLate={handleMarkLate}
                       onUnmarkLate={handleUnmarkLate}
+                      onUndoAttendance={handleUndoAttendance}
                     />
                   </CardContent>
                 </Card>

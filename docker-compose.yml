@@ -61,6 +61,7 @@ services:
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:3003}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
       AUTH_SERVICE_TIMEOUT_MS: ${AUTH_SERVICE_TIMEOUT_MS:-8000}
+      TOURNAMENT_SERVICE_TIMEOUT_MS: ${TOURNAMENT_SERVICE_TIMEOUT_MS:-8000}
       COMMUNITY_SERVICE_TIMEOUT_MS: ${COMMUNITY_SERVICE_TIMEOUT_MS:-8000}
       NOTIFICATION_SERVICE_TIMEOUT_MS: ${NOTIFICATION_SERVICE_TIMEOUT_MS:-8000}
     volumes:
@@ -72,13 +73,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_started
+      tournament-service:
+        condition: service_started
+      community-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
     command: sh -c "npx prisma migrate deploy && npx prisma generate && node prisma/seed.js && npm start"
 
   tournament-service:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    profiles: ["microservices"]
     ports:
       - "3001:3001"
     environment:
@@ -89,6 +97,8 @@ services:
       NODE_ENV: development
       JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
       TOURNAMENT_SERVICE_URL: ${TOURNAMENT_SERVICE_URL:-}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-teamly-internal-dev-token}
+      TOURNAMENT_SERVICE_TIMEOUT_MS: ${TOURNAMENT_SERVICE_TIMEOUT_MS:-8000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +112,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    profiles: ["microservices"]
     ports:
       - "3004:3004"
     environment:
@@ -127,7 +136,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    profiles: ["microservices"]
     ports:
       - "3002:3002"
     environment:
@@ -153,7 +161,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    profiles: ["microservices"]
     ports:
       - "3003:3003"
     environment:

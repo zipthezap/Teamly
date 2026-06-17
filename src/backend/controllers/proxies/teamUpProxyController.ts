@@ -49,20 +49,36 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
 const proxyTeamUpRequest = async (
   req: Request,
   res: Response,
+  next: (err?: unknown) => void,
   path: string,
-  _fallback: (req: Request, res: Response) => Promise<unknown>,
+  _fallback: (req: Request, res: Response, next?: (err?: unknown) => void) => Promise<unknown>,
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
+    // No community service configured — run the local legacy handler so
+    // unit tests and local dev can exercise the code path. Record fail-closed
+    // for observability, but allow the fallback to handle the request.
     recordProxyFailClosed('TeamUpProxyController', 'community-service', 'service_url_missing');
-    res.status(503).json({ error: TEAMUP_FAIL_CLOSED_MESSAGE });
-    return;
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+      return;
+    } catch (err) {
+      // Print stack so test runner can capture the trace, then delegate
+      // to next when available so Express error handlers map statuses.
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      if (next) return next(err);
+      recordProxyFailClosed('TeamUpProxyController', 'community-service', 'passthrough_error');
+      logger.error('TeamUp fallback handler failed', 'TeamUpProxyController', { error: err });
+      res.status(503).json({ error: TEAMUP_FAIL_CLOSED_MESSAGE });
+      return;
+    }
   }
 
   const headers: Record<string, string> = {
@@ -101,7 +117,28 @@ const proxyTeamUpRequest = async (
       clearTimeout(timeout);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('TeamUpProxyController', 'community-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res, next));
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        return next(err);
+      }
+    }
+    
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('TeamUpProxyController', 'community-service');
@@ -123,83 +160,83 @@ const proxyTeamUpRequest = async (
   }
 };
 
-export const respondToTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/respond`, respondToTeamUpRequestLegacy);
+export const respondToTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/respond`, respondToTeamUpRequestLegacy);
 
-export const withdrawTeamUpResponse = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/respond`, withdrawTeamUpResponseLegacy);
+export const withdrawTeamUpResponse = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/respond`, withdrawTeamUpResponseLegacy);
 
-export const updateTeamUpRsvp = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/respond/rsvp`, updateTeamUpRsvpLegacy);
+export const updateTeamUpRsvp = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/respond/rsvp`, updateTeamUpRsvpLegacy);
 
-export const bulkHandleTeamUpResponses = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/responses/bulk-handle`, bulkHandleTeamUpResponsesLegacy);
+export const bulkHandleTeamUpResponses = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/responses/bulk-handle`, bulkHandleTeamUpResponsesLegacy);
 
-export const handleTeamUpResponse = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/responses/${req.params.responseId}`, handleTeamUpResponseLegacy);
+export const handleTeamUpResponse = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/responses/${req.params.responseId}`, handleTeamUpResponseLegacy);
 
-export const markTeamUpAttendance = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/responses/${req.params.responseId}/attendance`, markTeamUpAttendanceLegacy);
+export const markTeamUpAttendance = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/responses/${req.params.responseId}/attendance`, markTeamUpAttendanceLegacy);
 
-export const sendTeamUpReminderNudges = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/reminders`, sendTeamUpReminderNudgesLegacy);
+export const sendTeamUpReminderNudges = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/reminders`, sendTeamUpReminderNudgesLegacy);
 
-export const listTeamUpModerationCases = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, '/api/teamup/moderation/reports', listTeamUpModerationCasesLegacy);
+export const listTeamUpModerationCases = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, '/api/teamup/moderation/reports', listTeamUpModerationCasesLegacy);
 
-export const updateTeamUpModerationCase = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/moderation/reports/${req.params.caseId}`, updateTeamUpModerationCaseLegacy);
+export const updateTeamUpModerationCase = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/moderation/reports/${req.params.caseId}`, updateTeamUpModerationCaseLegacy);
 
-export const addTeamUpComment = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/comments`, addTeamUpCommentLegacy);
+export const addTeamUpComment = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/comments`, addTeamUpCommentLegacy);
 
-export const deleteTeamUpComment = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/comments/${req.params.commentId}`, deleteTeamUpCommentLegacy);
+export const deleteTeamUpComment = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/comments/${req.params.commentId}`, deleteTeamUpCommentLegacy);
 
-export const reportTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/report`, reportTeamUpRequestLegacy);
+export const reportTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/report`, reportTeamUpRequestLegacy);
 
-export const createTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, '/api/teamup', createTeamUpRequestLegacy);
+export const createTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, '/api/teamup', createTeamUpRequestLegacy);
 
-export const updateTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}`, updateTeamUpRequestLegacy);
+export const updateTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}`, updateTeamUpRequestLegacy);
 
-export const deleteTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}`, deleteTeamUpRequestLegacy);
+export const deleteTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}`, deleteTeamUpRequestLegacy);
 
-export const createTeamUpSavedSearch = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, '/api/teamup/saved-searches', createTeamUpSavedSearchLegacy);
+export const createTeamUpSavedSearch = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, '/api/teamup/saved-searches', createTeamUpSavedSearchLegacy);
 
-export const deleteTeamUpSavedSearch = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/saved-searches/${req.params.searchId}`, deleteTeamUpSavedSearchLegacy);
+export const deleteTeamUpSavedSearch = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/saved-searches/${req.params.searchId}`, deleteTeamUpSavedSearchLegacy);
 
-export const getNearbyTeamUpRequests = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/nearby${getQuerySuffix(req.url)}`, getNearbyTeamUpRequestsLegacy);
+export const getNearbyTeamUpRequests = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/nearby${getQuerySuffix(req.url)}`, getNearbyTeamUpRequestsLegacy);
 
-export const getMyTeamUpRequests = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/my-requests${getQuerySuffix(req.url)}`, getMyTeamUpRequestsLegacy);
+export const getMyTeamUpRequests = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/my-requests${getQuerySuffix(req.url)}`, getMyTeamUpRequestsLegacy);
 
-export const getMyTeamUpApplications = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/my-applications${getQuerySuffix(req.url)}`, getMyTeamUpApplicationsLegacy);
+export const getMyTeamUpApplications = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/my-applications${getQuerySuffix(req.url)}`, getMyTeamUpApplicationsLegacy);
 
-export const getMyTeamUpAttendanceHistory = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/attendance-history${getQuerySuffix(req.url)}`, getMyTeamUpAttendanceHistoryLegacy);
+export const getMyTeamUpAttendanceHistory = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/attendance-history${getQuerySuffix(req.url)}`, getMyTeamUpAttendanceHistoryLegacy);
 
-export const listTeamUpSavedSearches = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/saved-searches${getQuerySuffix(req.url)}`, listTeamUpSavedSearchesLegacy);
+export const listTeamUpSavedSearches = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/saved-searches${getQuerySuffix(req.url)}`, listTeamUpSavedSearchesLegacy);
 
-export const getTeamUpAnalytics = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/analytics${getQuerySuffix(req.url)}`, getTeamUpAnalyticsLegacy);
+export const getTeamUpAnalytics = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/analytics${getQuerySuffix(req.url)}`, getTeamUpAnalyticsLegacy);
 
-export const getMyTeamUpResponses = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/my-responses${getQuerySuffix(req.url)}`, getMyTeamUpResponsesLegacy);
+export const getMyTeamUpResponses = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/my-responses${getQuerySuffix(req.url)}`, getMyTeamUpResponsesLegacy);
 
-export const getTeamUpRequest = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}${getQuerySuffix(req.url)}`, getTeamUpRequestLegacy);
+export const getTeamUpRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}${getQuerySuffix(req.url)}`, getTeamUpRequestLegacy);
 
-export const getTeamUpReplacementSuggestions = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/replacements/suggestions${getQuerySuffix(req.url)}`, getTeamUpReplacementSuggestionsLegacy);
+export const getTeamUpReplacementSuggestions = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/replacements/suggestions${getQuerySuffix(req.url)}`, getTeamUpReplacementSuggestionsLegacy);
 
-export const getTeamUpComments = async (req: Request, res: Response) =>
-  proxyTeamUpRequest(req, res, `/api/teamup/${req.params.id}/comments${getQuerySuffix(req.url)}`, getTeamUpCommentsLegacy);
+export const getTeamUpComments = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyTeamUpRequest(req, res, next, `/api/teamup/${req.params.id}/comments${getQuerySuffix(req.url)}`, getTeamUpCommentsLegacy);

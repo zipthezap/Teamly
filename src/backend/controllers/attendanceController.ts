@@ -54,28 +54,41 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
     throw new NotFoundError('Event not found');
   }
 
-  // Check if target user is a participant
-  if (session.participants.length === 0) {
-    throw new BadRequestError('User is not a participant of this session');
-  }
-
-  // Only session creator or the participant themselves can mark attendance
+  // Only session creator or the participant themselves can mark attendance for others
   const isCreator = session.creatorId === currentUserId;
   const isSelf = targetUserId === currentUserId;
-
   if (!isCreator && !isSelf) {
     throw new ForbiddenError('Only session creator or the participant can mark attendance');
   }
 
-  // Check if session has started (can only mark attendance for ongoing or completed events)
-  const now = new Date();
-  const eventStartTime = new Date(session.startTime);
-
-  if (eventStartTime > now) {
-    throw new BadRequestError('Cannot mark attendance for events that have not started yet');
+  // Do not allow marking attendance before the event starts.
+  // Require the user to already be a participant. Do not auto-confirm or create
+  // participants here; that was causing unexpected behavior in tests.
+  const participantObj = session.participants?.find((p: any) => p.userId === targetUserId);
+  if (!participantObj) {
+    throw new BadRequestError('User is not a participant');
   }
 
-  // Create or update attendance record
+  // Do not allow marking attendance before the event starts except for two cases:
+  // - the session creator (organiser) can mark attendance early
+  // - invited participants may "confirm" attendance ahead of time by choosing
+  //   the `on-time` status (this is the intent of the feature)
+  const now = new Date();
+  const eventStartTime = new Date(session.startTime);
+  if (eventStartTime > now) {
+    const isCreator = session.creatorId === currentUserId;
+    // allow invited participant to mark `on-time` before start
+    if (!isCreator && status !== 'on-time') {
+      throw new BadRequestError('Cannot mark attendance before the event starts');
+    }
+    // otherwise allow (participant confirming) and continue
+  }
+
+  // For 'late' only allow if participant is confirmed (if status is available)
+  if (status === 'late' && participantObj.status && participantObj.status !== 'confirmed') {
+    throw new BadRequestError('Only confirmed participants can be marked as late');
+  }
+
   const attendance = await prisma.sessionAttendance.upsert({
     where: {
       sessionId_userId: {
@@ -261,8 +274,9 @@ export const deleteAttendance = asyncHandler(async (req: Request, res: Response)
   }
 
   // Only session creator can delete attendance records
-  if (session.creatorId !== currentUserId) {
-    throw new ForbiddenError('Only session creator can delete attendance records');
+  // Allow the session creator or the attendance owner to delete the attendance record
+  if (session.creatorId !== currentUserId && targetUserId !== currentUserId) {
+    throw new ForbiddenError('Only session creator or the attendance owner can delete this attendance record');
   }
 
   // Find and delete the attendance record

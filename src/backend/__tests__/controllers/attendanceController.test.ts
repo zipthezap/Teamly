@@ -101,17 +101,20 @@ describe('Attendance Controller', () => {
       expect(res.status).toBe(400);
     });
 
-    it('returns 400 when event has not started yet', async () => {
+    it('allows invited participant to confirm attendance before start', async () => {
       vi.mocked(prisma.session.findUnique).mockResolvedValue({
         ...mockSession,
         startTime: futureTime, // event is in the future
       } as any);
 
+      vi.mocked(prisma.sessionAttendance.upsert).mockResolvedValue(mockAttendanceRecord as any);
+
       const res = await request(app)
         .post('/api/events/session-1/attendance')
         .send({ status: 'on-time' });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ message: 'Attendance marked successfully' });
     });
 
     it('returns 200 when attendance is marked successfully', async () => {

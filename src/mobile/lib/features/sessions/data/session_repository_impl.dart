@@ -86,12 +86,12 @@ class SessionRepositoryImpl implements SessionRepository {
 
   @override
   Future<void> markLate(String eventId) async {
-    await _dio.post<void>('/chat/event/late', data: {'eventId': eventId});
+    await _dio.post<void>('/chat/session/late', data: {'sessionId': eventId});
   }
 
   @override
   Future<void> unmarkLate(String eventId) async {
-    await _dio.post<void>('/chat/event/unmark-late', data: {'eventId': eventId});
+    await _dio.post<void>('/chat/session/unmark-late', data: {'sessionId': eventId});
   }
 
   @override

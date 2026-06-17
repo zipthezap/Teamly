@@ -18,6 +18,7 @@ interface SessionActionsProps {
   onDelete: () => Promise<void>;
   onMarkLate: () => Promise<void>;
   onUnmarkLate: () => Promise<void>;
+  onUndoAttendance: () => Promise<void>;
 }
 
 const SessionActions: React.FC<SessionActionsProps> = ({
@@ -30,6 +31,7 @@ const SessionActions: React.FC<SessionActionsProps> = ({
   onUpdateStatus,
   onMarkLate,
   onUnmarkLate,
+  onUndoAttendance,
 }) => {
   const { user } = useAuth();
 
@@ -123,6 +125,20 @@ const SessionActions: React.FC<SessionActionsProps> = ({
                 sx={{ minHeight: '44px' }}
               >
                 On Time
+              </Button>
+            )}
+
+            {/* Undo Attendance: allow participant to remove their attendance record */}
+            {myAttendance && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                size="medium"
+                onClick={onUndoAttendance}
+                sx={{ minHeight: '44px' }}
+              >
+                Undo Attendance
               </Button>
             )}
 

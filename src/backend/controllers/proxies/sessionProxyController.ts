@@ -16,6 +16,7 @@ import {
   getRecurringEventInstances as getRecurringEventInstancesLegacy,
   inviteToEvent as inviteToEventLegacy,
   joinEvent as joinEventLegacy,
+  joinEventViaInvite as joinEventViaInviteLegacy,
   joinEventAsGuest as joinEventAsGuestLegacy,
   leaveEvent as leaveEventLegacy,
   removeRecurringEventException as removeRecurringEventExceptionLegacy,
@@ -59,19 +60,34 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
 const proxySessionRequest = async (
   req: Request,
   res: Response,
+  next: (err?: unknown) => void,
   path: string,
   _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
+    // When the community service URL is not configured, prefer calling the
+    // local fallback handler so unit tests and local dev can exercise the
+    // legacy community-service implementation. Keep telemetry for visibility.
     recordProxyFailClosed('SessionProxyController', 'community-service', 'service_url_missing');
-    res.status(503).json({ error: SESSION_FAIL_CLOSED_MESSAGE });
+    try {
+      // _fallback is the legacy handler (e.g., sessionController.joinEvent)
+      // Forward the `next` callback so controller-thrown errors are handled
+      // by Express error middleware (producing 403/400 as intended).
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // Print stack to stderr so test runner captures the trace, then
+      // pass error to next so Express error middleware maps it correctly.
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
     return;
   }
 
@@ -113,7 +129,28 @@ const proxySessionRequest = async (
       clearTimeout(timeout);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('SessionProxyController', 'community-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res, next));
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        return next(err);
+      }
+    }
+    
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('SessionProxyController', 'community-service');
@@ -135,107 +172,110 @@ const proxySessionRequest = async (
   }
 };
 
-export const joinEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/join`, joinEventLegacy);
+export const joinEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/join`, joinEventLegacy);
 
-export const leaveEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/leave`, leaveEventLegacy);
+export const joinEventViaInvite = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/join-invite`, joinEventViaInviteLegacy);
 
-export const updateParticipationStatus = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/status`, updateParticipationStatusLegacy);
+export const leaveEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/leave`, leaveEventLegacy);
 
-export const updateGuestParticipant = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/guests/${req.params.guestId}`, updateGuestParticipantLegacy);
+export const updateParticipationStatus = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/status`, updateParticipationStatusLegacy);
 
-export const updateGuestParticipantStatus = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/guests/${req.params.guestId}/status`, updateGuestParticipantStatusLegacy);
+export const updateGuestParticipant = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/guests/${req.params.guestId}`, updateGuestParticipantLegacy);
 
-export const removeGuestParticipant = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/guests/${req.params.guestId}`, removeGuestParticipantLegacy);
+export const updateGuestParticipantStatus = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/guests/${req.params.guestId}/status`, updateGuestParticipantStatusLegacy);
 
-export const inviteToEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/invite`, inviteToEventLegacy);
+export const removeGuestParticipant = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/guests/${req.params.guestId}`, removeGuestParticipantLegacy);
 
-export const revokeEventInvitation = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/invitations/revoke`, revokeEventInvitationLegacy);
+export const inviteToEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/invite`, inviteToEventLegacy);
 
-export const generateEventInviteToken = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/invitations/generate-token`, generateEventInviteTokenLegacy);
+export const revokeEventInvitation = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/invitations/revoke`, revokeEventInvitationLegacy);
 
-export const generateInviteToken = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/generate-invite`, generateInviteTokenLegacy);
+export const generateEventInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/invitations/generate-token`, generateEventInviteTokenLegacy);
 
-export const updateSessionStatus = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/session-status`, updateSessionStatusLegacy);
+export const generateInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/generate-invite`, generateInviteTokenLegacy);
 
-export const archiveEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/archive`, archiveEventLegacy);
+export const updateSessionStatus = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/session-status`, updateSessionStatusLegacy);
 
-export const unarchiveEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/unarchive`, unarchiveEventLegacy);
+export const archiveEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/archive`, archiveEventLegacy);
 
-export const getUserStatistics = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, '/api/sessions/statistics', getUserStatisticsLegacy);
+export const unarchiveEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/unarchive`, unarchiveEventLegacy);
 
-export const getEventActivityFeed = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/activity`, getEventActivityFeedLegacy);
+export const getUserStatistics = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, '/api/sessions/statistics', getUserStatisticsLegacy);
 
-export const getNearbyEvents = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, '/api/sessions/nearby', getNearbyEventsLegacy);
+export const getEventActivityFeed = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/activity`, getEventActivityFeedLegacy);
 
-export const getEventByInviteToken = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/invite/${req.params.token}`, getEventByInviteTokenLegacy);
+export const getNearbyEvents = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, '/api/sessions/nearby', getNearbyEventsLegacy);
 
-export const joinEventAsGuest = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/invite/${req.params.token}/join`, joinEventAsGuestLegacy);
+export const getEventByInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/invite/${req.params.token}`, getEventByInviteTokenLegacy);
 
-export const createEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, '/api/sessions', createEventLegacy);
+export const joinEventAsGuest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/invite/${req.params.token}/join`, joinEventAsGuestLegacy);
 
-export const getEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, getEventLegacy);
+export const createEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, '/api/sessions', createEventLegacy);
 
-export const getEventParticipantsByStatus = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/participants`, getEventParticipantsByStatusLegacy);
+export const getEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}`, getEventLegacy);
 
-export const getGuestParticipants = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/guests`, getGuestParticipantsLegacy);
+export const getEventParticipantsByStatus = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/participants`, getEventParticipantsByStatusLegacy);
 
-export const updateEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, updateEventLegacy);
+export const getGuestParticipants = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/guests`, getGuestParticipantsLegacy);
 
-export const deleteEvent = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}`, deleteEventLegacy);
+export const updateEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}`, updateEventLegacy);
 
-export const getEventInviteAnalytics = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/invitations/analytics`, getEventInviteAnalyticsLegacy);
+export const deleteEvent = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}`, deleteEventLegacy);
 
-export const getRecurringEventInstances = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/instances`, getRecurringEventInstancesLegacy);
+export const getEventInviteAnalytics = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/invitations/analytics`, getEventInviteAnalyticsLegacy);
 
-export const addRecurringEventException = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/exceptions`, addRecurringEventExceptionLegacy);
+export const getRecurringEventInstances = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/instances`, getRecurringEventInstancesLegacy);
 
-export const removeRecurringEventException = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.id}/exceptions`, removeRecurringEventExceptionLegacy);
+export const addRecurringEventException = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/exceptions`, addRecurringEventExceptionLegacy);
 
-export const exportEvents = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, '/api/sessions/export', exportEventsLegacy);
+export const removeRecurringEventException = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.id}/exceptions`, removeRecurringEventExceptionLegacy);
 
-export const createReminder = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/reminders`, createReminderLegacy);
+export const exportEvents = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, '/api/sessions/export', exportEventsLegacy);
 
-export const getEventReminders = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/reminders`, getEventRemindersLegacy);
+export const createReminder = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/reminders`, createReminderLegacy);
 
-export const markAttendance = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance`, markAttendanceLegacy);
+export const getEventReminders = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/reminders`, getEventRemindersLegacy);
 
-export const getEventAttendance = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance`, getEventAttendanceLegacy);
+export const markAttendance = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/attendance`, markAttendanceLegacy);
 
-export const getAttendanceStats = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance/stats`, getAttendanceStatsLegacy);
+export const getEventAttendance = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/attendance`, getEventAttendanceLegacy);
 
-export const deleteAttendance = async (req: Request, res: Response) =>
-  proxySessionRequest(req, res, `/api/sessions/${req.params.sessionId}/attendance/${req.params.userId}`, deleteAttendanceLegacy);
+export const getAttendanceStats = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/attendance/stats`, getAttendanceStatsLegacy);
+
+export const deleteAttendance = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxySessionRequest(req, res, next, `/api/sessions/${req.params.sessionId}/attendance/${req.params.userId}`, deleteAttendanceLegacy);

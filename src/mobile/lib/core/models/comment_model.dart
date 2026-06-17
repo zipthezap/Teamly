@@ -23,7 +23,7 @@ class CommentModel {
     final user = json['user'] as Map<String, dynamic>?;
     return CommentModel(
       id: json['id'] as String,
-      eventId: json['eventId'] as String,
+      eventId: (json['eventId'] as String?) ?? (json['sessionId'] as String?) ?? '',
       userId: user?['id'] as String? ?? json['userId'] as String,
       userName: user?['name'] as String? ?? json['userName'] as String? ?? '',
       userPicture: user?['profilePicture'] as String? ??

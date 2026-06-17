@@ -167,12 +167,12 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       throw new BadRequestError('A guest with this name has already joined the session');
     }
 
-    // Create guest participant
+    // Create guest participant as pending — guests must confirm their attendance
     const guestParticipant = await tx.guestParticipant.create({
       data: {
         sessionId: session.id,
         name: sanitizedName,
-        status: GuestParticipantStatus.confirmed
+        status: GuestParticipantStatus.pending
       }
     });
 
@@ -579,9 +579,10 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
   }
 
   // Update guest participant status
+  // Cast to `any` for Prisma client compatibility with generated enum types
   const updatedGuest = await prisma.guestParticipant.update({
     where: { id: guestId },
-    data: { status: status as GuestParticipantStatus }
+    data: { status: status as any }
   });
 
   // Invalidate events cache for all group members

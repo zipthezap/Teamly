@@ -50,6 +50,7 @@ vi.mock('../../controllers/proxies/sessionProxyController', () => ({
   updateEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   joinEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  joinEventViaInvite: vi.fn((req: any, res: any) => res.json({ ok: true })),
   leaveEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   inviteToEvent: vi.fn((req: any, res: any) => res.json({ ok: true })),
   revokeEventInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),

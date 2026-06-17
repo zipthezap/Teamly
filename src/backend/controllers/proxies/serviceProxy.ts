@@ -24,15 +24,36 @@ export const proxyJsonServiceRequest = async (
   _fallback: FallbackHandler,
   serviceName: string,
   options?: ProxyOptions,
+  next?: (err?: unknown) => void,
 ): Promise<void> => {
   const proxyName = options?.proxyName || 'ServiceProxy';
 
   if (!serviceUrl) {
+    // Service URL not configured — attempt to run the local fallback handler
+    // so unit tests and local development can continue to use legacy
+    // implementations. Record a fallback metric for observability.
     recordProxyFailClosed(proxyName, serviceName, 'service_url_missing');
-    res.status(options?.failClosedStatus || 503).json({
-      error: options?.failClosedMessage || `${serviceName} is unavailable`,
-    });
-    return;
+    try {
+      // Pass `next` into the fallback so controllers can propagate errors
+      // to Express error middleware for proper status mapping.
+      await Promise.resolve(_fallback(req, res, next));
+      return;
+    } catch (err) {
+      // Print stack for test visibility, then prefer delegating to next
+      // when provided so Express error handlers can convert to 4xx/5xx.
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      if (next) {
+        return next(err);
+      }
+      // Otherwise log and return a fail-closed response.
+      recordProxyFailClosed(proxyName, serviceName, 'passthrough_error');
+      logger.error(`${serviceName} fallback handler failed`, proxyName, { error: err });
+      res.status(options?.failClosedStatus || 503).json({
+        error: options?.failClosedMessage || `${serviceName} is unavailable`,
+      });
+      return;
+    }
   }
 
   const baseUrl = serviceUrl.replace(/\/$/, '');

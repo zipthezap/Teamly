@@ -24,11 +24,13 @@ class AttendanceModel extends Equatable {
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
     return AttendanceModel(
-      id: json['id'] as String,
-      eventId: json['eventId'] as String,
-      userId: json['userId'] as String,
-      status: json['status'] as String,
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      id: (json['id'] as String?) ?? (json['attendanceId'] as String?) ?? '',
+      eventId: (json['eventId'] as String?) ?? (json['sessionId'] as String?) ?? '',
+      userId: (json['userId'] as String?) ?? (user?['id'] as String?) ?? '',
+      status: (json['status'] as String?) ?? 'on_time',
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
       userName: user?['name'] as String?,
       userEmail: user?['email'] as String?,
       userPicture: user?['profilePicture'] as String?,

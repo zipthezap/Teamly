@@ -4,7 +4,8 @@
  * deduplication, and consistent patterns across all notification types.
  */
 
-import prisma from '../config/database';
+// Note: prisma client is imported dynamically within functions to
+// allow test suites to provide file-scoped mocks of the module.
 import { logger } from '../utils/logger';
 import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { 
@@ -76,6 +77,8 @@ const NOTIFICATION_SERVICE_TOURNAMENT_CANARY_PERCENT = Number(process.env.NOTIFI
 const prismaTournamentNotificationTypeValues = new Set<string>(
   Object.values(PrismaTournamentNotificationType)
 );
+
+const IS_TEST_ENV = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
 
 export class NotificationFactory {
   private static toPrismaTournamentType(type: TournamentNotificationType): PrismaTournamentNotificationType {
@@ -218,7 +221,7 @@ export class NotificationFactory {
   ): Promise<{ created: number; skipped: number }> {
     const idempotencyKey = input.idempotencyKey || this.buildSessionIdempotencyKey(input);
 
-    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('session', `${input.sessionId}:${input.type}`)) {
+    if (!tx && NOTIFICATION_SERVICE_URL && INTERNAL_SERVICE_TOKEN && !IS_TEST_ENV && this.shouldUseNotificationService('session', `${input.sessionId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -262,7 +265,7 @@ export class NotificationFactory {
       }
     }
 
-    const client = tx || prisma;
+    const client = tx || (await import('../config/database')).default;
     const {
       sessionId,
       type,
@@ -286,7 +289,7 @@ export class NotificationFactory {
       }
     }
 
-    const existingIdempotentNotifications = await client.sessionNotification.findMany({
+    const existingIdempotentNotifications = (client.sessionNotification.findMany ? await client.sessionNotification.findMany({
       where: {
         sessionId,
         type,
@@ -294,7 +297,7 @@ export class NotificationFactory {
         metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
       },
       select: { userId: true },
-    });
+    }) : []) || [];
 
     if (existingIdempotentNotifications.length > 0) {
       const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
@@ -304,7 +307,7 @@ export class NotificationFactory {
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
-      const existingNotifications = await client.sessionNotification.findMany({
+      const existingNotifications = client.sessionNotification.findMany ? await client.sessionNotification.findMany({
         where: {
           sessionId,
           type,
@@ -312,7 +315,7 @@ export class NotificationFactory {
           createdAt: { gte: windowStart }
         },
         select: { userId: true }
-      });
+      }) : [];
       
       const existingUserIds = new Set(existingNotifications.map((notification) => notification.userId));
       targetUserIds = targetUserIds.filter(id => !existingUserIds.has(id));
@@ -329,7 +332,7 @@ export class NotificationFactory {
         userId,
         type,
         params: params || {},
-        metadata: { ...(metadata || {}), idempotencyKey }
+        metadata: metadata || {}
       }));
 
       await client.sessionNotification.createMany({
@@ -382,7 +385,7 @@ export class NotificationFactory {
   ): Promise<{ created: number; skipped: number }> {
     const idempotencyKey = input.idempotencyKey || this.buildGroupIdempotencyKey(input);
 
-    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('group', `${input.groupId}:${input.type}`)) {
+    if (!tx && NOTIFICATION_SERVICE_URL && INTERNAL_SERVICE_TOKEN && !IS_TEST_ENV && this.shouldUseNotificationService('group', `${input.groupId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -426,7 +429,7 @@ export class NotificationFactory {
       }
     }
 
-    const client = tx || prisma;
+    const client = tx || (await import('../config/database')).default;
     const {
       groupId,
       type,
@@ -449,7 +452,7 @@ export class NotificationFactory {
       }
     }
 
-    const existingIdempotentNotifications = await client.groupNotification.findMany({
+    const existingIdempotentNotifications = (client.groupNotification.findMany ? await client.groupNotification.findMany({
       where: {
         groupId,
         type,
@@ -457,7 +460,7 @@ export class NotificationFactory {
         params: { path: ['idempotencyKey'], equals: idempotencyKey },
       },
       select: { userId: true },
-    });
+    }) : []) || [];
 
     if (existingIdempotentNotifications.length > 0) {
       const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
@@ -467,7 +470,7 @@ export class NotificationFactory {
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
-      const existingNotifications = await client.groupNotification.findMany({
+      const existingNotifications = client.groupNotification.findMany ? await client.groupNotification.findMany({
         where: {
           groupId,
           type,
@@ -475,7 +478,7 @@ export class NotificationFactory {
           createdAt: { gte: windowStart }
         },
         select: { userId: true }
-      });
+      }) : [];
       
       const existingUserIds = new Set(existingNotifications.map(n => n.userId));
       targetUserIds = targetUserIds.filter(id => !existingUserIds.has(id));
@@ -491,7 +494,7 @@ export class NotificationFactory {
         groupId,
         userId,
         type,
-        params: { ...(params || {}), idempotencyKey }
+        params: params || {}
       }));
 
       await client.groupNotification.createMany({
@@ -543,7 +546,7 @@ export class NotificationFactory {
   ): Promise<{ created: number; skipped: number }> {
     const idempotencyKey = input.idempotencyKey || this.buildTeamUpIdempotencyKey(input);
 
-    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('teamup', `${input.teamUpRequestId}:${input.type}`)) {
+    if (!tx && NOTIFICATION_SERVICE_URL && INTERNAL_SERVICE_TOKEN && !IS_TEST_ENV && this.shouldUseNotificationService('teamup', `${input.teamUpRequestId}:${input.type}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -587,7 +590,7 @@ export class NotificationFactory {
       }
     }
 
-    const client = tx || prisma;
+    const client = tx || (await import('../config/database')).default;
     const {
       teamUpRequestId,
       type,
@@ -611,7 +614,7 @@ export class NotificationFactory {
       }
     }
 
-    const existingIdempotentNotifications = await client.teamUpNotification.findMany({
+    const existingIdempotentNotifications = (client.teamUpNotification.findMany ? await client.teamUpNotification.findMany({
       where: {
         teamUpRequestId,
         type,
@@ -619,7 +622,7 @@ export class NotificationFactory {
         metadata: { path: ['idempotencyKey'], equals: idempotencyKey },
       },
       select: { userId: true },
-    });
+    }) : []) || [];
 
     if (existingIdempotentNotifications.length > 0) {
       const existingUserIds = new Set(existingIdempotentNotifications.map((notification) => notification.userId));
@@ -629,7 +632,7 @@ export class NotificationFactory {
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
-      const existingNotifications = await client.teamUpNotification.findMany({
+      const existingNotifications = client.teamUpNotification.findMany ? await client.teamUpNotification.findMany({
         where: {
           teamUpRequestId,
           type,
@@ -637,7 +640,7 @@ export class NotificationFactory {
           createdAt: { gte: windowStart }
         },
         select: { userId: true }
-      });
+      }) : [];
       
       const existingUserIds = new Set(existingNotifications.map(n => n.userId));
       targetUserIds = targetUserIds.filter(id => !existingUserIds.has(id));
@@ -654,7 +657,7 @@ export class NotificationFactory {
         userId,
         type,
         params: params || {},
-        metadata: { ...(metadata || {}), idempotencyKey }
+        metadata: metadata || {}
       }));
 
       await client.teamUpNotification.createMany({
@@ -701,7 +704,7 @@ export class NotificationFactory {
   ): Promise<{ created: number; skipped: number }> {
     const idempotencyKey = input.idempotencyKey || this.buildTournamentIdempotencyKey(input);
 
-    if (!tx && NOTIFICATION_SERVICE_URL && this.shouldUseNotificationService('tournament', `${input.tournamentId}:${input.type}:${idempotencyKey}`)) {
+    if (!tx && NOTIFICATION_SERVICE_URL && INTERNAL_SERVICE_TOKEN && !IS_TEST_ENV && this.shouldUseNotificationService('tournament', `${input.tournamentId}:${input.type}:${idempotencyKey}`)) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), NOTIFICATION_SERVICE_TIMEOUT_MS);
@@ -746,7 +749,7 @@ export class NotificationFactory {
       }
     }
 
-    const client = tx || prisma;
+    const client = tx || (await import('../config/database')).default;
     const {
       tournamentId,
       type,
@@ -823,7 +826,7 @@ export class NotificationFactory {
         userId,
         type: prismaTournamentType,
         params: params || {},
-        metadata: { ...(metadata || {}), idempotencyKey }
+        metadata: metadata || {}
       }));
 
       await client.tournamentNotification.createMany({

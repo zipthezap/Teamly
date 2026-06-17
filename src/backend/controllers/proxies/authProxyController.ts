@@ -47,7 +47,7 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
@@ -153,12 +153,19 @@ const proxyAuthPassthrough = (req: Request, res: Response, path: string): Promis
 const proxyAuthRequest = async (
   req: Request,
   res: Response,
+  next: (err?: unknown) => void,
   path: string,
   _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
   if (!AUTH_SERVICE_URL) {
     recordProxyFailClosed('AuthProxyController', 'auth-service', 'service_url_missing');
-    res.status(503).json({ error: AUTH_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
     return;
   }
 
@@ -216,7 +223,28 @@ const proxyAuthRequest = async (
       }
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('AuthProxyController', 'auth-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res, next));
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        return next(err);
+      }
+    }
+    
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('AuthProxyController', 'auth-service');
@@ -234,84 +262,90 @@ const proxyAuthRequest = async (
       method: req.method,
       path,
     });
-    res.status(503).json({ error: AUTH_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
   }
 };
 
-export const register = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/register', registerLegacy);
+export const register = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/register', registerLegacy);
 
-export const login = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/login', loginLegacy);
+export const login = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/login', loginLegacy);
 
-export const logout = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/logout', logoutLegacy);
+export const logout = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/logout', logoutLegacy);
 
-export const logoutAll = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/logout-all', logoutAllLegacy);
+export const logoutAll = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/logout-all', logoutAllLegacy);
 
-export const refreshToken = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/refresh-token', refreshTokenLegacy);
+export const refreshToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/refresh-token', refreshTokenLegacy);
 
-export const verifyEmail = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/verify-email', verifyEmailLegacy);
+export const verifyEmail = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/verify-email', verifyEmailLegacy);
 
-export const resendVerificationEmail = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/resend-verification', resendVerificationEmailLegacy);
+export const resendVerificationEmail = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/resend-verification', resendVerificationEmailLegacy);
 
-export const mobileGoogleLogin = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/google/mobile', mobileGoogleLoginLegacy);
+export const mobileGoogleLogin = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/google/mobile', mobileGoogleLoginLegacy);
 
-export const mobileFacebookLogin = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/facebook/mobile', mobileFacebookLoginLegacy);
+export const mobileFacebookLogin = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/facebook/mobile', mobileFacebookLoginLegacy);
 
-export const mobileAppleLogin = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/apple/mobile', mobileAppleLoginLegacy);
+export const mobileAppleLogin = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/apple/mobile', mobileAppleLoginLegacy);
 
-export const getDashboard = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/me/dashboard', getDashboardLegacy);
+export const getDashboard = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/me/dashboard', getDashboardLegacy);
 
-export const getProfile = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile', getProfileLegacy);
+export const getProfile = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile', getProfileLegacy);
 
-export const getSessions = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/sessions', getSessionsLegacy);
+export const getSessions = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/sessions', getSessionsLegacy);
 
-export const getOAuthStatus = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/oauth/status', getOAuthStatusLegacy);
+export const getOAuthStatus = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/oauth/status', getOAuthStatusLegacy);
 
-export const updateProfile = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile', updateProfileLegacy);
+export const updateProfile = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile', updateProfileLegacy);
 
-export const updatePassword = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/password', updatePasswordLegacy);
+export const updatePassword = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/password', updatePasswordLegacy);
 
-export const deleteProfilePicture = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile/picture', deleteProfilePictureLegacy);
+export const deleteProfilePicture = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile/picture', deleteProfilePictureLegacy);
 
-export const listProfilePictures = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile/pictures', listProfilePicturesLegacy);
+export const listProfilePictures = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile/pictures', listProfilePicturesLegacy);
 
-export const restoreProfilePicture = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile/picture/restore', restoreProfilePictureLegacy);
+export const restoreProfilePicture = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile/picture/restore', restoreProfilePictureLegacy);
 
-export const hardDeleteProfilePicture = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/profile/picture/hard-delete', hardDeleteProfilePictureLegacy);
+export const hardDeleteProfilePicture = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/profile/picture/hard-delete', hardDeleteProfilePictureLegacy);
 
-export const unlinkOAuthAccount = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/oauth/unlink', unlinkOAuthAccountLegacy);
+export const unlinkOAuthAccount = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/oauth/unlink', unlinkOAuthAccountLegacy);
 
-export const syncOAuthProfilePicture = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/oauth/sync-picture', syncOAuthProfilePictureLegacy);
+export const syncOAuthProfilePicture = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/oauth/sync-picture', syncOAuthProfilePictureLegacy);
 
-export const requestPasswordReset = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/forgot-password', requestPasswordResetLegacy);
+export const requestPasswordReset = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/forgot-password', requestPasswordResetLegacy);
 
-export const resetPassword = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/reset-password', resetPasswordLegacy);
+export const resetPassword = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/reset-password', resetPasswordLegacy);
 
-export const deleteAccount = async (req: Request, res: Response) =>
-  proxyAuthRequest(req, res, '/api/auth/account', deleteAccountLegacy);
+export const deleteAccount = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyAuthRequest(req, res, next, '/api/auth/account', deleteAccountLegacy);
 
 export const startGoogleOAuth = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyAuthPassthrough(req, res, '/api/auth/google');

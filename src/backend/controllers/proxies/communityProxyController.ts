@@ -35,7 +35,7 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
@@ -47,9 +47,21 @@ const proxyGet = async (
   options?: { includeUserId?: boolean; includeUserName?: boolean },
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
+    // No community service configured — attempt to run the local legacy
+    // handler so unit tests and local dev can exercise the code path.
     recordProxyFailClosed('CommunityProxyController', 'community-service', 'service_url_missing');
-    res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
-    return;
+    try {
+      await Promise.resolve(_fallback(req, res));
+      return;
+    } catch (err) {
+      const reason = getProxyFallbackReason(err);
+      recordProxyFailClosed('CommunityProxyController', 'community-service', reason);
+      logger.error('Community fallback handler failed', 'CommunityProxyController', { error: err });
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
+      return;
+    }
   }
 
   const headers: Record<string, string> = {
@@ -84,7 +96,32 @@ const proxyGet = async (
       clearTimeout(timeout);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('CommunityProxyController', 'community-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res));
+        return;
+      } catch (err) {
+        const reason = getProxyFallbackReason(err);
+        recordProxyFailClosed('CommunityProxyController', 'community-service', reason);
+        logger.error('Community fallback handler failed', 'CommunityProxyController', { error: err });
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
+        return;
+      }
+    }
+
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('CommunityProxyController', 'community-service');

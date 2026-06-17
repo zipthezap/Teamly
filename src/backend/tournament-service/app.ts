@@ -1,5 +1,6 @@
 import express, { Application, NextFunction, Request, Response } from 'express';
 
+import { requireHeaderAuth } from './headerAuth';
 import tournamentRoutes from './routes/tournamentRoutes';
 import leagueRoutes from './routes/leagueRoutes';
 
@@ -15,8 +16,8 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-app.use('/api/tournaments', tournamentRoutes);
-app.use('/api/leagues', leagueRoutes);
+app.use('/api/tournaments', requireHeaderAuth, tournamentRoutes);
+app.use('/api/leagues', requireHeaderAuth, leagueRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({

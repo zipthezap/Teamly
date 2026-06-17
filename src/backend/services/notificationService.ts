@@ -535,7 +535,7 @@ function enrichNotificationMetadata(
 
   // Add action URLs
   if (notificationType === 'session' && session?.id) {
-    metadata.actionUrl = `/sessions/${session.id}`;
+    metadata.actionUrl = `/events/${session.id}`;
     metadata.actionText = 'View Event';
   } else if (notificationType === 'group' && group?.id) {
     metadata.actionUrl = `/groups/${group.id}`;

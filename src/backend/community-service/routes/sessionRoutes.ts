@@ -17,6 +17,7 @@ import {
 	getRecurringEventInstances,
 	inviteToEvent,
 	joinEvent,
+	joinEventViaInvite,
 	joinEventAsGuest,
 	leaveEvent,
 	removeRecurringEventException,
@@ -58,6 +59,7 @@ router.get('/:id/guests', requireHeaderAuth, asyncHandler(getGuestParticipants))
 router.put('/:id', requireHeaderAuth, asyncHandler(updateEvent));
 router.delete('/:id', requireHeaderAuth, asyncHandler(deleteEvent));
 router.post('/:id/join', requireHeaderAuth, asyncHandler(joinEvent));
+router.post('/:id/join-invite', requireHeaderAuth, asyncHandler(joinEventViaInvite));
 router.delete('/:id/leave', requireHeaderAuth, asyncHandler(leaveEvent));
 router.put('/:id/status', requireHeaderAuth, asyncHandler(updateParticipationStatus));
 router.put('/:id/guests/:guestId', requireHeaderAuth, asyncHandler(updateGuestParticipant));

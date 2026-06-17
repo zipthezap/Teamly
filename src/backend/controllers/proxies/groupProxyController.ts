@@ -55,24 +55,26 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
 const proxyGroupRequest = async (
   req: Request,
   res: Response,
+  next: (err?: unknown) => void,
   path: string,
-  _fallback: (req: Request, res: Response) => Promise<unknown>,
+  _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
   if (!COMMUNITY_SERVICE_URL) {
     recordProxyFailClosed('GroupProxyController', 'community-service', 'service_url_missing');
-    logger.error('Community service URL missing for group endpoint (fail-closed)', 'GroupProxyController', {
-      reason: 'service_url_missing',
-      method: req.method,
-      path,
-    });
-    res.status(503).json({ error: GROUP_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
     return;
   }
 
@@ -112,7 +114,28 @@ const proxyGroupRequest = async (
       clearTimeout(timeout);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('GroupProxyController', 'community-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res, next));
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        return next(err);
+      }
+    }
+    
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('GroupProxyController', 'community-service');
@@ -129,7 +152,13 @@ const proxyGroupRequest = async (
       method: req.method,
       path,
     });
-    res.status(503).json({ error: GROUP_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
   }
 };
 
@@ -195,95 +224,95 @@ const proxyGroupPassthrough = (req: Request, res: Response, path: string): Promi
   });
 };
 
-export const getGroupByInviteToken = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/join/${req.params.token}`, getGroupByInviteTokenLegacy);
+export const getGroupByInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/join/${req.params.token}`, getGroupByInviteTokenLegacy);
 
-export const getGroupForInvite = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/invite/${req.params.groupId}`, getGroupForInviteLegacy);
+export const getGroupForInvite = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/invite/${req.params.groupId}`, getGroupForInviteLegacy);
 
-export const joinGroupByInvite = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/join/${req.params.groupId}`, joinGroupByInviteLegacy);
+export const joinGroupByInvite = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/join/${req.params.groupId}`, joinGroupByInviteLegacy);
 
-export const generateInviteToken = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invitations/generate-token`, generateInviteTokenLegacy);
+export const generateInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invitations/generate-token`, generateInviteTokenLegacy);
 
-export const getInviteLink = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invite-link`, getInviteLinkLegacy);
+export const getInviteLink = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invite-link`, getInviteLinkLegacy);
 
-export const generateGroupInviteToken = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invite-token`, generateGroupInviteTokenLegacy);
+export const generateGroupInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invite-token`, generateGroupInviteTokenLegacy);
 
-export const joinGroupByInviteToken = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/join-by-token/${req.params.token}`, joinGroupByInviteTokenLegacy);
+export const joinGroupByInviteToken = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/join-by-token/${req.params.token}`, joinGroupByInviteTokenLegacy);
 
-export const requestJoinGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/join-request`, requestJoinGroupLegacy);
+export const requestJoinGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/join-request`, requestJoinGroupLegacy);
 
-export const getJoinRequests = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/join-requests`, getJoinRequestsLegacy);
+export const getJoinRequests = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/join-requests`, getJoinRequestsLegacy);
 
-export const handleJoinRequest = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/join-requests/${req.params.requestId}`, handleJoinRequestLegacy);
+export const handleJoinRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/join-requests/${req.params.requestId}`, handleJoinRequestLegacy);
 
-export const cancelMyJoinRequest = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/join-requests/${req.params.requestId}`, cancelMyJoinRequestLegacy);
+export const cancelMyJoinRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/join-requests/${req.params.requestId}`, cancelMyJoinRequestLegacy);
 
-export const removeMember = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/members/${req.params.memberId}`, removeMemberLegacy);
+export const removeMember = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/members/${req.params.memberId}`, removeMemberLegacy);
 
-export const removeMemberByUserId = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/members/user/${req.params.userId}`, removeMemberByUserIdLegacy);
+export const removeMemberByUserId = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/members/user/${req.params.userId}`, removeMemberByUserIdLegacy);
 
-export const updateMemberRole = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/members/${req.params.memberId}/role`, updateMemberRoleLegacy);
+export const updateMemberRole = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/members/${req.params.memberId}/role`, updateMemberRoleLegacy);
 
-export const transferAdmin = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/transfer-admin`, transferAdminLegacy);
+export const transferAdmin = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/transfer-admin`, transferAdminLegacy);
 
-export const createGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, '/api/groups', createGroupLegacy);
+export const createGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, '/api/groups', createGroupLegacy);
 
-export const updateGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}`, updateGroupLegacy);
+export const updateGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}`, updateGroupLegacy);
 
-export const deleteGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}`, deleteGroupLegacy);
+export const deleteGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}`, deleteGroupLegacy);
 
-export const inviteMember = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invite`, inviteMemberLegacy);
+export const inviteMember = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invite`, inviteMemberLegacy);
 
-export const bulkInviteMembers = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invitations/bulk`, bulkInviteMembersLegacy);
+export const bulkInviteMembers = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invitations/bulk`, bulkInviteMembersLegacy);
 
-export const revokeInvitation = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invitations/revoke`, revokeInvitationLegacy);
+export const revokeInvitation = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invitations/revoke`, revokeInvitationLegacy);
 
-export const leaveGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/leave`, leaveGroupLegacy);
+export const leaveGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/leave`, leaveGroupLegacy);
 
-export const respondToInvitation = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invitations/${req.params.requestId}/respond`, respondToInvitationLegacy);
+export const respondToInvitation = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invitations/${req.params.requestId}/respond`, respondToInvitationLegacy);
 
-export const getInviteAnalytics = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/invitations/analytics${getQuerySuffix(req.url)}`, getInviteAnalyticsLegacy);
+export const getInviteAnalytics = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/invitations/analytics${getQuerySuffix(req.url)}`, getInviteAnalyticsLegacy);
 
-export const getUserInvitations = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, '/api/groups/invitations/pending', getUserInvitationsLegacy);
+export const getUserInvitations = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, '/api/groups/invitations/pending', getUserInvitationsLegacy);
 
-export const getMyJoinRequests = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, '/api/groups/my-join-requests', getMyJoinRequestsLegacy);
+export const getMyJoinRequests = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, '/api/groups/my-join-requests', getMyJoinRequestsLegacy);
 
-export const getGroupMembers = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/members`, getGroupMembersLegacy);
+export const getGroupMembers = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/members`, getGroupMembersLegacy);
 
-export const getGroup = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}`, getGroupLegacy);
+export const getGroup = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}`, getGroupLegacy);
 
-export const getGroups = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups${getQuerySuffix(req.url)}`, getGroupsLegacy);
+export const getGroups = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups${getQuerySuffix(req.url)}`, getGroupsLegacy);
 
-export const getNearbyGroups = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/nearby${getQuerySuffix(req.url)}`, getNearbyGroupsLegacy);
+export const getNearbyGroups = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/nearby${getQuerySuffix(req.url)}`, getNearbyGroupsLegacy);
 
 export const uploadGroupPicture = async (req: Request, res: Response): Promise<void> => {
   const proxied = await proxyGroupPassthrough(req, res, `/api/groups/${req.params.id}/picture`);
@@ -292,5 +321,5 @@ export const uploadGroupPicture = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const deleteGroupPicture = async (req: Request, res: Response) =>
-  proxyGroupRequest(req, res, `/api/groups/${req.params.id}/picture`, deleteGroupPictureLegacy);
+export const deleteGroupPicture = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyGroupRequest(req, res, next, `/api/groups/${req.params.id}/picture`, deleteGroupPictureLegacy);

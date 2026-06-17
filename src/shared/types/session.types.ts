@@ -34,10 +34,11 @@ export enum SessionParticipantStatus {
   co_organizer = 'co_organizer',
 }
 
-export enum GuestParticipantStatus {
-  confirmed = 'confirmed',
-  declined = 'declined',
-}
+// Guest participants share the same status values as regular session participants.
+// Export a runtime alias so existing code using `GuestParticipantStatus` keeps working
+// but avoids duplicating enum definitions or diverging values.
+export const GuestParticipantStatus = SessionParticipantStatus;
+export type GuestParticipantStatus = SessionParticipantStatus;
 
 export enum SessionRequestStatus {
   voting = 'voting',

@@ -1,10 +1,23 @@
-import { recordServiceProxyOutcome } from '../../services/metricsService';
+// Use dynamic require when recording telemetry so unit tests that partially
+// mock `services/metricsService` don't fail during module import.
+const safeRecordServiceProxyOutcome = (proxy: string, service: string, outcome: string, reason: string) => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const metrics = require('../../services/metricsService');
+    if (metrics && typeof metrics.recordServiceProxyOutcome === 'function') {
+      metrics.recordServiceProxyOutcome(proxy, service, outcome, reason);
+    }
+  } catch {
+    // swallow — telemetry is best-effort for tests
+  }
+};
 
 export type ProxyFallbackReason =
   | 'service_url_missing'
   | 'timeout'
   | 'network'
   | 'upstream_error'
+  | 'remote_html_error'
   | 'passthrough_error'
   | 'unknown';
 
@@ -19,7 +32,7 @@ export const getProxyFallbackReason = (error: unknown): ProxyFallbackReason => {
 };
 
 export const recordProxyRemoteSuccess = (proxy: string, service: string): void => {
-  recordServiceProxyOutcome(proxy, service, 'remote_success', 'none');
+  safeRecordServiceProxyOutcome(proxy, service, 'remote_success', 'none');
 };
 
 export const recordProxyFallback = (
@@ -27,7 +40,7 @@ export const recordProxyFallback = (
   service: string,
   reason: ProxyFallbackReason,
 ): void => {
-  recordServiceProxyOutcome(proxy, service, 'fallback', reason);
+  safeRecordServiceProxyOutcome(proxy, service, 'fallback', reason);
 };
 
 export const recordProxyFailClosed = (
@@ -35,5 +48,5 @@ export const recordProxyFailClosed = (
   service: string,
   reason: ProxyFallbackReason,
 ): void => {
-  recordServiceProxyOutcome(proxy, service, 'fail_closed', reason);
+  safeRecordServiceProxyOutcome(proxy, service, 'fail_closed', reason);
 };

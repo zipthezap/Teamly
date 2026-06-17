@@ -10,30 +10,30 @@ import { proxyJsonServiceRequest } from './serviceProxy';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL;
 
-export const get2FAStatus = async (req: Request, res: Response) =>
+export const get2FAStatus = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, AUTH_SERVICE_URL, '/api/two-factor/status', get2FAStatusLegacy, 'auth-service', {
     failClosed: true,
     failClosedMessage: 'Two-factor authentication is unavailable without auth-service',
     proxyName: 'TwoFactorProxyController',
-  });
+  }, next);
 
-export const setup2FA = async (req: Request, res: Response) =>
+export const setup2FA = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, AUTH_SERVICE_URL, '/api/two-factor/setup', setup2FALegacy, 'auth-service', {
     failClosed: true,
     failClosedMessage: 'Two-factor authentication is unavailable without auth-service',
     proxyName: 'TwoFactorProxyController',
-  });
+  }, next);
 
-export const verify2FA = async (req: Request, res: Response) =>
+export const verify2FA = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, AUTH_SERVICE_URL, '/api/two-factor/verify', verify2FALegacy, 'auth-service', {
     failClosed: true,
     failClosedMessage: 'Two-factor authentication is unavailable without auth-service',
     proxyName: 'TwoFactorProxyController',
-  });
+  }, next);
 
-export const disable2FA = async (req: Request, res: Response) =>
+export const disable2FA = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, AUTH_SERVICE_URL, '/api/two-factor/disable', disable2FALegacy, 'auth-service', {
     failClosed: true,
     failClosedMessage: 'Two-factor authentication is unavailable without auth-service',
     proxyName: 'TwoFactorProxyController',
-  });
+  }, next);

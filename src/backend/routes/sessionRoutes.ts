@@ -33,6 +33,7 @@ router.post('/:id/generate-invite', noCache, asyncHandler(sessionProxyController
 router.put('/:id', noCache, asyncHandler(sessionProxyController.updateEvent));
 router.delete('/:id', noCache, asyncHandler(sessionProxyController.deleteEvent));
 router.post('/:id/join', noCache, asyncHandler(sessionProxyController.joinEvent));
+router.post('/:id/join-invite', noCache, asyncHandler(sessionProxyController.joinEventViaInvite));
 router.delete('/:id/leave', noCache, asyncHandler(sessionProxyController.leaveEvent));
 router.post('/:id/invite', noCache, asyncHandler(sessionProxyController.inviteToEvent));
 router.post('/:id/invitations/revoke', noCache, asyncHandler(sessionProxyController.revokeEventInvitation));

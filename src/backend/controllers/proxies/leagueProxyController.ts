@@ -16,49 +16,49 @@ import { proxyJsonServiceRequest } from './serviceProxy';
 
 const TOURNAMENT_SERVICE_URL = process.env.TOURNAMENT_SERVICE_URL;
 
-export const getLeagues = async (req: Request, res: Response) =>
+export const getLeagues = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, '/api/leagues', getLeaguesLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const createLeague = async (req: Request, res: Response) =>
+export const createLeague = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, '/api/leagues', createLeagueLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const getLeagueById = async (req: Request, res: Response) =>
+export const getLeagueById = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}`, getLeagueByIdLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const updateLeague = async (req: Request, res: Response) =>
+export const updateLeague = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}`, updateLeagueLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const deleteLeague = async (req: Request, res: Response) =>
+export const deleteLeague = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}`, deleteLeagueLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const addTeam = async (req: Request, res: Response) =>
+export const addTeam = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}/teams`, addTeamLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const removeTeam = async (req: Request, res: Response) =>
+export const removeTeam = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -70,24 +70,25 @@ export const removeTeam = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'League routes are unavailable without tournament-service',
       proxyName: 'LeagueProxyController',
-    }
+    },
+    next
   );
 
-export const getStandings = async (req: Request, res: Response) =>
+export const getStandings = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}/standings`, getStandingsLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const linkSession = async (req: Request, res: Response) =>
+export const linkSession = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, TOURNAMENT_SERVICE_URL, `/api/leagues/${req.params.id}/sessions`, linkSessionLegacy, 'tournament-service', {
     failClosed: true,
     failClosedMessage: 'League routes are unavailable without tournament-service',
     proxyName: 'LeagueProxyController',
-  });
+  }, next);
 
-export const updateMatch = async (req: Request, res: Response) =>
+export const updateMatch = async (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -99,5 +100,6 @@ export const updateMatch = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'League routes are unavailable without tournament-service',
       proxyName: 'LeagueProxyController',
-    }
+    },
+    next
   );

@@ -108,8 +108,8 @@ const JoinSessionByInvite = () => {
     setError('');
     
     try {
-      // Join as authenticated user
-      await sessionsAPI.join(event!.id);
+      // Join as authenticated user via invite (creates pending participant)
+      await sessionsAPI.joinViaInvite(event!.id);
       setSuccess('Successfully joined the event! Redirecting to event details...');
       
       // Invalidate caches so the joined event is reflected

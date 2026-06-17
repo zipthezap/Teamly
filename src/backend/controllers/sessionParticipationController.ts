@@ -137,6 +137,46 @@ export const joinEvent = async (req: Request, res: Response) => {
       : 'Successfully joined the session.',
   });
 };
+
+// Join event via invite token landing (authenticated users)
+// This creates a participant with `pending` status so viewing or joining via an
+// invite does not automatically confirm attendance. The user must explicitly
+// confirm via the existing `updateParticipationStatus` endpoint.
+export const joinEventViaInvite = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const session = await tx.session.findUnique({ where: { id } });
+    if (!session) {
+      throw new NotFoundError(`Session ${id} not found`);
+    }
+
+    // Check if already joined
+    const existingParticipant = await tx.sessionParticipant.findUnique({
+      where: { sessionId_userId: { sessionId: id, userId: req.user!.id } }
+    });
+    if (existingParticipant) {
+      throw new ConflictError('Already joined this session', 'ALREADY_JOINED');
+    }
+
+    // Create as pending so it doesn't count against maxPlayers
+    const participant = await tx.sessionParticipant.create({
+      data: {
+        sessionId: id,
+        userId: req.user!.id,
+        status: 'pending'
+      }
+    });
+
+    return { participant, groupId: session.groupId };
+  });
+
+  // Invalidate caches
+  await CacheService.deletePattern(`sessions:user:*:group:${result.groupId}:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:all:*`);
+
+  res.status(201).json({ ...result.participant, message: 'Joined session (pending confirmation)' });
+};
 export const leaveEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 

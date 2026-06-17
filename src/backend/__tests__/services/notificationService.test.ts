@@ -13,25 +13,29 @@ vi.mock('../../config/database', () => ({
       groupBy: vi.fn(),
       count: vi.fn(),
       updateMany: vi.fn(),
-      deleteMany: vi.fn()
+      deleteMany: vi.fn(),
+      createMany: vi.fn()
     },
     groupNotification: {
       findMany: vi.fn(),
       count: vi.fn(),
       updateMany: vi.fn(),
-      deleteMany: vi.fn()
+      deleteMany: vi.fn(),
+      createMany: vi.fn()
     },
     teamUpNotification: {
       findMany: vi.fn(),
       count: vi.fn(),
       updateMany: vi.fn(),
-      deleteMany: vi.fn()
+      deleteMany: vi.fn(),
+      createMany: vi.fn()
     },
     tournamentNotification: {
       findMany: vi.fn(),
       count: vi.fn(),
       updateMany: vi.fn(),
-      deleteMany: vi.fn()
+      deleteMany: vi.fn(),
+      createMany: vi.fn()
     }
   }
 }));

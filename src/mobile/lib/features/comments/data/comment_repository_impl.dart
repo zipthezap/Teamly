@@ -13,7 +13,7 @@ class CommentRepositoryImpl implements CommentRepository {
   @override
   Future<List<CommentModel>> getEventComments(String eventId) async {
     final response =
-        await _dio.get<dynamic>('/comments/event/$eventId');
+      await _dio.get<dynamic>('/comments/session/$eventId');
     final data = response.data;
     final List<dynamic> items;
     if (data is List) {
@@ -32,7 +32,7 @@ class CommentRepositoryImpl implements CommentRepository {
   Future<CommentModel> createComment(String eventId, String content) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/comments',
-      data: {'eventId': eventId, 'content': content},
+      data: {'sessionId': eventId, 'content': content},
     );
     final data = response.data!;
     return CommentModel.fromJson(

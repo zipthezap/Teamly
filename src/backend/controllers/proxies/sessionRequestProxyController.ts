@@ -13,14 +13,14 @@ import { proxyJsonServiceRequest } from './serviceProxy';
 
 const COMMUNITY_SERVICE_URL = process.env.COMMUNITY_SERVICE_URL;
 
-export const createEventRequest = async (req: Request, res: Response) =>
+export const createEventRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(req, res, COMMUNITY_SERVICE_URL, '/api/session-requests', createEventRequestLegacy, 'community-service', {
     failClosed: true,
     failClosedMessage: 'Session request routes are unavailable without community-service',
     proxyName: 'SessionRequestProxyController',
-  });
+  }, next);
 
-export const getEventRequests = async (req: Request, res: Response) =>
+export const getEventRequests = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -32,10 +32,11 @@ export const getEventRequests = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );
 
-export const getEventRequest = async (req: Request, res: Response) =>
+export const getEventRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -47,10 +48,11 @@ export const getEventRequest = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );
 
-export const getEventRequestStatistics = async (req: Request, res: Response) =>
+export const getEventRequestStatistics = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -62,10 +64,11 @@ export const getEventRequestStatistics = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );
 
-export const voteOnEventRequest = async (req: Request, res: Response) =>
+export const voteOnEventRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -77,10 +80,11 @@ export const voteOnEventRequest = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );
 
-export const finalizeEventRequest = async (req: Request, res: Response) =>
+export const finalizeEventRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -92,10 +96,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );
 
-export const cancelEventRequest = async (req: Request, res: Response) =>
+export const cancelEventRequest = (req: Request, res: Response, next: (err?: unknown) => void) =>
   proxyJsonServiceRequest(
     req,
     res,
@@ -107,5 +112,6 @@ export const cancelEventRequest = async (req: Request, res: Response) =>
       failClosed: true,
       failClosedMessage: 'Session request routes are unavailable without community-service',
       proxyName: 'SessionRequestProxyController',
-    }
+    },
+    next
   );

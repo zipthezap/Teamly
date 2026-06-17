@@ -26,19 +26,26 @@ const parseResponsePayload = async (response: globalThis.Response): Promise<unkn
   try {
     return JSON.parse(text);
   } catch {
-    return { message: text };
+    return { __parseError: true, text };  // Mark parse errors so we can detect non-JSON responses
   }
 };
 
 const proxyNotificationRequest = async (
   req: Request,
   res: Response,
+  next: (err?: unknown) => void,
   path: string,
   _fallback: (req: Request, res: Response, next?: (error?: unknown) => void) => unknown,
 ): Promise<void> => {
   if (!NOTIFICATION_SERVICE_URL) {
     recordProxyFailClosed('NotificationProxyController', 'notification-service', 'service_url_missing');
-    res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
     return;
   }
 
@@ -80,7 +87,28 @@ const proxyNotificationRequest = async (
       clearTimeout(timeout);
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const payload = await parseResponsePayload(response);
+    
+    // If the remote returned a non-JSON error (HTML, text, etc.), prefer
+    // to run the local fallback so our API returns structured JSON errors.
+    const hasParseError = typeof payload === 'object' && payload !== null && '__parseError' in payload;
+    const isBadStatus = response.status >= 400;
+    const noContentType = !contentType || !contentType.trim();
+    const notJsonContent = contentType && !contentType.includes('application/json');
+    
+    if (isBadStatus && (hasParseError || noContentType || notJsonContent)) {
+      recordProxyFailClosed('NotificationProxyController', 'notification-service', 'remote_html_error');
+      try {
+        await Promise.resolve(_fallback(req, res, next));
+        return;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(err instanceof Error ? err.stack : err);
+        return next(err);
+      }
+    }
+    
     if (payload === null) {
       res.status(response.status).end();
       recordProxyRemoteSuccess('NotificationProxyController', 'notification-service');
@@ -98,27 +126,33 @@ const proxyNotificationRequest = async (
       method: req.method,
       path,
     });
-    res.status(503).json({ error: NOTIFICATION_FAIL_CLOSED_MESSAGE });
+    try {
+      await Promise.resolve(_fallback(req, res, next));
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err instanceof Error ? err.stack : err);
+      return next(err);
+    }
   }
 };
 
-export const getNotifications = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications', getNotificationsLegacy);
+export const getNotifications = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications', getNotificationsLegacy);
 
-export const markAsRead = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications/read', markAsReadLegacy);
+export const markAsRead = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications/read', markAsReadLegacy);
 
-export const getStats = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications/stats', getStatsLegacy);
+export const getStats = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications/stats', getStatsLegacy);
 
-export const getUnreadCount = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications/unread-count', getUnreadCountLegacy);
+export const getUnreadCount = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications/unread-count', getUnreadCountLegacy);
 
-export const deleteNotificationsEndpoint = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications', deleteNotificationsEndpointLegacy);
+export const deleteNotificationsEndpoint = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications', deleteNotificationsEndpointLegacy);
 
-export const deleteAllReadNotificationsEndpoint = async (req: Request, res: Response) =>
-  proxyNotificationRequest(req, res, '/api/notifications/read', deleteAllReadNotificationsEndpointLegacy);
+export const deleteAllReadNotificationsEndpoint = (req: Request, res: Response, next: (err?: unknown) => void) =>
+  proxyNotificationRequest(req, res, next, '/api/notifications/read', deleteAllReadNotificationsEndpointLegacy);
 
 export const streamNotifications = async (req: Request, res: Response): Promise<void> => {
   if (!NOTIFICATION_SERVICE_URL) {

@@ -147,7 +147,12 @@ describe('NotificationFactory', () => {
         userIds: ['user-1'],
         params: {},
         metadata
-      });
+      }, {
+        sessionNotification: {
+          createMany: mockCreateMany,
+          findMany: vi.fn().mockResolvedValue([])
+        }
+      } as any);
 
       expect(mockCreateMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
