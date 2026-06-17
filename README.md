@@ -464,6 +464,7 @@ The test scripts will:
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - General deployment guides and options
 - **[docs/QUICK_START.md](docs/QUICK_START.md)** - Quick setup instructions
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security features and best practices
+- **[docs/TOURNAMENT_TRACKER.md](docs/TOURNAMENT_TRACKER.md)** - Consolidated tracker for tournament capabilities and docs
 
 ### Features
 
