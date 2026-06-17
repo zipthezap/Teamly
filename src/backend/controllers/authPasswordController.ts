@@ -207,6 +207,8 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       passwordResetToken: null,
       passwordResetExpires: null,
       failedLoginAttempts: 0,
+      failedPasswordAttempts: 0,
+      failedTwoFactorAttempts: 0,
       accountLockedUntil: null
     }
   });
@@ -235,7 +237,8 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
   const user = await prisma.user.findFirst({
     where: {
       emailVerificationToken: hashedToken,
-      emailVerified: false
+      emailVerified: false,
+      emailVerificationExpires: { gt: new Date() }
     }
   });
 
@@ -285,7 +288,7 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
   
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerificationToken: hashedEmailToken }
+    data: { emailVerificationToken: hashedEmailToken, emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) }
   });
 
   // Send verification email with the plain token

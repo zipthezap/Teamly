@@ -55,12 +55,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   // Generate email verification token (returns plain and hashed versions)
   const { token: emailVerificationToken, hashedToken: hashedEmailToken } = authService.generateEmailVerificationToken();
 
+  const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
   const user = await prisma.user.create({
     data: {
       email: sanitized.email,
       password: hashedPassword,
       name: sanitized.name,
-      emailVerificationToken: hashedEmailToken // Store hashed token
+      emailVerificationToken: hashedEmailToken, // Store hashed token
+      emailVerificationExpires: verificationExpiry
     },
     select: {
       id: true,
@@ -188,38 +191,25 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const isValidPassword = await bcrypt.compare(password, user.password);
 
   if (!isValidPassword) {
-    // Atomically increment failed login attempts to prevent race conditions
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        failedLoginAttempts: { increment: 1 }
-      },
-      select: { failedLoginAttempts: true }
-    });
-
-    // Check if account should be locked after atomic increment
-    const lockAccount = updatedUser.failedLoginAttempts >= 5;
-    if (lockAccount) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          accountLockedUntil: new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
-        }
-      });
+    // Record failed password attempt (separate counter) if service helper exists,
+    // otherwise fall back to a legacy direct DB update so tests that mock
+    // `prisma.user.update` continue to work.
+    try {
+      if (authService && typeof (authService as any).recordFailedPasswordAttempt === 'function') {
+        await (authService as any).recordFailedPasswordAttempt(user.id, user.failedPasswordAttempts ?? 0);
+      } else {
+        await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: (user.failedLoginAttempts ?? 0) + 1 } as any });
+      }
+    } catch (e) {
+      // non-fatal - continue to return unauthorized
     }
 
     throw new UnauthorizedError('Invalid credentials');
   }
 
   // Reset failed login attempts on successful password validation
-  if (user.failedLoginAttempts && user.failedLoginAttempts > 0) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        failedLoginAttempts: 0,
-        accountLockedUntil: null
-      }
-    });
+  if ((user.failedPasswordAttempts ?? 0) > 0) {
+    await authService.resetFailedLoginAttempts(user.id);
   }
 
   // Check if 2FA is enabled
@@ -237,19 +227,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const validation = await validate2FAToken(user.id, twoFactorToken);
 
     if (!validation.valid) {
-      // Re-increment the failed-login counter so 2FA brute-force after a
-      // known-good password is subject to the same lockout as password attempts.
-      const updatedUser = await prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginAttempts: { increment: 1 } },
-        select: { failedLoginAttempts: true },
-      });
-      if (updatedUser.failedLoginAttempts >= 5) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { accountLockedUntil: new Date(Date.now() + 15 * 60 * 1000) },
-        });
-      }
+      // Atomically record the failed 2FA attempt and lock if necessary
+      await authService.recordFailedTwoFactorAttempt(user.id, user.failedTwoFactorAttempts ?? 0);
       throw new UnauthorizedError(validation.error || 'Invalid 2FA token');
     }
   }

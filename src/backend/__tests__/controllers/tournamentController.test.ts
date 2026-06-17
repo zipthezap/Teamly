@@ -205,9 +205,11 @@ vi.mock('../../config/database', () => ({
     },
     tournamentPaymentTransaction: {
       findMany: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -290,7 +292,8 @@ const mockTournament = {
   description: 'A test tournament',
   sportType: 'football',
   format: 'single_elimination',
-  status: 'draft',
+  // default tests expect an active registration tournament for score/registration flows
+  status: 'registration',
   startDate: futureTournamentStartDate,
   endDate: null,
   maxTeams: 8,
@@ -1659,6 +1662,61 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
     const res = await request(app)
       .post('/api/tournaments/tournament-1/matches/match-1/score')
       .send({ homeScore: 1, awayScore: 1 });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('accepts tied numeric score when detailedScore declares a winner (penalties/overtime)', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({ ...mockMatch, stage: 'semi_finals' } as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'semi_finals',
+        homeScore: 1,
+        awayScore: 1,
+        detailedScore: { winner: 'home' },
+        status: 'completed',
+      } as any);
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1, awayScore: 1, detailedScore: { winner: 'home' } });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('allows a draw numeric score for a third-place match', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({ ...mockMatch, stage: 'third_place' } as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'third_place',
+        homeScore: 2,
+        awayScore: 2,
+        status: 'completed',
+      } as any);
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 2 });
 
     expect(res.status).toBe(200);
   });
@@ -4743,6 +4801,126 @@ describe('PUT /api/tournaments/:id/teams/payment/batch (batchUpdateTeamPayments)
   });
 });
 
+describe('POST /api/tournaments/:id/cancel (cancelTournament)', () => {
+  it('cancels tournament and processes refunds when paymentInfo is present', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+      ...mockTournament,
+      status: 'registration',
+      paymentInfo: { provider: 'stripe' },
+    } as any);
+    // There are confirmed payments
+    vi.mocked(prisma.tournamentPaymentTransaction.count).mockResolvedValueOnce(1 as any);
+    vi.mocked(prisma.tournament.update).mockResolvedValueOnce({ ...mockTournament, status: 'cancelled' } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.findMany).mockResolvedValueOnce([
+      { id: 'pay-1', teamId: 'team-1' },
+    ] as any);
+    vi.mocked(prisma.$transaction).mockResolvedValue([ { count: 1 }, { count: 1 } ] as any);
+
+    const req: any = { params: { id: 'tournament-1' }, user: { id: 'test-user-id' } };
+    const res: any = { json: vi.fn() };
+    const { cancelTournament } = await import(
+      '../../tournament-service/controllers/tournament/tournamentCrudController'
+    );
+
+    await cancelTournament(req as any, res as any);
+
+    expect(prisma.tournamentPaymentTransaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tournamentId: 'tournament-1', status: expect.anything() } })
+    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+  });
+
+  it('rejects cancellation when confirmed payments exist but no refund policy configured', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+      ...mockTournament,
+      status: 'registration',
+      paymentInfo: null,
+    } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.count).mockResolvedValueOnce(2 as any);
+
+    const req: any = { params: { id: 'tournament-1' }, user: { id: 'test-user-id' } };
+    const { cancelTournament } = await import(
+      '../../tournament-service/controllers/tournament/tournamentCrudController'
+    );
+    await expect(cancelTournament(req as any, {} as any)).rejects.toThrow(
+      'Cannot cancel tournament with confirmed payments'
+    );
+  });
+
+  it('handles refund processing failure but still returns cancelled', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+      ...mockTournament,
+      status: 'registration',
+      paymentInfo: { provider: 'stripe' },
+    } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.count).mockResolvedValueOnce(1 as any);
+    vi.mocked(prisma.tournament.update).mockResolvedValueOnce({ ...mockTournament, status: 'cancelled' } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.findMany).mockResolvedValueOnce([
+      { id: 'pay-1', teamId: 'team-1' },
+    ] as any);
+    vi.mocked(prisma.$transaction).mockImplementationOnce(() => {
+      throw new Error('transaction failed');
+    });
+
+    const req: any = { params: { id: 'tournament-1' }, user: { id: 'test-user-id' } };
+    const res: any = { json: vi.fn() };
+    const { cancelTournament } = await import(
+      '../../tournament-service/controllers/tournament/tournamentCrudController'
+    );
+
+    await cancelTournament(req as any, res as any);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+  });
+
+  it('rejects cancellation when tournament is already cancelled', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+      ...mockTournament,
+      status: 'cancelled',
+    } as any);
+
+    const req: any = { params: { id: 'tournament-1' }, user: { id: 'test-user-id' } };
+    const { cancelTournament } = await import(
+      '../../tournament-service/controllers/tournament/tournamentCrudController'
+    );
+
+    await expect(cancelTournament(req as any, {} as any)).rejects.toThrow('Tournament is already cancelled');
+  });
+
+  it('processes refunds and updates team payment records', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+      ...mockTournament,
+      status: 'registration',
+      paymentInfo: { provider: 'stripe' },
+    } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.count).mockResolvedValueOnce(1 as any);
+    vi.mocked(prisma.tournament.update).mockResolvedValueOnce({ ...mockTournament, status: 'cancelled' } as any);
+    vi.mocked(prisma.tournamentPaymentTransaction.findMany).mockResolvedValueOnce([
+      { id: 'pay-1', teamId: 'team-1' },
+      { id: 'pay-2', teamId: 'team-2' },
+    ] as any);
+
+    vi.mocked(prisma.tournamentPaymentTransaction.updateMany).mockResolvedValue({ count: 2 } as any);
+    vi.mocked(prisma.tournamentTeam.updateMany).mockResolvedValue({ count: 2 } as any);
+
+    const req: any = { params: { id: 'tournament-1' }, user: { id: 'test-user-id' } };
+    const res: any = { json: vi.fn() };
+    const { cancelTournament } = await import(
+      '../../tournament-service/controllers/tournament/tournamentCrudController'
+    );
+
+    await cancelTournament(req as any, res as any);
+
+    expect(prisma.tournamentPaymentTransaction.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tournamentId: 'tournament-1', status: expect.anything() } })
+    );
+    expect(prisma.tournamentTeam.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: expect.arrayContaining(['team-1', 'team-2']) } } })
+    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+  });
+});
+
 describe('PUT /api/tournaments/:id/payments/:paymentId/status (updatePaymentTransactionStatus)', () => {
   it('returns 400 for invalid transaction status transition', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
@@ -5744,6 +5922,35 @@ describe('DELETE /api/tournaments/:id/registration-waitlist/:teamId (promoteFrom
       .delete('/api/tournaments/tournament-1/registration-waitlist/team-99');
 
     expect(res.status).toBe(404);
+  });
+
+  it('promotes team into available pool and notifies captain', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentRegistrationWaitlist.findFirst).mockResolvedValue(
+      { id: 'wl-1', tournamentId: 'tournament-1', teamId: 'team-1', position: 1 } as any
+    );
+
+    vi.mocked(prisma.tournamentPool.findMany).mockResolvedValue([
+      { id: 'pool-1', name: 'Pool A', maxTeams: 4, teams: [{ id: 't1' }], createdAt: new Date() } as any
+    ]);
+
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({ id: 'team-1' } as any);
+    vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValue({ id: 'team-1', captainUserId: 'captain-1', name: 'Team Alpha' } as any);
+
+    const res = await request(app)
+      .delete('/api/tournaments/tournament-1/registration-waitlist/team-1');
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'team-1' },
+      data: expect.objectContaining({ poolId: 'pool-1', poolName: 'Pool A', registrationOrder: 2 })
+    }));
+
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(expect.objectContaining({
+      userIds: ['captain-1'],
+      tournamentId: 'tournament-1'
+    }));
   });
 });
 

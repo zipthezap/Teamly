@@ -657,28 +657,49 @@ export const addTeam = async (req: Request, res: Response) => {
       }
     }
 
-    return tx.tournamentTeam.create({
-      data: {
-        name,
-        captainName,
-        captainEmail,
-        captainUserId: captainUserId || undefined,
-        tournamentId: id,
-        poolId: validatedPool?.id ?? undefined,
-        poolName: validatedPool?.name ?? ((selectedCategory?.name ?? poolName) || undefined),
-        poolNumber: poolNumber ? Number(poolNumber) : undefined,
-        seedNumber: seedNumber ? Number(seedNumber) : undefined,
-        waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
-        waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
-      },
-      include: {
-        captainUser: {
-          select: { id: true, name: true, email: true }
+    // First try to find an existing team that matches the deduplication keys
+    // (captainUserId if provided, otherwise team name within the tournament).
+    const existingWhere = captainUserId
+      ? { tournamentId: id, OR: [{ captainUserId }, { name }] }
+      : { tournamentId: id, name };
+
+    const existing = await tx.tournamentTeam.findFirst({ where: existingWhere });
+    if (existing) return existing;
+
+    // Attempt to create; if a concurrent request created the same team, handle
+    // the unique constraint by returning the existing row instead of failing.
+    try {
+      return await tx.tournamentTeam.create({
+        data: {
+          name,
+          captainName,
+          captainEmail,
+          captainUserId: captainUserId || undefined,
+          tournamentId: id,
+          poolId: validatedPool?.id ?? undefined,
+          poolName: validatedPool?.name ?? ((selectedCategory?.name ?? poolName) || undefined),
+          poolNumber: poolNumber ? Number(poolNumber) : undefined,
+          seedNumber: seedNumber ? Number(seedNumber) : undefined,
+          waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
+          waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
+        },
+        include: {
+          captainUser: {
+            select: { id: true, name: true, email: true }
+          }
         }
+      });
+    } catch (err) {
+      // If unique constraint occurred due to a concurrent create, return the
+      // existing record instead of throwing; otherwise rethrow.
+      if (isPrismaUniqueError(err)) {
+        const found = await tx.tournamentTeam.findFirst({ where: existingWhere });
+        if (found) return found;
       }
-    });
+      throw err;
+    }
   }).catch((error: unknown) => {
-    // Handle unique constraint violation
+    // Handle unique constraint violation on captainUserId not covered above
     if (isUniqueConstraintOnField(error, 'captainUserId')) {
       throw new BadRequestError('User is already captain of another team in this tournament');
     }
@@ -1689,8 +1710,12 @@ export const submitScore = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Scores cannot be submitted for cancelled or completed tournaments');
+  if (
+    tournament.status === TournamentStatus.DRAFT ||
+    tournament.status === TournamentStatus.CANCELLED ||
+    tournament.status === TournamentStatus.COMPLETED
+  ) {
+    throw new BadRequestError('Scores cannot be submitted for draft, cancelled or completed tournaments');
   }
 
   const match = ensureResourceExists(
@@ -1722,7 +1747,16 @@ export const submitScore = async (req: Request, res: Response) => {
     tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
   const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
   if ((isEliminationFormat || isKnockoutStage) && parsedHomeScore === parsedAwayScore) {
-    throw new BadRequestError('Draws are not allowed in elimination matches');
+    // Allow draws for third-place matches, or when a detailedScore tie-breaker declares a winner (penalties/overtime)
+    const ds = detailedScore as any;
+    const resolvedByDetail = ds ? (typeof ds === 'string' ? (() => { try { return JSON.parse(ds); } catch { return null; } })() : ds) : null;
+    if (match.stage === BracketStage.THIRD_PLACE) {
+      // third-place match may be allowed to end in a draw
+    } else if (resolvedByDetail && (resolvedByDetail.winner === 'home' || resolvedByDetail.winner === 'away' || resolvedByDetail.winnerTeamId)) {
+      // tie decided by penalties/overtime; acceptable
+    } else {
+      throw new BadRequestError('Draws are not allowed in elimination matches');
+    }
   }
 
   // Prevent duplicate score submission for already completed matches
@@ -1940,6 +1974,9 @@ export const getStandings = async (req: Request, res: Response) => {
   });
 
   const tiebreakerRules = tournament.tiebreakerRules as string[] | null;
+  if (tiebreakerRules && tiebreakerRules.includes('head_to_head')) {
+    await tournamentService.computeAndAttachHeadToHeadPoints(id, rawStandings as Array<Record<string, any>>);
+  }
   const standings = tournamentService.sortStandingsByTiebreakerRules(rawStandings, tiebreakerRules);
 
   res.json(standings);
@@ -4026,7 +4063,9 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   }
 
   const teamIds = removableTeams.map(team => team.id);
-  await prisma.$transaction(async (tx) => {
+
+  // Delete teams and, if enabled, auto-promote from the registration waitlist
+  const result = await prisma.$transaction(async (tx) => {
     const waitlistEntries = await tx.tournamentPoolWaitlist.findMany({
       where: { teamId: { in: teamIds } },
       select: { poolId: true, position: true },
@@ -4040,6 +4079,39 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
         data: { position: { decrement: 1 } },
       });
     }
+
+    // Check auto-promote conditions
+    const refreshedTournament = await tx.tournament.findUnique({ where: { id }, select: { id: true, maxTeams: true, autoPromoteRegistrationWaitlist: true, withdrawalDeadline: true } });
+    if (!refreshedTournament || !refreshedTournament.maxTeams) {
+      return { promotedTeamId: null as string | null };
+    }
+
+    const teamCount = await tx.tournamentTeam.count({ where: { tournamentId: id } });
+
+    const parsedWithdrawalDeadline = refreshedTournament.withdrawalDeadline
+      ? new Date(refreshedTournament.withdrawalDeadline)
+      : null;
+    const shouldAutoPromote =
+      refreshedTournament.autoPromoteRegistrationWaitlist === true &&
+      (
+        !parsedWithdrawalDeadline ||
+        new Date() <= parsedWithdrawalDeadline
+      );
+
+    if (!shouldAutoPromote || teamCount >= refreshedTournament.maxTeams) {
+      return { promotedTeamId: null as string | null };
+    }
+
+    const firstEntry = await tx.tournamentRegistrationWaitlist.findFirst({ where: { tournamentId: id }, orderBy: { position: 'asc' }, select: { id: true, teamId: true, position: true } });
+    if (!firstEntry) return { promotedTeamId: null as string | null };
+
+    await tx.tournamentRegistrationWaitlist.delete({ where: { id: firstEntry.id } });
+    await tx.tournamentRegistrationWaitlist.updateMany({
+      where: { tournamentId: id, position: { gt: firstEntry.position } },
+      data: { position: { decrement: 1 } },
+    });
+
+    return { promotedTeamId: firstEntry.teamId };
   });
 
   logger.info('Team self-unregistered', 'TournamentController', {
@@ -4049,7 +4121,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
     captainUserId: userId,
   });
 
-  res.json({ message: 'Team unregistered successfully' });
+  res.json({ message: 'Team unregistered successfully', ...(result.promotedTeamId ? { promotedTeamId: result.promotedTeamId } : {}) });
 };
 
 // ==================== PUBLIC DISCOVERY ====================
@@ -4819,17 +4891,60 @@ export const promoteFromRegistrationWaitlist = async (req: Request, res: Respons
     'Waitlist entry'
   );
 
+  // Promote and optionally assign to an available pool (if the tournament uses pools)
   await prisma.$transaction(async (tx) => {
     await tx.tournamentRegistrationWaitlist.delete({ where: { id: entry.id } });
     await tx.tournamentRegistrationWaitlist.updateMany({
       where: { tournamentId: id, position: { gt: entry.position } },
       data: { position: { decrement: 1 } },
     });
+
+    // If the tournament has pools, try to find one with available capacity
+    const pools = await tx.tournamentPool.findMany({
+      where: { tournamentId: id },
+      include: { teams: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const availablePool = pools.find((p) => p.teams.length < p.maxTeams);
+    if (availablePool) {
+      await tx.tournamentTeam.update({
+        where: { id: teamId },
+        data: {
+          poolId: availablePool.id,
+          poolName: availablePool.name,
+          registrationOrder: availablePool.teams.length + 1,
+        },
+      });
+    }
   });
 
   logger.info('Team promoted from registration waitlist', 'TournamentController', {
     tournamentId: id, teamId, userId,
   });
+
+  // Notify the promoted team's captain (best-effort)
+  try {
+    const team = await prisma.tournamentTeam.findUnique({
+      where: { id: teamId },
+      select: { captainUserId: true, name: true },
+    });
+    if (team?.captainUserId) {
+      await NotificationFactory.createTournamentNotifications({
+        userIds: [team.captainUserId],
+        tournamentId: id,
+        type: TournamentNotificationType.tournament_updated,
+        params: {
+          tournamentName: tournament.name,
+          teamName: team.name,
+          promoted: true,
+        },
+        metadata: { updateType: 'waitlist_promoted', teamId },
+      });
+    }
+  } catch (notifErr) {
+    logger.error('Failed to notify promoted team', 'TournamentController', { error: notifErr, tournamentId: id, teamId });
+  }
 
   res.json({ message: 'Team removed from registration waitlist (now registered)', teamId });
 };

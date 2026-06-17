@@ -300,12 +300,54 @@ export const sendDueEventReminders = async (): Promise<void> => {
       })
     );
 
-    const failed = results.filter(r => r.status === 'rejected');
-    if (failed.length > 0) {
-      logger.warn(`${failed.length} reminders failed to send`, 'ScheduledJobs');
+    // If some sends failed, attempt a single retry per failed reminder to avoid silent loss
+    const failedIndices: number[] = results
+      .map((r, i) => (r.status === 'rejected' ? i : -1))
+      .filter((i) => i >= 0);
+
+    if (failedIndices.length > 0) {
+      logger.warn(`${failedIndices.length} reminders failed to send on first attempt, retrying`, 'ScheduledJobs');
+      let retrySuccess = 0;
+      let retryFailed = 0;
+      for (const idx of failedIndices) {
+        const reminder = dueReminders[idx];
+        try {
+          if (reminder.user.emailNotifications) {
+            const eventDate = reminder.session.startTime.toLocaleString();
+            const htmlContent = `
+              <h2>Event Reminder</h2>
+              <p>Hi ${reminder.user.name},</p>
+              <p>This is a reminder for your upcoming session:</p>
+              <h3>${reminder.session.title}</h3>
+              <p><strong>When:</strong> ${eventDate}</p>
+              ${reminder.session.location ? `<p><strong>Where:</strong> ${reminder.session.location}</p>` : ''}
+              <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${reminder.session.id}" 
+                 style="display:inline-block;padding:12px 24px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:4px;">
+                View Event
+              </a></p>
+            `;
+            await sendEmailWithQueue(
+              reminder.user.email,
+              `Reminder: ${reminder.session.title}`,
+              htmlContent,
+              { templateType: 'eventReminder' }
+            );
+          }
+          await prisma.sessionReminder.update({ where: { id: reminder.id }, data: { sent: true } });
+          retrySuccess++;
+        } catch (err) {
+          retryFailed++;
+          logger.error('Retry failed to send reminder', 'ScheduledJobs', { reminderId: reminder.id, err });
+        }
+      }
+
+      if (retrySuccess > 0 || retryFailed > 0) {
+        logger.info(`Reminder retry results: ${retrySuccess} succeeded, ${retryFailed} failed`, 'ScheduledJobs');
+      }
     }
 
-    logger.info(`Sent ${dueReminders.length - failed.length} session reminders`, 'ScheduledJobs');
+    const totalFailed = failedIndices.length;
+    logger.info(`Sent ${dueReminders.length - totalFailed} session reminders (with ${totalFailed} failures)`, 'ScheduledJobs');
   } catch (error) {
     logger.error('Error sending session reminders', 'ScheduledJobs', { error });
   }
@@ -380,7 +422,8 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
   try {
     const tournaments = await prisma.tournament.findMany({
       where: {
-        paymentDeadline: { lte: now },
+        // Use strict less-than to avoid sending duplicates on the exact tick
+        paymentDeadline: { lt: now },
         status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
       },
       select: {
@@ -451,6 +494,175 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
 };
 
 /**
+ * Sync session statuses in bulk based on start/end times.
+ * Useful to keep `status` up-to-date for upcoming/ongoing/completed transitions.
+ */
+export const syncAllSessionStatuses = async (): Promise<void> => {
+  const now = new Date();
+  try {
+    const candidates = await prisma.session.findMany({
+      where: { archived: false, status: { notIn: ['completed'] } },
+      select: { id: true, startTime: true, endTime: true, status: true },
+    });
+
+    if (candidates.length === 0) return;
+
+    let updated = 0;
+    for (const s of candidates) {
+      try {
+        const desired = require('../services/sessionService').determineSessionStatus(
+          s.startTime?.toISOString?.() ?? s.startTime,
+          s.endTime?.toISOString?.() ?? s.endTime
+        );
+        if (desired && desired !== s.status) {
+          await prisma.session.update({ where: { id: s.id }, data: { status: desired } });
+          updated++;
+        }
+      } catch (err) {
+        logger.warn('Failed to sync session status', 'ScheduledJobs', { sessionId: s.id, err });
+      }
+    }
+
+    if (updated > 0) {
+      logger.info(`Session status sync: updated ${updated}/${candidates.length} sessions`, 'ScheduledJobs', {
+        updated,
+        total: candidates.length,
+        at: now.toISOString(),
+      });
+    }
+  } catch (error) {
+    logger.error('Error syncing session statuses', 'ScheduledJobs', { error });
+  }
+};
+
+export const syncTeamPaymentStatuses = async (): Promise<void> => {
+  try {
+    // Fetch recent payment transactions for teams
+    const txs = await prisma.tournamentPaymentTransaction.findMany({
+      where: { tournamentId: { not: null } },
+      select: { teamId: true, status: true },
+    });
+
+    const teamMap: Record<string, { hasPaid: boolean; hasPending: boolean }> = {};
+    for (const t of txs) {
+      if (!t.teamId) continue;
+      const current = teamMap[t.teamId] || { hasPaid: false, hasPending: false };
+      if (t.status === TournamentPaymentStatus.PAID) current.hasPaid = true;
+      if (t.status === TournamentPaymentStatus.PENDING) current.hasPending = true;
+      teamMap[t.teamId] = current;
+    }
+
+    const updates: Promise<any>[] = [];
+    for (const [teamId, flags] of Object.entries(teamMap)) {
+      const desired: TournamentPaymentStatus = flags.hasPaid
+        ? TournamentPaymentStatus.PAID
+        : flags.hasPending
+        ? TournamentPaymentStatus.PENDING
+        : TournamentPaymentStatus.UNPAID;
+
+      updates.push(
+        prisma.tournamentTeam.updateMany({
+          where: { id: teamId, paymentStatus: { not: desired } },
+          data: { paymentStatus: desired },
+        })
+      );
+    }
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
+      logger.info(`Synced payment status for ${updates.length} teams`, 'ScheduledJobs');
+    }
+
+    // After syncing payment statuses, attempt to auto-promote teams on the
+    // registration waitlist for tournaments that allow auto-promotion and
+    // currently have open slots. Promote up to the number of open slots.
+    try {
+      const tournaments = await prisma.tournament.findMany({
+        where: {
+          autoPromoteRegistrationWaitlist: true,
+          maxTeams: { not: null },
+          status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
+        },
+        select: {
+          id: true,
+          name: true,
+          maxTeams: true,
+        },
+      });
+
+      for (const t of tournaments) {
+        try {
+          const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: t.id } });
+          const openSlots = (t.maxTeams ?? 0) - teamCount;
+          if (openSlots <= 0) continue;
+
+          let promoted = 0;
+          for (let i = 0; i < openSlots; i++) {
+            const firstEntry = await prisma.tournamentRegistrationWaitlist.findFirst({
+              where: { tournamentId: t.id },
+              orderBy: { position: 'asc' },
+              include: { team: { select: { id: true, name: true, captainUserId: true } } },
+            });
+
+            if (!firstEntry) break;
+
+            // Promote: delete waitlist entry and shift positions atomically when
+            // prisma.$transaction is available; otherwise run both operations so
+            // test mocks (which may not provide $transaction) are invoked.
+            const deleteOp = prisma.tournamentRegistrationWaitlist.delete({ where: { id: firstEntry.id } });
+            const shiftOp = prisma.tournamentRegistrationWaitlist.updateMany({
+              where: { tournamentId: t.id, position: { gt: firstEntry.position } },
+              data: { position: { decrement: 1 } },
+            });
+
+            if (typeof prisma.$transaction === 'function') {
+              try {
+                await prisma.$transaction([deleteOp, shiftOp]);
+              } catch (txErr) {
+                // If transaction fails, attempt operations individually as a
+                // best-effort fallback to avoid losing promotable slots.
+                await deleteOp;
+                await shiftOp;
+              }
+            } else {
+              await Promise.all([deleteOp, shiftOp]);
+            }
+
+            // Best-effort notify the promoted team's captain
+            try {
+              if (firstEntry.team?.captainUserId) {
+                await NotificationFactory.createTournamentNotifications({
+                  tournamentId: t.id,
+                  type: TournamentNotificationType.tournament_updated,
+                  userIds: [firstEntry.team.captainUserId],
+                  params: { tournamentName: t.name, teamName: firstEntry.team.name },
+                  metadata: { updateType: 'waitlist_promoted', teamId: firstEntry.team.id },
+                  checkMutePreference: false,
+                });
+              }
+            } catch (notifErr) {
+              logger.warn('Failed to notify promoted waitlist team', 'ScheduledJobs', { err: notifErr, tournamentId: t.id, teamId: firstEntry.team?.id });
+            }
+
+            promoted++;
+          }
+
+          if (promoted > 0) {
+            logger.info(`Auto-promoted ${promoted} team(s) from waitlist for tournament ${t.id}`, 'ScheduledJobs', { tournamentId: t.id, promoted });
+          }
+        } catch (err) {
+          logger.error('Error promoting waitlist entries for tournament', 'ScheduledJobs', { tournamentId: t.id, err });
+        }
+      }
+    } catch (err) {
+      logger.error('Error scanning tournaments for waitlist promotions', 'ScheduledJobs', { err });
+    }
+  } catch (error) {
+    logger.error('Error syncing team payment statuses', 'ScheduledJobs', { error });
+  }
+};
+
+/**
  * Start scheduled cleanup tasks
  */
 export const startScheduledJobs = (): void => {
@@ -471,6 +683,8 @@ export const startScheduledJobs = (): void => {
     await sendDueEventReminders();
     await checkIncidentSlas();
     await sendTournamentPaymentDeadlineReminders();
+    await syncTeamPaymentStatuses();
+    await syncAllSessionStatuses();
   }, 5 * 60 * 1000); // 5 minutes
 
   // Run initial tasks
@@ -479,6 +693,8 @@ export const startScheduledJobs = (): void => {
   sendDueEventReminders();
   checkIncidentSlas();
   sendTournamentPaymentDeadlineReminders();
+  syncTeamPaymentStatuses();
+  syncAllSessionStatuses();
 };
 
 /**

@@ -95,9 +95,13 @@ export const getPublicTournamentPortal = async (req: Request, res: Response) => 
     }),
   ]);
 
+  const tiebreakerRules = tournament.tiebreakerRules as string[] | null;
+  if (tiebreakerRules && tiebreakerRules.includes('head_to_head')) {
+    await tournamentService.computeAndAttachHeadToHeadPoints(tournament.id, standings as Array<Record<string, any>>);
+  }
   const sortedStandings = tournamentService.sortStandingsByTiebreakerRules(
     standings,
-    tournament.tiebreakerRules as string[] | null
+    tiebreakerRules
   );
 
   res.json({

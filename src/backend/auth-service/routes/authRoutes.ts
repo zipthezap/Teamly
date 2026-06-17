@@ -29,6 +29,8 @@ import {
   updateProfile,
   uploadProfilePicture,
   verifyEmail,
+  startOAuthLink,
+  confirmOAuthLink,
 } from '../../controllers/authController';
 import { uploadProfilePicture as uploadProfilePictureMiddleware } from '../../middleware/upload';
 import { asyncHandler } from '../../middleware/asyncHandler';
@@ -102,6 +104,8 @@ router.get('/sessions', requireHeaderAuth, asyncHandler(getSessions));
 router.get('/oauth/status', requireHeaderAuth, asyncHandler(getOAuthStatus));
 router.post('/oauth/unlink', requireHeaderAuth, asyncHandler(unlinkOAuthAccount));
 router.post('/oauth/sync-picture', requireHeaderAuth, asyncHandler(syncOAuthProfilePicture));
+router.post('/oauth/link/start', asyncHandler(startOAuthLink));
+router.post('/oauth/link/confirm', requireHeaderAuth, asyncHandler(confirmOAuthLink));
 router.delete('/account', requireHeaderAuth, asyncHandler(deleteAccount));
 
 export default router;

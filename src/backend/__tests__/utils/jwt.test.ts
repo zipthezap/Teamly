@@ -246,3 +246,32 @@ describe('isTokenRevoked', () => {
     expect(callArg.where.token).toMatch(/^[a-f0-9]{64}$/);
   });
 });
+
+describe('refreshAccessToken', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return null if refresh token is revoked', async () => {
+    const refreshToken = generateRefreshToken('user-xyz');
+    // refresh token exists in DB
+    (prisma.refreshToken.findUnique as any).mockResolvedValue({ token: refreshToken, expiresAt: new Date(Date.now() + 10000) });
+    // but it's revoked
+    (prisma.revokedToken.findUnique as any).mockResolvedValue({ id: 'revoked-1' });
+
+    const result = await (await import('../../utils/jwt')).refreshAccessToken(refreshToken);
+    expect(result).toBeNull();
+  });
+
+  it('should return an access token when refresh token is valid and not revoked', async () => {
+    const refreshToken = generateRefreshToken('user-xyz');
+    (prisma.refreshToken.findUnique as any).mockResolvedValue({ id: 'rt1', token: refreshToken, userId: 'user-xyz', expiresAt: new Date(Date.now() + 10000) });
+    (prisma.revokedToken.findUnique as any).mockResolvedValue(null);
+    (prisma.userSession.create as any).mockResolvedValue({});
+
+    const result = await (await import('../../utils/jwt')).refreshAccessToken(refreshToken);
+    expect(result).not.toBeNull();
+    expect(result?.accessToken).toBeDefined();
+    expect(result?.refreshToken).toBeDefined();
+  });
+});

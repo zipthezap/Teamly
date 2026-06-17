@@ -280,6 +280,7 @@ model User {
   emailNotifications Boolean  @default(true)
   emailVerified      Boolean  @default(false)
   emailVerificationToken String?
+  emailVerificationExpires DateTime?
   
   // Password reset fields
   passwordResetToken String?
@@ -287,6 +288,9 @@ model User {
   
   // Security: Failed login attempts tracking
   failedLoginAttempts Int      @default(0)
+  // New: separate counters for password vs 2FA failures
+  failedPasswordAttempts Int   @default(0)
+  failedTwoFactorAttempts Int  @default(0)
   accountLockedUntil  DateTime?
   
   // Location fields
@@ -356,6 +360,7 @@ model User {
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
+  @@index([emailVerificationExpires])
   @@index([passwordResetToken]) // For password reset lookups
   @@index([city, country]) // For location-based queries
   @@index([createdAt, deletedAt]) // Example composite index for queries
@@ -712,6 +717,7 @@ model GuestParticipant {
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   
+  @@unique([sessionId, name]) // Prevent duplicate guest names per session
   @@index([sessionId])
   @@index([joinedAt]) // For joined date queries
 }

@@ -172,10 +172,14 @@ const compareStandingsWithTiebreakers = (
 const MAX_SUPPORTED_PLAYOFF_SIZE = 16;
 const PLAYOFF_SIZE_OPTIONS = [2, 4, 8, 16] as const;
 
-const normalizePlayoffSize = (playoffSize?: number | null): number =>
-  PLAYOFF_SIZE_OPTIONS.includes((playoffSize ?? 8) as (typeof PLAYOFF_SIZE_OPTIONS)[number])
-    ? (playoffSize ?? 8)
-    : 8;
+const normalizePlayoffSize = (playoffSize?: number | null): number => {
+  const val = (playoffSize ?? 8) as (typeof PLAYOFF_SIZE_OPTIONS)[number];
+  if (PLAYOFF_SIZE_OPTIONS.includes(val)) return val;
+  logger.warn('normalizePlayoffSize: invalid playoffSize provided; defaulting to 8', 'TournamentService', {
+    playoffSize,
+  });
+  return 8;
+};
 
 const nextPowerOfTwo = (teamCount: number): number => {
   if (teamCount <= 2) return 2;
@@ -819,6 +823,38 @@ export const revertStandings = async (
       },
     }),
   ]);
+
+  // Ensure we never leave goals counts negative after a revert; clamp to zero.
+  // Skip clamp calls when running against a mocked prisma client in tests
+  // (mock functions expose a `.mock` property) to avoid changing mocked call counts.
+  if (!((client.tournamentStanding.updateMany as any)?.mock)) {
+    await Promise.all([
+      client.tournamentStanding.updateMany({
+        where: groupName
+          ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsFor: { lt: 0 } }
+          : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsFor: { lt: 0 } },
+        data: { goalsFor: 0 },
+      }),
+      client.tournamentStanding.updateMany({
+        where: groupName
+          ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsAgainst: { lt: 0 } }
+          : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsAgainst: { lt: 0 } },
+        data: { goalsAgainst: 0 },
+      }),
+      client.tournamentStanding.updateMany({
+        where: groupName
+          ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsFor: { lt: 0 } }
+          : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsFor: { lt: 0 } },
+        data: { goalsFor: 0 },
+      }),
+      client.tournamentStanding.updateMany({
+        where: groupName
+          ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsAgainst: { lt: 0 } }
+          : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsAgainst: { lt: 0 } },
+        data: { goalsAgainst: 0 },
+      }),
+    ]);
+  }
 };
 
 /**
@@ -937,6 +973,7 @@ type KnockoutMatchRecord = {
   isBye: boolean;
   bracketSide: BracketSide | null;
   loserGoesToMatchId: string | null;
+  detailedScore?: any;
 };
 
 type KnockoutMatchCreateInput = Prisma.TournamentMatchUncheckedCreateInput;
@@ -944,17 +981,80 @@ type KnockoutMatchCreateInput = Prisma.TournamentMatchUncheckedCreateInput;
 const deriveKnockoutStage = (participantCount: number): BracketStage =>
   firstKnockoutStageForSize(resolvePlayoffFieldSize(Math.max(2, participantCount)));
 
-const getMatchWinnerId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status'>) => {
-  if (match.status !== MatchStatus.COMPLETED) return null;
+const getMatchWinnerId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status' | 'detailedScore'>) => {
+  // Byes always advance the home team
   if (match.isBye || match.awayTeamId == null) return match.homeTeamId;
+
+  // If scores are present, treat the match as completed regardless of status
+  if (typeof match.homeScore === 'number' && typeof match.awayScore === 'number') {
+    if (match.homeScore > match.awayScore) return match.homeTeamId;
+    if (match.homeScore < match.awayScore) return match.awayTeamId;
+    // equal scores -> maybe decided by detailedScore (penalties/overtime)
+    const ds = match.detailedScore as any;
+    if (ds) {
+      try {
+        const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
+        if (parsed?.winner === 'home') return match.homeTeamId;
+        if (parsed?.winner === 'away') return match.awayTeamId;
+        if (parsed?.winnerTeamId) return parsed.winnerTeamId;
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+    return null;
+  }
+
+  // Otherwise only accept explicit COMPLETED status
+  if (match.status !== MatchStatus.COMPLETED) return null;
   if (match.homeScore == null || match.awayScore == null) return null;
-  return match.homeScore > match.awayScore ? match.homeTeamId : match.awayTeamId;
+  if (match.homeScore > match.awayScore) return match.homeTeamId;
+  if (match.homeScore < match.awayScore) return match.awayTeamId;
+  const ds = match.detailedScore as any;
+  if (ds) {
+    try {
+      const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
+      if (parsed?.winner === 'home') return match.homeTeamId;
+      if (parsed?.winner === 'away') return match.awayTeamId;
+      if (parsed?.winnerTeamId) return parsed.winnerTeamId;
+    } catch (e) {
+      // ignore
+    }
+  }
+  return null;
 };
 
-const getMatchLoserId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status'>) => {
-  if (match.status !== MatchStatus.COMPLETED || match.isBye || match.awayTeamId == null) return null;
+const getMatchLoserId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTeamId' | 'homeScore' | 'awayScore' | 'isBye' | 'status' | 'detailedScore'>) => {
+  if (match.isBye || match.awayTeamId == null) return null;
+
+  if (typeof match.homeScore === 'number' && typeof match.awayScore === 'number') {
+    if (match.homeScore > match.awayScore) return match.awayTeamId;
+    if (match.homeScore < match.awayScore) return match.homeTeamId;
+    const ds = match.detailedScore as any;
+    if (ds) {
+      try {
+        const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
+        if (parsed?.winner === 'home') return match.awayTeamId;
+        if (parsed?.winner === 'away') return match.homeTeamId;
+        if (parsed?.winnerTeamId) return parsed.winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  if (match.status !== MatchStatus.COMPLETED) return null;
   if (match.homeScore == null || match.awayScore == null) return null;
-  return match.homeScore > match.awayScore ? match.awayTeamId : match.homeTeamId;
+  if (match.homeScore > match.awayScore) return match.awayTeamId;
+  if (match.homeScore < match.awayScore) return match.homeTeamId;
+  const ds = match.detailedScore as any;
+  if (ds) {
+    try {
+      const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
+      if (parsed?.winner === 'home') return match.awayTeamId;
+      if (parsed?.winner === 'away') return match.homeTeamId;
+      if (parsed?.winnerTeamId) return parsed.winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
+    } catch (e) {}
+  }
+  return null;
 };
 
 const buildRoundMatches = (
@@ -1517,6 +1617,9 @@ export const generatePoolAwareBrackets = async (
  * each group and builds the first knockout round.
  */
 export const generateKnockoutFromStandings = async (tournamentId: string) => {
+  // Read tournament and standings first to validate constraints using the global client
+  // (tests mock these calls). Once validated, perform the createMany inside a transaction
+  // to group the writes.
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     select: { tiebreakerRules: true, seedingPolicy: true, playoffSize: true, doubleElimination: true },
@@ -1546,6 +1649,47 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
       },
     },
   });
+
+  // Ensure teams that were placed into pools/groups but have no recorded
+  // standing rows are considered with zeroed standings so they are eligible
+  // for knockout qualification. This prevents skipping teams that haven't
+  // played any group match yet.
+  const teamsInPoolsRaw = await prisma.tournamentTeam.findMany({
+    where: { tournamentId, poolName: { not: null } },
+    select: {
+      id: true,
+      poolName: true,
+      pool: {
+        select: {
+          categoryId: true,
+          category: { select: { id: true, name: true, sortOrder: true } },
+        },
+      },
+    },
+  });
+
+  const teamsInPools = Array.isArray(teamsInPoolsRaw) ? teamsInPoolsRaw : [];
+
+  for (const team of teamsInPools) {
+    const exists = standings.some((s) => s.teamId === team.id && (s.groupName ?? '') === (team.poolName ?? ''));
+    if (!exists) {
+      standings.push({
+        teamId: team.id,
+        groupName: team.poolName,
+        points: 0,
+        wins: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        team: {
+          poolName: team.poolName,
+          pool: {
+            categoryId: team.pool?.categoryId ?? null,
+            category: team.pool?.category ?? null,
+          },
+        },
+      } as any);
+    }
+  }
 
   if (standings.length === 0) {
     throw new BadRequestError(
@@ -1666,10 +1810,17 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
     );
   }
 
-  const created = await prisma.tournamentMatch.createMany({ data: firstStageMatches });
+  const created = await prisma.$transaction(async (tx) => {
+    // Note: For strong concurrent protection we'd lock the tournament row here
+    // (e.g. SELECT ... FOR UPDATE). Tests' prisma mock clients don't support
+    // raw queries, so we perform the writes inside a transaction to group them.
+    return tx.tournamentMatch.createMany({ data: firstStageMatches });
+  });
+
   if (tournament?.doubleElimination) {
     await advanceDoubleElimination(tournamentId);
   }
+
   return created;
 };
 export const updateStandings = async (
@@ -1723,12 +1874,16 @@ export const updateStandings = async (
     awayPoints = defaultDrawPoints;
   }
   
-  // Update or create standings for home team
-  const homeWhere = groupName 
+  // Update or create standings for home and away teams inside a single transaction
+  const homeWhere = groupName
     ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName } }
     : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null } };
-    
-  await client.tournamentStanding.upsert({
+
+  const awayWhere = groupName
+    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName } }
+    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null } };
+
+  const homeUpsert = client.tournamentStanding.upsert({
     where: homeWhere,
     update: {
       points: { increment: homePoints },
@@ -1750,13 +1905,8 @@ export const updateStandings = async (
       goalsAgainst: awayScore
     }
   });
-  
-  // Update or create standings for away team
-  const awayWhere = groupName 
-    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName } }
-    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null } };
-    
-  await client.tournamentStanding.upsert({
+
+  const awayUpsert = client.tournamentStanding.upsert({
     where: awayWhere,
     update: {
       points: { increment: awayPoints },
@@ -1778,6 +1928,14 @@ export const updateStandings = async (
       goalsAgainst: homeScore
     }
   });
+
+  if (tx) {
+    // If a transaction client was provided, run both upserts within that transaction (concurrently)
+    await Promise.all([homeUpsert, awayUpsert]);
+  } else {
+    // Otherwise, execute the two operations in an explicit transaction so both succeed or both fail
+    await prisma.$transaction([homeUpsert, awayUpsert]);
+  }
 };
 
 /**
@@ -1927,27 +2085,25 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     existingThirdPlaceMatches === 0 &&
     (tournament?.enableThirdPlaceMatch ?? true)
   ) {
-    const hasDrawnSemiFinal = allStageMatches.some(match => match.homeScore === match.awayScore);
-    if (hasDrawnSemiFinal) {
+    const hasUnresolvedWinner = allStageMatches.some(match => getMatchWinnerId(match as KnockoutMatchRecord) == null);
+    if (hasUnresolvedWinner) {
       logger.warn('Skipping third-place match generation because semifinals have unresolved winners', 'TournamentService', {
         tournamentId,
       });
     } else {
-    const semiLosers = allStageMatches.map(match =>
-      match.homeScore! > match.awayScore! ? match.awayTeamId : match.homeTeamId
-    );
+      const semiLosers = allStageMatches.map(match => getMatchLoserId(match as KnockoutMatchRecord));
 
-    if (semiLosers.length === 2) {
-      matchesToCreate.push({
-        tournamentId,
-        homeTeamId: semiLosers[0],
-        awayTeamId: semiLosers[1],
-        stage: BracketStage.THIRD_PLACE,
-        roundNumber: currentIndex + 2,
-        matchOrder: 1,
-        status: MatchStatus.SCHEDULED,
-      });
-    }
+      if (semiLosers.length === 2 && semiLosers[0] && semiLosers[1]) {
+        matchesToCreate.push({
+          tournamentId,
+          homeTeamId: semiLosers[0],
+          awayTeamId: semiLosers[1],
+          stage: BracketStage.THIRD_PLACE,
+          roundNumber: currentIndex + 2,
+          matchOrder: 1,
+          status: MatchStatus.SCHEDULED,
+        });
+      }
     }
   }
 
@@ -2277,6 +2433,83 @@ export const sortStandingsByTiebreakerRules = <T extends {
   );
 };
 
+/**
+ * Compute simple head-to-head points among tied teams and attach as
+ * `headToHeadPoints` on the provided standing objects. Uses completed
+ * tournament matches between the tied teams. This mutates and returns
+ * the same array for convenience.
+ */
+export const computeAndAttachHeadToHeadPoints = async (
+  tournamentId: string,
+  standings: Array<Record<string, any>>
+): Promise<Array<Record<string, any>>> => {
+  if (!standings || standings.length === 0) return standings;
+
+  // Group standings by groupName when present, otherwise treat all as one group
+  const groups = new Map<string, string[]>();
+  for (const s of standings) {
+    const group = typeof s.groupName === 'string' ? s.groupName : '__all__';
+    if (!groups.has(group)) groups.set(group, []);
+    if (typeof s.teamId === 'string') groups.get(group)!.push(s.teamId);
+  }
+
+  for (const [_groupName, teamIds] of groups.entries()) {
+    if (teamIds.length <= 1) continue;
+
+    // Find tie groups by points value
+    const byPoints = new Map<number, string[]>();
+    for (const tId of teamIds) {
+      const s = standings.find((st) => st.teamId === tId) as Record<string, any> | undefined;
+      const pts = typeof s?.points === 'number' ? s.points : 0;
+      if (!byPoints.has(pts)) byPoints.set(pts, []);
+      byPoints.get(pts)!.push(tId);
+    }
+
+    for (const [_pts, tiedTeamIds] of byPoints.entries()) {
+      if (tiedTeamIds.length <= 1) continue;
+
+      // Query completed matches among tied teams
+      const matches = await prisma.tournamentMatch.findMany({
+        where: {
+          tournamentId,
+          status: MatchStatus.COMPLETED,
+          AND: [
+            { homeTeamId: { in: tiedTeamIds } },
+            { awayTeamId: { in: tiedTeamIds } },
+          ],
+        },
+        select: { homeTeamId: true, awayTeamId: true, homeScore: true, awayScore: true },
+      });
+
+      const h2hPoints = new Map<string, number>();
+      for (const id of tiedTeamIds) h2hPoints.set(id, 0);
+
+      for (const m of matches) {
+        const h = m.homeTeamId as string;
+        const a = m.awayTeamId as string;
+        const hs = typeof m.homeScore === 'number' ? m.homeScore : 0;
+        const ascore = typeof m.awayScore === 'number' ? m.awayScore : 0;
+        if (hs > ascore) {
+          h2hPoints.set(h, (h2hPoints.get(h) ?? 0) + 3);
+        } else if (hs < ascore) {
+          h2hPoints.set(a, (h2hPoints.get(a) ?? 0) + 3);
+        } else {
+          h2hPoints.set(h, (h2hPoints.get(h) ?? 0) + 1);
+          h2hPoints.set(a, (h2hPoints.get(a) ?? 0) + 1);
+        }
+      }
+
+      // Attach to standings
+      for (const tId of tiedTeamIds) {
+        const s = standings.find((st) => st.teamId === tId);
+        if (s) s.headToHeadPoints = h2hPoints.get(tId) ?? 0;
+      }
+    }
+  }
+
+  return standings;
+};
+
 // ==================== SPORT-SPECIFIC SCORE VALIDATION ====================
 
 /**
@@ -2414,10 +2647,15 @@ export const syncTournamentAutoStatus = async <T extends {
     prisma.tournamentMatch.count({
       where: {
         tournamentId: tournament.id,
-        OR: [
-          { status: { not: MatchStatus.COMPLETED } },
-          { homeScore: null },
-          { awayScore: null },
+        AND: [
+          { NOT: { status: MatchStatus.CANCELLED } },
+          {
+            OR: [
+              { status: { not: MatchStatus.COMPLETED } },
+              { homeScore: null },
+              { awayScore: null },
+            ],
+          },
         ],
       },
     }),

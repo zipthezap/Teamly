@@ -89,10 +89,13 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   });
 
   if (existingResponse) {
-    if (!REAPPLY_ELIGIBLE_STATUSES.includes(existingResponse.status)) {
+    // Disallow re-application when the existing response is in a blocking
+    // status (e.g. pending or already accepted). Declined responses are a
+    // special case: they should return a dedicated error code to indicate
+    // the applicant was explicitly rejected and cannot re-apply.
+    if (BLOCKING_APPLICATION_STATUSES.includes(existingResponse.status as any)) {
       throw new BadRequestError('You have already responded to this request');
     }
-    // Declined users may not re-apply
     if (existingResponse.status === 'declined') {
       throw new ConflictError(
         'Your application to this request was declined. You cannot re-apply.',
@@ -867,47 +870,9 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
     select: { id: true, status: true, requestPositionId: true },
   });
 
-  const acceptedCount = await prisma.teamUpResponse.count({
-    where: { teamUpRequestId: id, status: 'accepted' },
-  });
-  const acceptedInPayload = responses.filter((item) => item.status !== 'accepted').length;
-  if (action === 'accept' && acceptedCount + acceptedInPayload > requestRecord.playersNeeded) {
-    throw new BadRequestError('Bulk accept exceeds available slots');
-  }
-
-  if (action === 'accept' && requestRecord.positions.length > 0) {
-    const acceptedByPosition = await prisma.teamUpResponse.findMany({
-      where: { teamUpRequestId: id, status: 'accepted' },
-      select: { requestPositionId: true },
-    });
-
-    const currentAcceptedCountByPosition = new Map<string, number>();
-    for (const item of acceptedByPosition) {
-      if (!item.requestPositionId) continue;
-      currentAcceptedCountByPosition.set(
-        item.requestPositionId,
-        (currentAcceptedCountByPosition.get(item.requestPositionId) ?? 0) + 1
-      );
-    }
-
-    const incomingAcceptedByPosition = new Map<string, number>();
-    for (const item of responses) {
-      if (item.status === 'accepted' || !item.requestPositionId) continue;
-      incomingAcceptedByPosition.set(
-        item.requestPositionId,
-        (incomingAcceptedByPosition.get(item.requestPositionId) ?? 0) + 1
-      );
-    }
-
-    for (const position of requestRecord.positions) {
-      const currentAccepted = currentAcceptedCountByPosition.get(position.id) ?? 0;
-      const incomingAccepted = incomingAcceptedByPosition.get(position.id) ?? 0;
-      if (currentAccepted + incomingAccepted > position.slotsNeeded) {
-        throw new BadRequestError('Bulk accept exceeds available slots for one or more positions');
-      }
-    }
-  }
-
+  // Perform validation and the bulk update inside a transaction to avoid
+  // TOCTOU race conditions where concurrent bulk accepts could exceed
+  // available slots between the check and the update.
   const updateData: Prisma.TeamUpResponseUpdateManyMutationInput =
     action === 'accept'
       ? {
@@ -919,40 +884,82 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
           rsvpUpdatedAt: null,
         };
 
-  await prisma.teamUpResponse.updateMany({
-    where: { id: { in: responses.map((item) => item.id) } },
-    data: updateData,
-  });
+  await prisma.$transaction(async (tx) => {
+    const acceptedCount = await tx.teamUpResponse.count({
+      where: { teamUpRequestId: id, status: 'accepted' },
+    });
+    const acceptedInPayload = responses.filter((item) => item.status !== 'accepted').length;
+    if (action === 'accept' && acceptedCount + acceptedInPayload > requestRecord.playersNeeded) {
+      throw new BadRequestError('Bulk accept exceeds available slots');
+    }
 
-  if (action === 'accept') {
-    let requestFilled = false;
-    if (requestRecord.positions.length > 0) {
-      const refreshedAcceptedByPosition = await prisma.teamUpResponse.findMany({
+    if (action === 'accept' && requestRecord.positions.length > 0) {
+      const acceptedByPosition = await tx.teamUpResponse.findMany({
         where: { teamUpRequestId: id, status: 'accepted' },
         select: { requestPositionId: true },
       });
-      const filledCounts = new Map<string, number>();
-      for (const item of refreshedAcceptedByPosition) {
+
+      const currentAcceptedCountByPosition = new Map<string, number>();
+      for (const item of acceptedByPosition) {
         if (!item.requestPositionId) continue;
-        filledCounts.set(item.requestPositionId, (filledCounts.get(item.requestPositionId) ?? 0) + 1);
+        currentAcceptedCountByPosition.set(
+          item.requestPositionId,
+          (currentAcceptedCountByPosition.get(item.requestPositionId) ?? 0) + 1
+        );
       }
-      requestFilled = requestRecord.positions.every(
-        (position) => (filledCounts.get(position.id) ?? 0) >= position.slotsNeeded
-      );
-    } else {
-      const refreshedAccepted = await prisma.teamUpResponse.count({
-        where: { teamUpRequestId: id, status: 'accepted' },
-      });
-      requestFilled = refreshedAccepted >= requestRecord.playersNeeded;
+
+      const incomingAcceptedByPosition = new Map<string, number>();
+      for (const item of responses) {
+        if (item.status === 'accepted' || !item.requestPositionId) continue;
+        incomingAcceptedByPosition.set(
+          item.requestPositionId,
+          (incomingAcceptedByPosition.get(item.requestPositionId) ?? 0) + 1
+        );
+      }
+
+      for (const position of requestRecord.positions) {
+        const currentAccepted = currentAcceptedCountByPosition.get(position.id) ?? 0;
+        const incomingAccepted = incomingAcceptedByPosition.get(position.id) ?? 0;
+        if (currentAccepted + incomingAccepted > position.slotsNeeded) {
+          throw new BadRequestError('Bulk accept exceeds available slots for one or more positions');
+        }
+      }
     }
 
-    if (requestFilled) {
-      await prisma.teamUpRequest.update({
-        where: { id },
-        data: { status: 'filled' },
-      });
+    await tx.teamUpResponse.updateMany({
+      where: { id: { in: responses.map((item) => item.id) } },
+      data: updateData,
+    });
+
+    // After the update, recompute whether the request is filled and set
+    // `teamUpRequest.status = 'filled'` atomically when appropriate.
+    if (action === 'accept') {
+      let requestFilled = false;
+      if (requestRecord.positions.length > 0) {
+        const refreshedAcceptedByPosition = await tx.teamUpResponse.findMany({
+          where: { teamUpRequestId: id, status: 'accepted' },
+          select: { requestPositionId: true },
+        });
+        const filledCounts = new Map<string, number>();
+        for (const item of refreshedAcceptedByPosition) {
+          if (!item.requestPositionId) continue;
+          filledCounts.set(item.requestPositionId, (filledCounts.get(item.requestPositionId) ?? 0) + 1);
+        }
+        requestFilled = requestRecord.positions.every(
+          (position) => (filledCounts.get(position.id) ?? 0) >= position.slotsNeeded
+        );
+      } else {
+        const refreshedAccepted = await tx.teamUpResponse.count({
+          where: { teamUpRequestId: id, status: 'accepted' },
+        });
+        requestFilled = refreshedAccepted >= requestRecord.playersNeeded;
+      }
+
+      if (requestFilled) {
+        await tx.teamUpRequest.update({ where: { id }, data: { status: 'filled' } });
+      }
     }
-  }
+  }, { isolationLevel: 'Serializable' });
 
   res.json({
     message: `Bulk ${action} completed`,

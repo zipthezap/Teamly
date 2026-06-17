@@ -183,6 +183,9 @@ export const removeMember = async (req: Request, res: Response) => {
   await CacheService.invalidate('group', id);
   await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
 
+  // Clear permission cache for the removed user
+  await permissionService.clearUserPermissionCache(memberToRemove.userId);
+
   res.json({ message: 'Member removed successfully' });
 };
 
@@ -249,6 +252,9 @@ export const removeMemberByUserId = async (req: Request, res: Response) => {
   // Invalidate group cache for all affected users
   await CacheService.invalidate('group', id);
   await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
+
+  // Clear permission cache for the removed user
+  await permissionService.clearUserPermissionCache(memberToRemove.userId);
 
   // Set no-store header and return updated group
   res.setHeader('Cache-Control', 'no-store');
@@ -481,6 +487,9 @@ export const leaveGroup = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:${userId}:group:${id}:*`);
     await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
 
+    // Clear permission cache for the leaving user
+    await permissionService.clearUserPermissionCache(userId);
+
     res.json({ message: 'Left group successfully', groupDeleted: false });
   }
 };
@@ -556,6 +565,11 @@ export const transferAdmin = async (req: Request, res: Response) => {
       CacheService.deletePattern(`user:${member.userId}:groups:*`)
     )
   ]);
+  // Clear permission cache for the two users involved
+  await Promise.allSettled([
+    permissionService.clearUserPermissionCache(newAdminUser.id),
+    permissionService.clearUserPermissionCache(req.user!.id)
+  ]).catch(() => {});
   
   res.json({ message: 'Admin rights transferred successfully.' });
 };

@@ -95,7 +95,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
   // Update user with hashed token
   await prisma.user.update({
     where: { id: authenticatedReq.user.id },
-    data: { emailVerificationToken: hashedToken }
+    data: { emailVerificationToken: hashedToken, emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) }
   });
 
   // Send verification email with plain token
@@ -113,7 +113,7 @@ export const verifyEmail = asyncHandler(async (req: Request<RouteParams<'token'>
   const hashedToken = authService.hashToken(token);
 
   const user = await prisma.user.findFirst({
-    where: { emailVerificationToken: hashedToken }
+    where: { emailVerificationToken: hashedToken, emailVerificationExpires: { gt: new Date() } }
   });
 
   if (!user) {

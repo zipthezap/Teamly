@@ -37,6 +37,8 @@ export interface User {
   passwordResetExpires?: Date | string | null;
   // Security fields
   failedLoginAttempts: number;
+  failedPasswordAttempts?: number;
+  failedTwoFactorAttempts?: number;
   accountLockedUntil?: Date | string | null;
   // Location fields
   city?: string | null;

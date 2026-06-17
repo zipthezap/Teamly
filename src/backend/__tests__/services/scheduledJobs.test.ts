@@ -81,6 +81,47 @@ describe('scheduledJobs', () => {
     db.tournament.findMany.mockResolvedValue([]);
   });
 
+  describe('syncTeamPaymentStatuses (waitlist auto-promotion)', () => {
+    it('promotes teams from registration waitlist when slots open and notifies captain', async () => {
+      // Prepare mocks
+      db.tournament.findMany.mockResolvedValue([
+        { id: 'tournament-1', name: 'Open Cup', maxTeams: 2, autoPromoteRegistrationWaitlist: true },
+      ] as any);
+
+      // One current team -> 1 < 2, so one slot open
+      (prisma as any).tournamentTeam = { count: vi.fn().mockResolvedValue(1) };
+      // Ensure no payment transactions block the flow
+      (prisma as any).tournamentPaymentTransaction = { findMany: vi.fn().mockResolvedValue([]) };
+
+      const waitlistEntry = {
+        id: 'wl-1',
+        tournamentId: 'tournament-1',
+        position: 1,
+        team: { id: 'team-1', name: 'Waitlisters', captainUserId: 'captain-1' },
+      };
+
+      (prisma as any).tournamentRegistrationWaitlist = {
+        findFirst: vi.fn().mockResolvedValue(waitlistEntry),
+        delete: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      };
+
+      // Run the job
+      await (await import('../../services/scheduledJobs')).syncTeamPaymentStatuses();
+
+      // Verify promotion actions occurred
+      expect((prisma as any).tournamentRegistrationWaitlist.delete).toHaveBeenCalledWith({ where: { id: 'wl-1' } });
+      expect((prisma as any).tournamentRegistrationWaitlist.updateMany).toHaveBeenCalled();
+      expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tournamentId: 'tournament-1',
+          userIds: ['captain-1'],
+          type: 'tournament_updated',
+        })
+      );
+    });
+  });
+
   // ─── runCleanupTasks ───────────────────────────────────────────────────────
   describe('runCleanupTasks', () => {
     it('calls cleanupExpiredTokens', async () => {

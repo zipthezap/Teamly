@@ -497,7 +497,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
   // Verify the group exists
   const group = await prisma.group.findUnique({
     where: { id: groupId },
-    select: { id: true, name: true, isPublic: true }
+    select: { id: true, name: true, isPublic: true, maxMembers: true }
   });
 
   if (!group) {
@@ -525,10 +525,22 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Already a member' });
   }
 
-  // Create membership
-  await prisma.groupMember.create({
-    data: { userId, groupId, role: 'member' }
-  });
+  // Create membership atomically with capacity check to avoid TOCTOU races
+  await prisma.$transaction(async (tx) => {
+    // Re-check membership within transaction
+    const existingMemberTx = await tx.groupMember.findFirst({ where: { userId, groupId } });
+    if (existingMemberTx) return; // idempotent
+
+    // Check capacity
+    if (group.maxMembers) {
+      const currentMemberCount = await tx.groupMember.count({ where: { groupId } });
+      if (currentMemberCount >= group.maxMembers) {
+        throw new BadRequestError('Group has reached maximum member capacity');
+      }
+    }
+
+    await tx.groupMember.create({ data: { userId, groupId, role: 'member' } });
+  }, { isolationLevel: 'Serializable' });
 
   // Invalidate group cache for all affected users
   await CacheService.invalidate('group', groupId);
@@ -718,43 +730,38 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
   if (existingMembership) {
     throw new BadRequestError('You are already a member of this group');
   }
-
-  // Check max members limit
-  if (group.maxMembers) {
-    const currentMemberCount = await prisma.groupMember.count({
-      where: { groupId: group.id }
-    });
-
-    if (currentMemberCount >= group.maxMembers) {
-      throw new BadRequestError('Group has reached maximum member capacity');
-    }
-  }
-
-  // Check if there's already a pending join request AND create the join request atomically
-  // to prevent duplicate join requests under concurrent requests
+  // Check max members limit and create join request atomically to prevent
+  // races where concurrent join attempts bypass capacity checks.
   const joinRequest = await prisma.$transaction(async (tx) => {
-    const existingRequest = await tx.groupJoinRequest.findFirst({
-      where: {
-        groupId: group.id,
-        userId,
-        status: 'pending'
-      }
+    // Re-check membership inside transaction
+    const existingMembershipTx = await tx.groupMember.findFirst({
+      where: { groupId: group.id, userId }
     });
+    if (existingMembershipTx) {
+      throw new BadRequestError('You are already a member of this group');
+    }
 
+    // Check max members limit using the transactional client
+    if (group.maxMembers) {
+      const currentMemberCount = await tx.groupMember.count({ where: { groupId: group.id } });
+      if (currentMemberCount >= group.maxMembers) {
+        throw new BadRequestError('Group has reached maximum member capacity');
+      }
+    }
+
+    // Check if there's already a pending join request
+    const existingRequest = await tx.groupJoinRequest.findFirst({
+      where: { groupId: group.id, userId, status: 'pending' }
+    });
     if (existingRequest) {
       throw new BadRequestError('You already have a pending join request for this group');
     }
 
     // Create join request with LINK source
     return tx.groupJoinRequest.create({
-      data: {
-        groupId: group.id,
-        userId,
-        status: 'pending',
-        createdBy: 'LINK'
-      }
+      data: { groupId: group.id, userId, status: 'pending', createdBy: 'LINK' }
     });
-  });
+  }, { isolationLevel: 'Serializable' });
 
   // Auto-approve if the group setting allows it
   if (group.autoApproveJoinRequests) {

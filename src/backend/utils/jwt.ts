@@ -230,7 +230,7 @@ export const revokeAllUserTokens = async (userId: string, reason: string = 'secu
 /**
  * Refresh access token using refresh token
  */
-export const refreshAccessToken = async (refreshToken: string): Promise<{ accessToken: string; expiresIn: number } | null> => {
+export const refreshAccessToken = async (refreshToken: string): Promise<{ accessToken: string; refreshToken?: string; expiresIn: number; refreshExpiresIn?: number } | null> => {
   try {
     // Verify refresh token
     const decoded = verifyRefreshToken(refreshToken);
@@ -243,17 +243,39 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
       where: { token: refreshToken }
     });
 
+    // Check if the refresh token has been revoked/blacklisted
+    const revoked = await isTokenRevoked(refreshToken);
+    if (revoked) return null;
+
     if (!storedToken || storedToken.expiresAt < new Date()) {
       return null;
     }
 
     // Generate new access token
     const accessToken = generateToken(decoded.userId);
-    
-    // Update last active time for tracking
+
+    // Rotate refresh token: create a new refresh token and replace the stored one
+    const newRefreshToken = generateRefreshToken(decoded.userId);
+    const newExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    if (storedToken && storedToken.id) {
+      try {
+        await prisma.refreshToken.update({
+          where: { id: storedToken.id },
+          data: {
+            token: newRefreshToken,
+            expiresAt: newExpiresAt
+          }
+        });
+      } catch (err) {
+        // fallback: create new token record and delete old
+        await prisma.refreshToken.create({ data: { token: newRefreshToken, userId: decoded.userId, expiresAt: newExpiresAt } });
+        await prisma.refreshToken.deleteMany({ where: { id: storedToken.id } });
+      }
+    }
+
+    // Update last active time for tracking (create new session)
     const tokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
-    
-    // Create new session
     const sessionExpiresAt = new Date(Date.now() + SESSION.JWT_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
     await prisma.userSession.create({
       data: {
@@ -265,7 +287,9 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
 
     return {
       accessToken,
-      expiresIn: SESSION.JWT_EXPIRY_DAYS * 24 * 60 * 60
+      refreshToken: newRefreshToken,
+      expiresIn: SESSION.JWT_EXPIRY_DAYS * 24 * 60 * 60,
+      refreshExpiresIn: 30 * 24 * 60 * 60
     };
   } catch (error) {
     logger.error('Error refreshing access token', 'JWTUtil', { error });

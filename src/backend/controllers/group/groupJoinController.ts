@@ -285,18 +285,13 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     }
   }
 
-  // Update the join request status
-  const updatedRequest = await prisma.groupJoinRequest.update({
-    where: { id: requestId },
-    data: { status: action === 'approve' ? 'approved' : 'rejected' }
-  });
+  let updatedRequest: any;
 
-  // If approved, add the user as a member
+  // If approving, perform update + member create in a single transaction to avoid
+  // races where the request becomes approved but the member create later fails.
   if (action === 'approve') {
     let groupName: string | undefined;
-    
-    // Use transaction to check capacity and add member atomically
-    await prisma.$transaction(async (tx) => {
+    updatedRequest = await prisma.$transaction(async (tx: typeof prisma) => {
       // Get group to check max members and get name for notification
       const group = await tx.group.findUnique({
         where: { id },
@@ -311,6 +306,12 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
       // Check capacity and existing membership atomically
       await groupService.checkGroupCapacityAndMembership(id, joinRequest.userId, group.maxMembers, tx);
+
+      // Update the join request status to approved
+      const upd = await tx.groupJoinRequest.update({
+        where: { id: requestId },
+        data: { status: 'approved' }
+      });
 
       // Add the user as a member
       await tx.groupMember.create({
@@ -331,7 +332,9 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
           metadata: { requestId, requestedUserId: joinRequest.userId },
         },
       });
-    });
+
+      return upd;
+    }, { isolationLevel: 'Serializable' });
 
     // Create notification for the user who was accepted
     if (groupName) {
@@ -357,12 +360,15 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     ]).catch((error: Error) => {
       logger.error('Cache invalidation error in handleJoinRequest', 'GroupController', { error });
     });
+  } else {
+    // For reject: update the join request status (no member create needed)
+    updatedRequest = await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
   }
 
-  res.json({ 
-    message: `Join request ${action}d successfully`,
-    request: updatedRequest
-  });
+  res.json({ message: `Join request ${action}d successfully`, request: updatedRequest });
 };
 
 // Get the current user's own pending join requests (requests they submitted)

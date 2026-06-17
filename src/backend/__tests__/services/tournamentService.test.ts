@@ -29,6 +29,7 @@ import {
   generateKnockoutFromStandings,
   sortStandingsByTiebreakerRules,
   advanceWinners,
+  computeAndAttachHeadToHeadPoints,
 } from '../../services/tournamentService';
 import prisma from '../../config/database';
 import { VolleyballConfig, BracketStage, MatchStatus, TournamentFormat } from '../../../shared/types/tournament.types';
@@ -972,6 +973,31 @@ describe('Tournament Service', () => {
     });
   });
 
+  describe('computeAndAttachHeadToHeadPoints', () => {
+    it('computes head-to-head points for tied teams using completed matches', async () => {
+      const standings = [
+        { teamId: 'team-a', points: 6, wins: 2, goalsFor: 5, goalsAgainst: 3 },
+        { teamId: 'team-b', points: 6, wins: 2, goalsFor: 5, goalsAgainst: 3 },
+        { teamId: 'team-c', points: 3, wins: 1, goalsFor: 2, goalsAgainst: 4 },
+      ];
+
+      // Mock matches: team-a beat team-b once, draw none
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        { homeTeamId: 'team-a', awayTeamId: 'team-b', homeScore: 2, awayScore: 1 },
+      ] as any);
+
+      const result = await computeAndAttachHeadToHeadPoints('tourn-1', standings as any);
+
+      const a = result.find((s: any) => s.teamId === 'team-a');
+      const b = result.find((s: any) => s.teamId === 'team-b');
+      const c = result.find((s: any) => s.teamId === 'team-c');
+
+      expect(a?.headToHeadPoints).toBe(3);
+      expect(b?.headToHeadPoints).toBe(0);
+      expect(c?.headToHeadPoints).toBeUndefined();
+    });
+  });
+
   describe('advanceWinners', () => {
     it('seeds the initial knockout round for groups knockout after all group matches complete', async () => {
       vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
@@ -1210,6 +1236,61 @@ describe('Tournament Service', () => {
           awayTeamId: 'team-4',
           homeScore: 0,
           awayScore: 1,
+          roundNumber: 3,
+          matchOrder: 2,
+          createdAt: new Date('2025-01-10'),
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count)
+        .mockResolvedValueOnce(0) // no finals yet
+        .mockResolvedValueOnce(0) // no third-place match yet
+        .mockResolvedValueOnce(2); // previous stages existed
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.SEMI_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            stage: BracketStage.FINALS,
+            homeTeamId: 'team-1',
+            awayTeamId: 'team-4',
+          }),
+          expect.objectContaining({
+            stage: BracketStage.THIRD_PLACE,
+            homeTeamId: 'team-2',
+            awayTeamId: 'team-3',
+          }),
+        ]),
+      });
+    });
+
+    it('creates third-place when semifinals resolved via penalties (detailedScore)', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'semi-1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 1,
+          awayScore: 1,
+          detailedScore: { winner: 'home', method: 'penalties' },
+          roundNumber: 3,
+          matchOrder: 1,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: 'semi-2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-3',
+          awayTeamId: 'team-4',
+          homeScore: 2,
+          awayScore: 2,
+          detailedScore: { winner: 'away', method: 'penalties' },
           roundNumber: 3,
           matchOrder: 2,
           createdAt: new Date('2025-01-10'),
@@ -1724,6 +1805,48 @@ describe('Tournament Service', () => {
       await updateStandings('match-1', mockTournamentData as any);
 
       expect(prisma.tournamentStanding.upsert).not.toHaveBeenCalled();
+    });
+
+    it('uses provided transaction client when passed', async () => {
+      const matchRecord = {
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 2,
+        awayScore: 0,
+        groupName: null,
+      } as unknown;
+
+      const mockTx = {
+        tournamentMatch: { findUnique: vi.fn().mockResolvedValueOnce(matchRecord) },
+        tournamentStanding: { upsert: vi.fn().mockResolvedValue({}) },
+      } as unknown as any;
+
+      await updateStandings('match-1', mockTournamentData as any, mockTx);
+
+      expect(mockTx.tournamentStanding.upsert).toHaveBeenCalledTimes(2);
+      // Ensure we didn't call the global prisma.$transaction when a tx was provided
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('wraps upserts in prisma.$transaction when no tx provided', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 1,
+        awayScore: 1,
+        groupName: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.upsert).mockResolvedValue({} as unknown);
+      vi.mocked(prisma.$transaction).mockResolvedValue([{}, {}] as unknown as any);
+
+      await updateStandings('match-1', mockTournamentData as any);
+
+      expect(prisma.tournamentStanding.upsert).toHaveBeenCalledTimes(2);
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
 

@@ -496,9 +496,10 @@ const verifyGuestManagementAuth = async (
   if (!session) {
     return { error: 'Event not found', status: 404 };
   }
-
-  if (session.creatorId !== userId) {
-    return { error: 'Only the session creator can manage guest participants', status: 403 };
+  // Use sessionService to check management permissions (creator or group admins)
+  const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, userId);
+  if (!isAuthorized) {
+    return { error: 'Only the session creator or group admins can manage guest participants', status: 403 };
   }
 
   // Verify guest participant belongs to this session

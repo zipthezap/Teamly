@@ -51,12 +51,20 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
     } else {
       start = session.startTime;
     }
-    // Ensure exceptionDates is defined and parsed
+    // Ensure exceptionDates is defined and parsed and validated
     let exceptionDates: string[] = [];
     if (session.exceptionDates) {
-      exceptionDates = Array.isArray(session.exceptionDates)
+      const raw = Array.isArray(session.exceptionDates)
         ? session.exceptionDates
         : JSON.parse(JSON.stringify(session.exceptionDates));
+      // Validate and normalize each exception date
+      for (const d of raw) {
+        const dt = new Date(d as string);
+        if (Number.isNaN(dt.getTime())) {
+          throw new BadRequestError('Invalid exception date format');
+        }
+        exceptionDates.push(dt.toISOString());
+      }
     }
     // Ensure endDate is a Date
     let end: Date;
@@ -125,7 +133,12 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
     : [];
 
   // Add new exception if not already present
-  const exceptionDateISO = new Date(exceptionDate).toISOString();
+  // Validate provided exceptionDate
+  const parsed = new Date(exceptionDate);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestError('Invalid exception date format');
+  }
+  const exceptionDateISO = parsed.toISOString();
   if (!existingExceptions.some((d: string) => new Date(d).toISOString() === exceptionDateISO)) {
     existingExceptions.push(exceptionDateISO);
   }
@@ -171,8 +184,13 @@ export const removeRecurringEventException = async (req: Request, res: Response)
     : [];
 
   // Remove exception
+  // Validate provided exceptionDate
+  const parsedDel = new Date(exceptionDate);
+  if (Number.isNaN(parsedDel.getTime())) {
+    throw new BadRequestError('Invalid exception date format');
+  }
   const updatedExceptions = existingExceptions.filter(
-    (d: string | Date) => new Date(d).toISOString() !== new Date(exceptionDate).toISOString()
+    (d: string | Date) => new Date(d).toISOString() !== parsedDel.toISOString()
   );
 
   const updatedSession = await prisma.session.update({

@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import * as tournamentService from '../services/tournamentService';
 import { computeAutoStatus } from '../services/tournamentService';
 import { MatchStatus, TournamentStatus } from '../../shared/types/tournament.types';
 
@@ -52,6 +53,14 @@ const run = async (): Promise<void> => {
         where: { id: tournament.id },
         data: { status: nextStatus as TournamentStatus },
       });
+      // Ensure in-memory sync cache is invalidated so subsequent reads reflect this manual update
+      try {
+        tournamentService.invalidateSyncCache(tournament.id);
+      } catch (err) {
+        // Non-critical for backfill, but log for observability
+        // eslint-disable-next-line no-console
+        console.warn('Failed to invalidate sync cache after backfill update', err);
+      }
     }
 
     updatedCount += 1;

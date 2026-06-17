@@ -17,8 +17,10 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { generateTokenPair } from '../utils/jwt';
 import { logger } from '../utils/logger';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
+import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from '../utils/errors';
 import { verifyGoogleToken, verifyFacebookToken, verifyAppleToken, OAuthProfile } from '../utils/mobileOAuth';
+import crypto from 'crypto';
+import { CacheService } from '../services/cacheService';
 
 async function handleMobileOAuth(
   req: Request,
@@ -30,34 +32,31 @@ async function handleMobileOAuth(
   let user = await prisma.user.findUnique({ where: { [idField]: profile.providerId } as never });
 
   if (!user) {
-    user = await prisma.user.findUnique({ where: { email: profile.email } });
-    if (user) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          [idField]: profile.providerId,
-          emailVerified: true,
-          oauthProfilePicture: profile.picture ?? user.oauthProfilePicture,
-          lastOAuthSync: new Date(),
-        } as never,
-      });
-    } else {
-      user = await prisma.user.create({
-        data: {
-          email: profile.email,
-          name: profile.name,
-          [idField]: profile.providerId,
-          authProvider: provider,
-          emailVerified: true,
-          password: null,
-          oauthProfilePicture: profile.picture ?? null,
-          lastOAuthSync: new Date(),
-        } as never,
-      });
-      logger.info(`New user registered via mobile ${provider} OAuth`, 'AuthController', {
-        userId: user.id,
-      });
+    // If there is an existing account with the same email, DO NOT auto-link the OAuth provider.
+    // Auto-linking by email can silently take over accounts. Require explicit user consent
+    // from the account settings or a dedicated linking flow.
+    const existingByEmail = await prisma.user.findUnique({ where: { email: profile.email } });
+    if (existingByEmail) {
+      // Surface a clear conflict so the client can prompt the user to sign in and link providers.
+      throw new ConflictError('An account already exists with this email. Please sign in and link your OAuth provider via account settings.');
     }
+
+    // No existing user — create a new user for this OAuth profile
+    user = await prisma.user.create({
+      data: {
+        email: profile.email,
+        name: profile.name,
+        [idField]: profile.providerId,
+        authProvider: provider,
+        emailVerified: true,
+        password: null,
+        oauthProfilePicture: profile.picture ?? null,
+        lastOAuthSync: new Date(),
+      } as never,
+    });
+    logger.info(`New user registered via mobile ${provider} OAuth`, 'AuthController', {
+      userId: user.id,
+    });
   }
 
   const deviceInfo = req.headers['user-agent'];
@@ -336,6 +335,91 @@ export const mobileAppleLogin = async (req: Request, res: Response): Promise<voi
 
   const profile = await verifyAppleToken(identityToken, givenName, familyName, email);
   await handleMobileOAuth(req, res, 'apple', profile);
+};
+
+/**
+ * Start OAuth linking flow for an existing account.
+ * This stores a short-lived link token the client can use after authenticating.
+ * POST /auth/oauth/link/start
+ * Body: { provider: 'google'|'facebook'|'apple', providerId, email, name?, picture? }
+ */
+export const startOAuthLink = async (req: Request, res: Response): Promise<void> => {
+  const { provider, providerId, email, name, picture } = req.body as any;
+  if (!provider || !['google', 'facebook', 'apple'].includes(provider)) throw new BadRequestError('Invalid provider');
+  if (!providerId || !email) throw new BadRequestError('providerId and email are required');
+  // Abuse protection: rate limit by IP, providerId and email to avoid token spam
+  const ip = (req.ip || (req.headers && (req.headers['x-forwarded-for'] as string)) || 'unknown') as string;
+  const hourTTL = 60 * 60;
+  const ipKey = `oauth_link:rate:ip:${ip}`;
+  const providerKey = `oauth_link:rate:provider:${provider}:${providerId}`;
+  const emailKey = `oauth_link:rate:email:${email}`;
+
+  const ipCount = (await CacheService.get<number>(ipKey)) ?? 0;
+  const providerCount = (await CacheService.get<number>(providerKey)) ?? 0;
+  const emailCount = (await CacheService.get<number>(emailKey)) ?? 0;
+
+  const IP_LIMIT = 20; // per hour
+  const PROVIDER_LIMIT = 5; // per hour per providerId
+  const EMAIL_LIMIT = 5; // per hour per email
+
+  if (ipCount >= IP_LIMIT || providerCount >= PROVIDER_LIMIT || emailCount >= EMAIL_LIMIT) {
+    throw new BadRequestError('Rate limit exceeded for creating OAuth link tokens. Try again later.');
+  }
+
+  // Increment counters (set or reset TTL)
+  await CacheService.set(ipKey, ipCount + 1, hourTTL);
+  await CacheService.set(providerKey, providerCount + 1, hourTTL);
+  await CacheService.set(emailKey, emailCount + 1, hourTTL);
+
+  // Create short-lived token and store in cache
+  const token = crypto.randomBytes(18).toString('hex');
+  const key = `oauth_link:${token}`;
+  const payload = { provider, providerId, email, name: name ?? null, picture: picture ?? null, createdAt: new Date().toISOString() };
+
+  await CacheService.set(key, payload, hourTTL); // 1 hour TTL
+
+  res.json({ token, message: 'Link token created. Sign in to your account and confirm linking using this token.' });
+};
+
+/**
+ * Confirm OAuth linking after user authenticates. Requires auth.
+ * POST /auth/oauth/link/confirm
+ * Body: { token }
+ */
+export const confirmOAuthLink = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
+  if (!userId) throw new UnauthorizedError('Unauthorized');
+  const { token } = req.body as any;
+  if (!token) throw new BadRequestError('token is required');
+
+  const key = `oauth_link:${token}`;
+  const raw = await CacheService.get(key);
+  if (!raw) throw new BadRequestError('Invalid or expired link token');
+
+  const payload = JSON.parse(raw as string);
+  if (payload.email) {
+    // Ensure the linking user owns the email claimed by the OAuth profile
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user) throw new NotFoundError('User not found');
+    if (user.email !== payload.email) {
+      throw new BadRequestError('Authenticated user email does not match OAuth profile email');
+    }
+  }
+
+  // Perform link by updating provider ID on user record
+  const idField = `${payload.provider}Id`;
+  const updateData: any = {};
+  updateData[idField] = payload.providerId;
+  updateData.emailVerified = true;
+  updateData.oauthProfilePicture = payload.picture ?? undefined;
+  updateData.lastOAuthSync = new Date();
+
+  await prisma.user.update({ where: { id: userId }, data: updateData as any });
+
+  // Remove token from cache
+  await CacheService.deletePattern(key);
+
+  res.json({ message: 'OAuth provider linked successfully' });
 };
 
 // ---------------------------------------------------------------------------

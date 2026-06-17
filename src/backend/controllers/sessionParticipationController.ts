@@ -146,8 +146,25 @@ export const joinEventViaInvite = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const result = await prisma.$transaction(async (tx) => {
-    const session = await tx.session.findUnique({ where: { id } });
+    const session = await tx.session.findFirst({
+      where: {
+        id,
+        OR: [
+          { isPublic: true },
+          { creatorId: req.user!.id },
+          { group: { members: { some: { userId: req.user!.id } } } },
+          { participants: { some: { userId: req.user!.id } } },
+        ],
+      },
+      select: { id: true, groupId: true, title: true, sessionType: true, startTime: true },
+    });
+
     if (!session) {
+      // If session exists but user lacks group membership/access, return not found
+      const exists = await tx.session.findUnique({ where: { id } });
+      if (exists) {
+        throw new NotFoundError(`Session ${id} not found`);
+      }
       throw new NotFoundError(`Session ${id} not found`);
     }
 
