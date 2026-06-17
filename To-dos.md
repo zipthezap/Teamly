@@ -12,7 +12,7 @@
 1. updateStandings() not transactional (tournamentService.ts) — two separate upserts for home/away can leave standings inconsistent if one fails. — [x]
 2. Concurrent score submissions trigger duplicate bracket generation (tournamentService.ts, scheduledJobs.ts) — multiple runners can all pass completion checks and each call bracket generation. — [x]
 3. Standings not initialized for teams without played matches — teams with no recorded standing are skipped by playoff logic. — [x]
-4. goalsFor/goalsAgainst can go negative (revertStandings()) — decrement without floor check corrupts tiebreaker math. — [x]
+4. goalsFor/goalsAgainst can go negative (revertStandings()) — decrement without floor check corrupts tiebreaker math. — [ ] **REOPENED** — item was marked [x] but `revertStandings` still uses bare Prisma `{ decrement: N }` with no floor guard; see `to-dos-updated.md` Bug F.
 5. No rollback for partial bracket generation failures — orphaned matches when later steps throw. — [x]
 6. Registration idempotency missing — captain can register multiple teams if requests race before DB constraint enforcement. — [x]
 
@@ -56,7 +56,7 @@
 ### High
 30. Guest management bypasses `permissionService` (sessionGuestController.ts) — only creator check used; admins can't delegate. — [x]
 31. Guest list readable by group members but writable only by creator — inconsistent access model. — [x]
-32. No unique constraint on `(sessionId, name)` for guest participants — duplicates possible under concurrency.
+32. No unique constraint on `(sessionId, name)` for guest participants — duplicates possible under concurrency. — [x] `GuestParticipant` schema has `@@unique([sessionId, name])`.
 
 ### Medium
 33. Attendance pre-event logic inconsistent (attendanceController.ts) — guards allow unintended states.
@@ -95,8 +95,8 @@
 50. No message edit/delete endpoints in group chat — can't retract content.
 51. No rate limiter on group messages — spam risk.
 52. `sanitizeGroupData()` unclear if HTML escaped — potential stored XSS.
-53. Coordinate range not validated — invalid lat/lon accepted.
-54. No cascade delete for `RefreshToken` on user deletion — orphaned tokens.
+53. Coordinate range not validated — invalid lat/lon accepted. — [x] `validateGroupCoordinates` calls `locationService.validateCoordinates` with range checks; called on group create/update.
+54. No cascade delete for `RefreshToken` on user deletion — orphaned tokens. — [x] Schema has `onDelete: Cascade` on `RefreshToken.userId`.
 
 ---
 
@@ -127,3 +127,29 @@
 
 
 If you want, I can: create a condensed JIRA/issue tracker export, split these into individual issues, or open PR templates for the highest-priority fixes.
+
+---
+
+## NEW Issues — Found in Deep Analysis (see `to-dos-updated.md` for full details)
+
+### CRITICAL — Security
+A. `oauthCallback` exposes access+refresh tokens in URL query params — server logs, browser history, referrer leak. Fix: use URL fragment or one-time code exchange. (`authOAuthController.ts`)
+B. Email templates inject user-controlled strings (name, title) into HTML without `escapeHtml()` — stored XSS via email. (`scheduledJobs.ts`, email templates)
+C. `revokeToken` (single-device logout) does not delete the associated `RefreshToken` — after logout, refresh token still generates new access tokens. (`utils/jwt.ts`)
+
+### HIGH — Data integrity
+D. `updateParticipationStatus` includes `confirmed` in `selfAssignableStatuses` — waitlisted users can self-confirm without capacity check. (`sessionParticipationController.ts`)
+
+### MEDIUM — Logic errors
+E. (= item 48) `GroupJoinRequest` still missing DB `@@unique([groupId, userId])` constraint — concurrent duplicate requests still possible.
+F. (= item 4 reopened) `revertStandings()` floor guard — not actually fixed; Prisma decrements have no min-0 protection.
+G. `syncAllSessionStatuses` uses `require()` inside a loop — bypasses TypeScript type-checking; should be static import.
+H. `getEventByInviteToken` and `joinEventAsGuest` do not check `session.inviteTokenExpiresAt` — expired session invite links still work. (`sessionParticipationController.ts`)
+I. Payment deadline reminder query uses `{ lt: now }` — fires only AFTER deadline has passed, never in advance. (`scheduledJobs.ts`)
+J. Payment gate in `generateGroupMatches`/`generateBrackets` uses hardcoded string literals `['paid', 'waived']` instead of `TournamentPaymentStatus` enum.
+K. `resolveScoreDispute` with a corrected score does not call `revertStandings`/`updateStandings` — standings remain stale. (`tournamentCoreController.ts`)
+
+### LOW — Minor correctness / performance
+L. `confirmOAuthLink` calls `JSON.parse(raw as string)` — crashes when in-memory cache returns an object rather than a JSON string. (`authOAuthController.ts`)
+M. `syncTeamPaymentStatuses` calls `findMany` on `TournamentPaymentTransaction` without pagination — memory issue at scale.
+N. `GroupMessage.userId` FK has no `onDelete` clause — defaults to RESTRICT; hard user deletes fail. (`schema.prisma`)
