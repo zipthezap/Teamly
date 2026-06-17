@@ -4,7 +4,7 @@ import 'package:teamly_mobile/core/models/teamup_model.dart';
 void main() {
   group('TeamUpRequestModel', () {
     test('parses creator and dateTime fields', () {
-      final model = TeamUpRequestModel.fromJson({
+      final model = TeamUpRequestModel.fromJson(const {
         'id': 'request-1',
         'title': 'Need a midfielder',
         'sportType': 'football',
@@ -12,12 +12,12 @@ void main() {
         'status': 'open',
         'createdAt': '2026-05-08T10:00:00.000Z',
         'creatorId': 'user-1',
-        'creator': {
+        'creator': const {
           'id': 'user-1',
           'name': 'Alex',
         },
         'dateTime': '2026-05-10T18:00:00.000Z',
-        'positions': [
+        'positions': const [
           {
             'id': 'position-1',
             'name': 'Midfielder',
@@ -39,19 +39,19 @@ void main() {
 
   group('TeamUpResponseModel', () {
     test('parses responder from user field', () {
-      final model = TeamUpResponseModel.fromJson({
+      final model = TeamUpResponseModel.fromJson(const {
         'id': 'response-1',
         'teamUpRequestId': 'request-1',
         'message': 'I can play midfield',
         'status': 'pending',
         'createdAt': '2026-05-08T10:00:00.000Z',
         'userId': 'user-2',
-        'user': {
+        'user': const {
           'id': 'user-2',
           'name': 'Jamie',
         },
         'requestPositionId': 'position-1',
-        'requestPosition': {
+        'requestPosition': const {
           'id': 'position-1',
           'name': 'Midfielder',
         },
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('parses waitlisted status with waitlistRank', () {
-      final model = TeamUpResponseModel.fromJson({
+      final model = TeamUpResponseModel.fromJson(const {
         'id': 'response-2',
         'teamUpRequestId': 'request-1',
         'message': 'Available if spot opens',
@@ -71,7 +71,7 @@ void main() {
         'waitlistRank': 3,
         'createdAt': '2026-05-08T10:00:00.000Z',
         'userId': 'user-3',
-        'user': {'id': 'user-3', 'name': 'Sam'},
+        'user': const {'id': 'user-3', 'name': 'Sam'},
       });
 
       expect(model.status, 'waitlisted');
@@ -79,7 +79,7 @@ void main() {
     });
 
     test('parses rsvpStatus and attendanceStatus', () {
-      final model = TeamUpResponseModel.fromJson({
+      final model = TeamUpResponseModel.fromJson(const {
         'id': 'response-3',
         'teamUpRequestId': 'request-1',
         'message': 'Ready to go',
@@ -88,7 +88,7 @@ void main() {
         'attendanceStatus': 'attended',
         'createdAt': '2026-05-08T10:00:00.000Z',
         'userId': 'user-4',
-        'user': {'id': 'user-4', 'name': 'Jordan'},
+        'user': const {'id': 'user-4', 'name': 'Jordan'},
       });
 
       expect(model.rsvpStatus, 'going');
@@ -98,13 +98,13 @@ void main() {
 
   group('TeamUpApplicationModel', () {
     test('parses nested request context', () {
-      final model = TeamUpApplicationModel.fromJson({
+      final model = TeamUpApplicationModel.fromJson(const {
         'id': 'response-1',
         'teamUpRequestId': 'request-1',
         'message': 'Available',
         'status': 'cancelled',
         'createdAt': '2026-05-08T10:00:00.000Z',
-        'teamUpRequest': {
+        'teamUpRequest': const {
           'id': 'request-1',
           'title': 'Need a midfielder',
           'sportType': 'football',
@@ -112,7 +112,7 @@ void main() {
           'status': 'open',
           'dateTime': '2026-05-10T18:00:00.000Z',
           'city': 'New York',
-          'creator': {
+          'creator': const {
             'name': 'Alex',
           },
         },
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('parses waitlisted status with waitlistRank and reapply flags', () {
-      final model = TeamUpApplicationModel.fromJson({
+      final model = TeamUpApplicationModel.fromJson(const {
         'id': 'response-5',
         'teamUpRequestId': 'request-2',
         'message': 'Happy to join if space opens',
@@ -134,13 +134,13 @@ void main() {
         'reapplicationEligible': true,
         'blocksReapply': false,
         'createdAt': '2026-05-08T10:00:00.000Z',
-        'teamUpRequest': {
+        'teamUpRequest': const {
           'id': 'request-2',
           'title': 'Goalkeeper needed',
           'sportType': 'football',
           'requestType': 'need_players',
           'status': 'open',
-          'creator': {'name': 'Coach'},
+          'creator': const {'name': 'Coach'},
         },
       });
 
@@ -232,7 +232,7 @@ void main() {
 
   group('TeamUpSavedSearchModel', () {
     test('parses saved search fields', () {
-      final model = TeamUpSavedSearchModel.fromJson({
+      final model = TeamUpSavedSearchModel.fromJson(const {
         'id': 'search-1',
         'name': 'Football in London',
         'sportType': 'football',
@@ -279,15 +279,15 @@ void main() {
 
   group('TeamUpReplacementSuggestionModel', () {
     test('parses user and scores', () {
-      final model = TeamUpReplacementSuggestionModel.fromJson({
-        'user': {
+      final model = TeamUpReplacementSuggestionModel.fromJson(const {
+        'user': const {
           'id': 'user-99',
           'name': 'Casey',
           'profilePicture': 'https://example.com/pic.jpg',
         },
         'matchScore': 92.3,
         'reliabilityScore': 78.0,
-        'matchReasons': ['same city', 'similar skill level'],
+        'matchReasons': const ['same city', 'similar skill level'],
       });
 
       expect(model.userId, 'user-99');
