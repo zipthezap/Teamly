@@ -141,9 +141,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         }
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Non-fatal - log and continue
-    console.error('Failed to link pending invites during registration', e);
+    console.error('Failed to link pending invites during registration', _e);
   }
 
   // Generate tokens
@@ -195,13 +195,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // otherwise fall back to a legacy direct DB update so tests that mock
     // `prisma.user.update` continue to work.
     try {
-      if (authService && typeof (authService as any).recordFailedPasswordAttempt === 'function') {
-        await (authService as any).recordFailedPasswordAttempt(user.id, user.failedPasswordAttempts ?? 0);
+      const maybeRecordFn = (authService as unknown as { recordFailedPasswordAttempt?: (id: string, current: number) => Promise<number> }).recordFailedPasswordAttempt;
+      if (typeof maybeRecordFn === 'function') {
+        await maybeRecordFn(user.id, user.failedPasswordAttempts ?? 0);
       } else {
-        await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: (user.failedLoginAttempts ?? 0) + 1 } as any });
+        await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: (user.failedPasswordAttempts ?? 0) + 1 } as unknown });
       }
-    } catch (e) {
+    } catch (_e) {
       // non-fatal - continue to return unauthorized
+      void _e;
     }
 
     throw new UnauthorizedError('Invalid credentials');

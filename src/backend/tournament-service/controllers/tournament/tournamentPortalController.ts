@@ -97,7 +97,7 @@ export const getPublicTournamentPortal = async (req: Request, res: Response) => 
 
   const tiebreakerRules = tournament.tiebreakerRules as string[] | null;
   if (tiebreakerRules && tiebreakerRules.includes('head_to_head')) {
-    await tournamentService.computeAndAttachHeadToHeadPoints(tournament.id, standings as Array<Record<string, any>>);
+    await tournamentService.computeAndAttachHeadToHeadPoints(tournament.id, standings as Array<Record<string, unknown>>);
   }
   const sortedStandings = tournamentService.sortStandingsByTiebreakerRules(
     standings,

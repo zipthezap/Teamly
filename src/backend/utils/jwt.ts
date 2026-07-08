@@ -178,6 +178,13 @@ export const revokeToken = async (token: string, userId: string, reason: string 
       }
     });
 
+    // Also remove any refresh tokens for this user to prevent refresh after logout
+    try {
+      await prisma.refreshToken.deleteMany({ where: { userId } });
+    } catch (err) {
+      logger.warn('Failed to delete refresh tokens during revokeToken', 'JWTUtil', { userId, err });
+    }
+
     logger.info('Token revoked', 'JWTUtil', { userId, reason });
   } catch (error) {
     logger.error('Error revoking token', 'JWTUtil', { error });
@@ -268,6 +275,7 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
           }
         });
       } catch (err) {
+        void err;
         // fallback: create new token record and delete old
         await prisma.refreshToken.create({ data: { token: newRefreshToken, userId: decoded.userId, expiresAt: newExpiresAt } });
         await prisma.refreshToken.deleteMany({ where: { id: storedToken.id } });

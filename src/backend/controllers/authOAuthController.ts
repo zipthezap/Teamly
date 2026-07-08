@@ -15,6 +15,7 @@
 
 import { Request, Response } from 'express';
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import { generateTokenPair } from '../utils/jwt';
 import { logger } from '../utils/logger';
 import { BadRequestError, NotFoundError, UnauthorizedError, ConflictError } from '../utils/errors';
@@ -98,15 +99,19 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
       delete req.session.inviteGroupId;
     }
 
-    // Build redirect URL with tokens
+    // Build redirect URL and deliver tokens in the URL fragment (not query)
+    // to avoid logging tokens in server logs or leaking via Referer headers.
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const redirectUrl = new URL('/auth/callback', frontendUrl);
-    redirectUrl.searchParams.set('token', tokens.accessToken);
-    redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
-    
+
+    // Keep non-sensitive data in query params
     if (inviteGroupId) {
       redirectUrl.searchParams.set('inviteGroupId', inviteGroupId);
     }
+
+    // Place tokens in the URL fragment so they are not sent to servers by browsers
+    const fragment = `token=${encodeURIComponent(tokens.accessToken)}&refreshToken=${encodeURIComponent(tokens.refreshToken)}`;
+    redirectUrl.hash = fragment;
 
     res.redirect(redirectUrl.toString());
   } catch (error) {
@@ -344,7 +349,9 @@ export const mobileAppleLogin = async (req: Request, res: Response): Promise<voi
  * Body: { provider: 'google'|'facebook'|'apple', providerId, email, name?, picture? }
  */
 export const startOAuthLink = async (req: Request, res: Response): Promise<void> => {
-  const { provider, providerId, email, name, picture } = req.body as any;
+  const { provider, providerId, email, name, picture } = req.body as {
+    provider?: string; providerId?: string; email?: string; name?: string; picture?: string;
+  };
   if (!provider || !['google', 'facebook', 'apple'].includes(provider)) throw new BadRequestError('Invalid provider');
   if (!providerId || !email) throw new BadRequestError('providerId and email are required');
   // Abuse protection: rate limit by IP, providerId and email to avoid token spam
@@ -389,14 +396,14 @@ export const startOAuthLink = async (req: Request, res: Response): Promise<void>
 export const confirmOAuthLink = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) throw new UnauthorizedError('Unauthorized');
-  const { token } = req.body as any;
+  const { token } = req.body as { token?: string };
   if (!token) throw new BadRequestError('token is required');
 
   const key = `oauth_link:${token}`;
   const raw = await CacheService.get(key);
   if (!raw) throw new BadRequestError('Invalid or expired link token');
 
-  const payload = JSON.parse(raw as string);
+  const payload = typeof raw === 'string' ? JSON.parse(raw) : (raw as Record<string, unknown>);
   if (payload.email) {
     // Ensure the linking user owns the email claimed by the OAuth profile
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
@@ -407,14 +414,14 @@ export const confirmOAuthLink = async (req: Request, res: Response): Promise<voi
   }
 
   // Perform link by updating provider ID on user record
-  const idField = `${payload.provider}Id`;
-  const updateData: any = {};
-  updateData[idField] = payload.providerId;
+  const idField = `${payload.provider}Id` as string;
+  const updateData: Record<string, unknown> = {};
+  updateData[idField] = (payload as Record<string, unknown>).providerId;
   updateData.emailVerified = true;
-  updateData.oauthProfilePicture = payload.picture ?? undefined;
+  updateData.oauthProfilePicture = (payload as Record<string, unknown>).picture ?? undefined;
   updateData.lastOAuthSync = new Date();
 
-  await prisma.user.update({ where: { id: userId }, data: updateData as any });
+  await prisma.user.update({ where: { id: userId }, data: updateData as unknown as Prisma.UserUpdateInput });
 
   // Remove token from cache
   await CacheService.deletePattern(key);

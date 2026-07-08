@@ -58,7 +58,7 @@ const run = async (): Promise<void> => {
         tournamentService.invalidateSyncCache(tournament.id);
       } catch (err) {
         // Non-critical for backfill, but log for observability
-        // eslint-disable-next-line no-console
+         
         console.warn('Failed to invalidate sync cache after backfill update', err);
       }
     }

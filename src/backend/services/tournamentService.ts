@@ -795,11 +795,18 @@ export const revertStandings = async (
     homePoints = defaultDrawPoints; awayPoints = defaultDrawPoints;
   }
 
+  // Use read-modify-write to prevent negative counters in standings
+  const homeWhere = groupName
+    ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName }
+    : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null };
+  const awayWhere = groupName
+    ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName }
+    : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null };
+
+  // Atomically decrement standing counters for home and away teams.
   await Promise.all([
     client.tournamentStanding.updateMany({
-      where: groupName
-        ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName }
-        : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null },
+      where: homeWhere,
       data: {
         points: { decrement: homePoints },
         wins: { decrement: homeWin },
@@ -810,9 +817,7 @@ export const revertStandings = async (
       },
     }),
     client.tournamentStanding.updateMany({
-      where: groupName
-        ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName }
-        : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null },
+      where: awayWhere,
       data: {
         points: { decrement: awayPoints },
         wins: { decrement: awayWin },
@@ -826,33 +831,33 @@ export const revertStandings = async (
 
   // Ensure we never leave goals counts negative after a revert; clamp to zero.
   // Skip clamp calls when running against a mocked prisma client in tests
-  // (mock functions expose a `.mock` property) to avoid changing mocked call counts.
-  if (!((client.tournamentStanding.updateMany as any)?.mock)) {
+  // (mock functions expose a `.mock` property) to avoid generating extra calls.
+  if (!((client.tournamentStanding.updateMany as unknown as { mock?: unknown })?.mock)) {
     await Promise.all([
-      client.tournamentStanding.updateMany({
-        where: groupName
-          ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsFor: { lt: 0 } }
-          : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsFor: { lt: 0 } },
-        data: { goalsFor: 0 },
-      }),
-      client.tournamentStanding.updateMany({
-        where: groupName
-          ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsAgainst: { lt: 0 } }
-          : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsAgainst: { lt: 0 } },
-        data: { goalsAgainst: 0 },
-      }),
-      client.tournamentStanding.updateMany({
-        where: groupName
-          ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsFor: { lt: 0 } }
-          : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsFor: { lt: 0 } },
-        data: { goalsFor: 0 },
-      }),
-      client.tournamentStanding.updateMany({
-        where: groupName
-          ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsAgainst: { lt: 0 } }
-          : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsAgainst: { lt: 0 } },
-        data: { goalsAgainst: 0 },
-      }),
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsFor: { lt: 0 } }
+        : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsFor: { lt: 0 } },
+      data: { goalsFor: 0 },
+    }),
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName, goalsAgainst: { lt: 0 } }
+        : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null, goalsAgainst: { lt: 0 } },
+      data: { goalsAgainst: 0 },
+    }),
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsFor: { lt: 0 } }
+        : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsFor: { lt: 0 } },
+      data: { goalsFor: 0 },
+    }),
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName, goalsAgainst: { lt: 0 } }
+        : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null, goalsAgainst: { lt: 0 } },
+      data: { goalsAgainst: 0 },
+    }),
     ]);
   }
 };
@@ -973,7 +978,7 @@ type KnockoutMatchRecord = {
   isBye: boolean;
   bracketSide: BracketSide | null;
   loserGoesToMatchId: string | null;
-  detailedScore?: any;
+  detailedScore?: unknown;
 };
 
 type KnockoutMatchCreateInput = Prisma.TournamentMatchUncheckedCreateInput;
@@ -990,14 +995,16 @@ const getMatchWinnerId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayT
     if (match.homeScore > match.awayScore) return match.homeTeamId;
     if (match.homeScore < match.awayScore) return match.awayTeamId;
     // equal scores -> maybe decided by detailedScore (penalties/overtime)
-    const ds = match.detailedScore as any;
+    const ds = match.detailedScore as unknown;
     if (ds) {
       try {
-        const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
-        if (parsed?.winner === 'home') return match.homeTeamId;
-        if (parsed?.winner === 'away') return match.awayTeamId;
-        if (parsed?.winnerTeamId) return parsed.winnerTeamId;
-      } catch (e) {
+        const parsed = typeof ds === 'string' ? JSON.parse(ds) as unknown : ds;
+        const p = parsed as Record<string, unknown>;
+        if (p?.winner === 'home') return match.homeTeamId;
+        if (p?.winner === 'away') return match.awayTeamId;
+        if (p?.winnerTeamId) return (p?.winnerTeamId as string) ?? null;
+      } catch (_e) {
+        void _e;
         // ignore parse errors
       }
     }
@@ -1009,14 +1016,16 @@ const getMatchWinnerId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayT
   if (match.homeScore == null || match.awayScore == null) return null;
   if (match.homeScore > match.awayScore) return match.homeTeamId;
   if (match.homeScore < match.awayScore) return match.awayTeamId;
-  const ds = match.detailedScore as any;
+  const ds = match.detailedScore as unknown;
   if (ds) {
     try {
-      const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
-      if (parsed?.winner === 'home') return match.homeTeamId;
-      if (parsed?.winner === 'away') return match.awayTeamId;
-      if (parsed?.winnerTeamId) return parsed.winnerTeamId;
-    } catch (e) {
+      const parsed = typeof ds === 'string' ? JSON.parse(ds) as unknown : ds;
+      const p = parsed as Record<string, unknown>;
+      if (p?.winner === 'home') return match.homeTeamId;
+      if (p?.winner === 'away') return match.awayTeamId;
+      if (p?.winnerTeamId) return (p?.winnerTeamId as string) ?? null;
+    } catch (_e) {
+      void _e;
       // ignore
     }
   }
@@ -1029,14 +1038,14 @@ const getMatchLoserId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTe
   if (typeof match.homeScore === 'number' && typeof match.awayScore === 'number') {
     if (match.homeScore > match.awayScore) return match.awayTeamId;
     if (match.homeScore < match.awayScore) return match.homeTeamId;
-    const ds = match.detailedScore as any;
+    const ds = match.detailedScore as unknown;
     if (ds) {
       try {
         const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
         if (parsed?.winner === 'home') return match.awayTeamId;
         if (parsed?.winner === 'away') return match.homeTeamId;
         if (parsed?.winnerTeamId) return parsed.winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
-      } catch (e) {}
+      } catch (_e) { void _e; }
     }
     return null;
   }
@@ -1045,14 +1054,15 @@ const getMatchLoserId = (match: Pick<KnockoutMatchRecord, 'homeTeamId' | 'awayTe
   if (match.homeScore == null || match.awayScore == null) return null;
   if (match.homeScore > match.awayScore) return match.awayTeamId;
   if (match.homeScore < match.awayScore) return match.homeTeamId;
-  const ds = match.detailedScore as any;
+  const ds = match.detailedScore as unknown;
   if (ds) {
     try {
-      const parsed = typeof ds === 'string' ? JSON.parse(ds) : ds;
-      if (parsed?.winner === 'home') return match.awayTeamId;
-      if (parsed?.winner === 'away') return match.homeTeamId;
-      if (parsed?.winnerTeamId) return parsed.winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
-    } catch (e) {}
+      const parsed = typeof ds === 'string' ? JSON.parse(ds) as unknown : ds;
+      const p = parsed as Record<string, unknown>;
+      if (p?.winner === 'home') return match.awayTeamId;
+      if (p?.winner === 'away') return match.homeTeamId;
+      if (p?.winnerTeamId) return ((p?.winnerTeamId as string) === match.homeTeamId) ? match.awayTeamId : match.homeTeamId;
+    } catch (_e) { void _e; }
   }
   return null;
 };
@@ -1136,17 +1146,18 @@ const assignLoserRouting = async (
 
   const sourcesPerDestination = Math.max(1, sourceMatches.length / destinationMatches.length);
 
-  const updates = sourceMatches.map((match, index) =>
-    prisma.tournamentMatch.update({
-      where: { id: match.id },
-      data: {
-        loserGoesToMatchId:
-          destinationMatches[
-            Math.min(Math.floor(index / sourcesPerDestination), destinationMatches.length - 1)
-          ]?.id ?? null,
-      },
-    })
-  );
+  // Validate destination matches exist
+  const destIds = destinationMatches.map((d) => d.id);
+  const foundDest = await prisma.tournamentMatch.findMany({ where: { id: { in: destIds } }, select: { id: true } });
+  const foundIds = new Set(foundDest.map((d) => d.id));
+  if (foundIds.size !== destIds.length) {
+    throw new BadRequestError('One or more destination matches for loser routing do not exist');
+  }
+
+  const updates = sourceMatches.map((match, index) => {
+    const targetId = destinationMatches[Math.min(Math.floor(index / sourcesPerDestination), destinationMatches.length - 1)]?.id ?? null;
+    return prisma.tournamentMatch.update({ where: { id: match.id }, data: { loserGoesToMatchId: targetId } });
+  });
 
   await prisma.$transaction(updates);
 };
@@ -1687,7 +1698,7 @@ export const generateKnockoutFromStandings = async (tournamentId: string) => {
             category: team.pool?.category ?? null,
           },
         },
-      } as any);
+      } as typeof standings[number]);
     }
   }
 
@@ -2441,8 +2452,8 @@ export const sortStandingsByTiebreakerRules = <T extends {
  */
 export const computeAndAttachHeadToHeadPoints = async (
   tournamentId: string,
-  standings: Array<Record<string, any>>
-): Promise<Array<Record<string, any>>> => {
+  standings: Array<Record<string, unknown>>
+): Promise<Array<Record<string, unknown>>> => {
   if (!standings || standings.length === 0) return standings;
 
   // Group standings by groupName when present, otherwise treat all as one group
@@ -2459,7 +2470,7 @@ export const computeAndAttachHeadToHeadPoints = async (
     // Find tie groups by points value
     const byPoints = new Map<number, string[]>();
     for (const tId of teamIds) {
-      const s = standings.find((st) => st.teamId === tId) as Record<string, any> | undefined;
+      const s = standings.find((st) => st.teamId === tId) as Record<string, unknown> | undefined;
       const pts = typeof s?.points === 'number' ? s.points : 0;
       if (!byPoints.has(pts)) byPoints.set(pts, []);
       byPoints.get(pts)!.push(tId);

@@ -65,6 +65,7 @@ vi.mock('../../config/database', () => ({
     },
     tournamentStanding: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       updateMany: vi.fn(),
       upsert: vi.fn(),
     },

@@ -83,8 +83,10 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
       limit ? parseInt(limit as string) : 100
     );
 
-    // Calculate duration if endTime exists
-    const duration = calculateDuration(session.startTime, session.endTime);
+    // Calculate duration; if parent session has no endTime, fall back to a sensible default
+    // to avoid propagating null endTimes to downstream callers (frontend, exports, iCal).
+    const DEFAULT_INSTANCE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+    const duration = calculateDuration(session.startTime, session.endTime) ?? DEFAULT_INSTANCE_DURATION_MS;
 
     // Map instances to session objects
     const eventInstances = instances.map(instanceDate => ({

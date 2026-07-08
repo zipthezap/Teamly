@@ -71,7 +71,7 @@ const proxyTeamUpRequest = async (
     } catch (err) {
       // Print stack so test runner can capture the trace, then delegate
       // to next when available so Express error handlers map statuses.
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       if (next) return next(err);
       recordProxyFailClosed('TeamUpProxyController', 'community-service', 'passthrough_error');
@@ -133,7 +133,7 @@ const proxyTeamUpRequest = async (
         await Promise.resolve(_fallback(req, res, next));
         return;
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error(err instanceof Error ? err.stack : err);
         return next(err);
       }

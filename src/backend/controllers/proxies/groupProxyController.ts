@@ -71,7 +71,7 @@ const proxyGroupRequest = async (
     try {
       await Promise.resolve(_fallback(req, res, next));
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       return next(err);
     }
@@ -130,7 +130,7 @@ const proxyGroupRequest = async (
         await Promise.resolve(_fallback(req, res, next));
         return;
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error(err instanceof Error ? err.stack : err);
         return next(err);
       }
@@ -155,7 +155,7 @@ const proxyGroupRequest = async (
     try {
       await Promise.resolve(_fallback(req, res, next));
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       return next(err);
     }

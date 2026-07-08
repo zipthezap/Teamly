@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
 import { ACCOUNT_LOCKOUT } from '../config/security';
 
@@ -91,10 +92,10 @@ export const recordFailedLoginAttempt = async (userId: string, currentFailedAtte
   const newFailedAttempts = currentFailedAttempts + 1;
 
   // Prefer performing an atomic update when Prisma transaction is available
-  if (prisma && typeof (prisma as any).$transaction === 'function') {
+  if (prisma && typeof prisma.$transaction === 'function') {
     try {
       // Single atomic update: increment both legacy and new counters and set lock if needed
-      const updateData: any = {
+      const updateData: Prisma.UserUpdateInput = {
         failedLoginAttempts: { increment: 1 },
         failedPasswordAttempts: { increment: 1 }
       };
@@ -104,7 +105,7 @@ export const recordFailedLoginAttempt = async (userId: string, currentFailedAtte
         updateData.accountLockedUntil = new Date(Date.now() + lockoutDuration);
       }
 
-      await (prisma as any).$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.user.update({ where: { id: userId }, data: updateData });
       });
 
@@ -120,16 +121,17 @@ export const recordFailedLoginAttempt = async (userId: string, currentFailedAtte
   // then try to increment the new password-specific counter separately.
   // Include lock flag in the legacy update if threshold reached so tests expecting
   // a single update with lock will pass.
-  const legacyUpdateData: any = { failedLoginAttempts: newFailedAttempts };
+  const legacyUpdateData: Record<string, unknown> = { failedLoginAttempts: newFailedAttempts };
   if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
     legacyUpdateData.accountLockedUntil = new Date(Date.now() + ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000);
   }
 
-  await prisma.user.update({ where: { id: userId }, data: legacyUpdateData });
+  await prisma.user.update({ where: { id: userId }, data: legacyUpdateData as Prisma.UserUpdateInput });
   try {
     // Try to increment the new password-specific counter; best-effort
-    await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: { increment: 1 } } as any });
-  } catch (e) {
+    await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: { increment: 1 } } });
+  } catch (_e) {
+    void _e;
     // Ignore secondary failures in fallback path
   }
 
@@ -142,14 +144,14 @@ export const recordFailedLoginAttempt = async (userId: string, currentFailedAtte
 export const recordFailedPasswordAttempt = async (userId: string, currentFailedAttempts: number) => {
   const newFailedAttempts = currentFailedAttempts + 1;
   // Prefer atomic update when available
-  if (prisma && typeof (prisma as any).$transaction === 'function') {
-    const updateData: any = { failedPasswordAttempts: { increment: 1 } };
+  if (prisma && typeof prisma.$transaction === 'function') {
+    const updateData: Prisma.UserUpdateInput = { failedPasswordAttempts: { increment: 1 } };
     if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
       const lockoutDuration = ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000;
       updateData.accountLockedUntil = new Date(Date.now() + lockoutDuration);
     }
     try {
-      await (prisma as any).$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.user.update({ where: { id: userId }, data: updateData });
       });
       return newFailedAttempts;
@@ -159,7 +161,7 @@ export const recordFailedPasswordAttempt = async (userId: string, currentFailedA
   }
 
   // Fallback non-transactional path
-  await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: { increment: 1 } } as any });
+  await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: { increment: 1 } } });
   if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
     const lockoutDuration = ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000;
     await prisma.user.update({ where: { id: userId }, data: { accountLockedUntil: new Date(Date.now() + lockoutDuration) } });
@@ -174,14 +176,14 @@ export const recordFailedPasswordAttempt = async (userId: string, currentFailedA
 export const recordFailedTwoFactorAttempt = async (userId: string, currentFailedAttempts: number) => {
   const newFailedAttempts = currentFailedAttempts + 1;
   // Prefer atomic update when available
-  if (prisma && typeof (prisma as any).$transaction === 'function') {
-    const updateData: any = { failedTwoFactorAttempts: { increment: 1 } };
+  if (prisma && typeof prisma.$transaction === 'function') {
+    const updateData: Prisma.UserUpdateInput = { failedTwoFactorAttempts: { increment: 1 } };
     if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
       const lockoutDuration = ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000;
       updateData.accountLockedUntil = new Date(Date.now() + lockoutDuration);
     }
     try {
-      await (prisma as any).$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.user.update({ where: { id: userId }, data: updateData });
       });
       return newFailedAttempts;
@@ -191,7 +193,7 @@ export const recordFailedTwoFactorAttempt = async (userId: string, currentFailed
   }
 
   // Fallback non-transactional path
-  await prisma.user.update({ where: { id: userId }, data: { failedTwoFactorAttempts: { increment: 1 } } as any });
+  await prisma.user.update({ where: { id: userId }, data: { failedTwoFactorAttempts: { increment: 1 } } });
   if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
     const lockoutDuration = ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000;
     await prisma.user.update({ where: { id: userId }, data: { accountLockedUntil: new Date(Date.now() + lockoutDuration) } });
@@ -215,8 +217,9 @@ export const resetFailedLoginAttempts = async (userId: string) => {
 
   // Then clear the newer counters in a best-effort manner
   try {
-    await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: 0, failedTwoFactorAttempts: 0 } as any });
-  } catch (e) {
+    await prisma.user.update({ where: { id: userId }, data: { failedPasswordAttempts: 0, failedTwoFactorAttempts: 0 } });
+  } catch (_e) {
+    void _e;
     // Non-fatal
   }
 };

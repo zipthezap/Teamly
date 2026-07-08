@@ -7,7 +7,7 @@ import {
   recordProxyRemoteSuccess,
 } from './proxyTelemetry';
 
-type FallbackHandler = (...args: any[]) => unknown;
+type FallbackHandler = (...args: unknown[]) => unknown;
 
 type ProxyOptions = {
   failClosed?: boolean;
@@ -41,7 +41,7 @@ export const proxyJsonServiceRequest = async (
     } catch (err) {
       // Print stack for test visibility, then prefer delegating to next
       // when provided so Express error handlers can convert to 4xx/5xx.
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       if (next) {
         return next(err);

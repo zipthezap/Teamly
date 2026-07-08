@@ -67,7 +67,7 @@ const makeRes = () => {
     json: (p: any) => { payload = p; return resObj; },
     _get: () => ({ status, payload })
   };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const resObj: any = {};
 }
 
@@ -94,7 +94,7 @@ describe('Concurrency: joinGroupByInvite', () => {
     const rejected = results.filter(r => r.status === 'rejected');
 
     // Debug: show results
-    // eslint-disable-next-line no-console
+     
     console.log('concurrency results', results.map(r => ({ status: r.status, reason: (r as any).reason ? String((r as any).reason) : undefined })));
 
     expect(fulfilled.length).toBe(1);

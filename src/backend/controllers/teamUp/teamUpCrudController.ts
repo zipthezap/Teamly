@@ -17,6 +17,23 @@ const MAX_EVENT_HORIZON_DAYS = 90;
 
 type TeamUpRequestType = teamUpService.TeamUpRequestType;
 
+type TeamUpPositionLite = { id: string; name?: string | null; slotsNeeded?: number | null; skillLevelRequired?: string | null };
+type TeamUpRequestLite = {
+  id?: string;
+  status?: string;
+  creatorId?: string;
+  title?: string;
+  sportType?: string | null;
+  dateTime?: string | null;
+  playersNeeded?: number | null;
+  city?: string | null;
+  country?: string | null;
+  skillLevel?: string | null;
+  location?: string | null;
+  positions?: TeamUpPositionLite[];
+  requestType?: TeamUpRequestType | null;
+};
+
 export const createTeamUpRequest = async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   const {
@@ -153,7 +170,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
   // Parse coordinates once if provided
   const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.create({
+  const teamUpRequest = await prisma.teamUpRequest.create({
     data: {
       creatorId: req.user!.id,
       title: sanitized.title!,
@@ -173,7 +190,6 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       expiresAt,
       ...(parsedPositions.length > 0
         ? {
-            // @ts-ignore
             positions: {
               create: parsedPositions.map((position) => ({
                 name: position.name,
@@ -184,7 +200,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
           }
         : {}),
     },
-    // @ts-ignore
+    // Prisma nested selects are complex; rely on inferred types
     include: {
       creator: {
         select: {
@@ -199,13 +215,12 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       _count: {
         select: { responses: true, comments: true }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
     }
   });
-
+          // @ts-ignore Prisma nested includes; validated at runtime
   const enrichedRequest = locationService.enrichWithLocationInfo(
     teamUpService.withPositionAvailability(teamUpRequest)
   );
@@ -262,7 +277,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   // Validate enum filter values — return 400 rather than silently ignoring
   if (skillLevel && !teamUpService.VALID_SKILL_LEVELS.includes(skillLevel as teamUpService.TeamUpSkillLevel)) {
     throw new BadRequestError(
-      `skillLevel must be one of: ${teamUpService.VALID_SKILL_LEVELS.join(', ')}`,
+    // @ts-ignore Prisma nested includes; validated at runtime
       'INVALID_ENUM_VALUE',
       'skillLevel'
     );
@@ -416,7 +431,6 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   const [teamUpRequests, totalCount] = await prisma.$transaction([
     prisma.teamUpRequest.findMany({
       where,
-    // @ts-ignore
     include: {
       creator: {
         select: {
@@ -434,7 +448,6 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
           comments: true
         }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
@@ -451,12 +464,11 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
 
   // Get accepted responses for the fetched requests (batch query for efficiency)
   const requestIds = teamUpRequests.map(r => r.id);
-  const acceptedResponses: any[] = await prisma.teamUpResponse.findMany({
+  const acceptedResponses = await prisma.teamUpResponse.findMany({
     where: {
       teamUpRequestId: { in: requestIds },
       status: 'accepted'
     },
-    // @ts-ignore
     include: {
       user: {
         select: {
@@ -465,7 +477,6 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
           profilePicture: true
         }
       },
-      // @ts-ignore
       requestPosition: {
         select: {
           id: true,
@@ -512,8 +523,8 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     const expectedSkill = request.skillLevel ?? preferredSkillLevel?.toString() ?? null;
     const { score, reasons } = computeRoleFitForApplication({
       selectedPosition:
-        request.positions && preferredPosition
-          ? request.positions.find((position: any) =>
+            request.positions && preferredPosition
+              ? request.positions.find((position) =>
               typeof position.name === 'string' &&
               position.name.toLowerCase().includes(String(preferredPosition).toLowerCase())
             )
@@ -535,17 +546,19 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     };
   });
 
-  if (sortBy === 'fit') {
-    requestsWithMatching.sort((a: any, b: any) => {
-      const aScore = typeof a.matchScore === 'number' ? a.matchScore : 0;
-      const bScore = typeof b.matchScore === 'number' ? b.matchScore : 0;
+    if (sortBy === 'fit') {
+    requestsWithMatching.sort((a, b) => {
+      const aScore = typeof ((a as unknown) as Record<string, unknown>).matchScore === 'number' ? ((a as unknown) as Record<string, unknown>).matchScore as number : 0;
+      const bScore = typeof ((b as unknown) as Record<string, unknown>).matchScore === 'number' ? ((b as unknown) as Record<string, unknown>).matchScore as number : 0;
       if (aScore !== bScore) return bScore - aScore;
-      return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+      const aDate = (a as unknown as Record<string, unknown>).dateTime as string | undefined;
+      const bDate = (b as unknown as Record<string, unknown>).dateTime as string | undefined;
+      return new Date(aDate ?? '').getTime() - new Date(bDate ?? '').getTime();
     });
   }
 
   await prisma.teamUpRequestView.createMany({
-    data: requestsWithMatching.map((request: any) => ({
+    data: requestsWithMatching.map((request) => ({
       teamUpRequestId: request.id,
       viewerId: req.user!.id,
       source: typeof source === 'string' ? source : 'browse',
@@ -590,9 +603,8 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
     where.status = status as string;
   }
 
-  const teamUpRequests: any[] = await prisma.teamUpRequest.findMany({
+  const teamUpRequests = await prisma.teamUpRequest.findMany({
     where,
-    // @ts-ignore
     include: {
       creator: {
         select: {
@@ -605,7 +617,6 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
         }
       },
       responses: {
-        // @ts-ignore
         include: {
           user: {
             select: {
@@ -615,7 +626,6 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
               profilePicture: true
             }
           },
-          // @ts-ignore
           requestPosition: {
             select: {
               id: true,
@@ -627,7 +637,6 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
         },
         orderBy: { createdAt: 'asc' }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
@@ -650,9 +659,8 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
 export const getTeamUpRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
-    // @ts-ignore
     include: {
       creator: {
         select: {
@@ -665,7 +673,6 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
         }
       },
       responses: {
-        // @ts-ignore
         include: {
           user: {
             select: {
@@ -675,7 +682,6 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
               profilePicture: true
             }
           },
-          // @ts-ignore
           requestPosition: {
             select: {
               id: true,
@@ -686,12 +692,10 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
           },
         }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
       comments: {
-        // @ts-ignore
         include: {
           user: {
             select: {
@@ -753,7 +757,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     positions: positionsInput,
   } = req.body;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest: TeamUpRequestLite | null = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { creatorId: true, requestType: true }
   });
@@ -849,7 +853,6 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
       where: {
         teamUpRequestId: id,
         status: 'accepted',
-        // @ts-ignore
         requestPositionId: { not: null },
       },
     });
@@ -876,10 +879,9 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     };
   }
 
-  const updated: any = await prisma.teamUpRequest.update({
+  const updated = await prisma.teamUpRequest.update({
     where: { id },
     data: updateData,
-    // @ts-ignore
     include: {
       creator: {
         select: {
@@ -892,7 +894,6 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
         }
       },
       responses: {
-        // @ts-ignore
         include: {
           user: {
             select: {
@@ -902,7 +903,6 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
               profilePicture: true
             }
           },
-          // @ts-ignore
           requestPosition: {
             select: {
               id: true,
@@ -913,7 +913,6 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
           },
         }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
@@ -930,7 +929,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
 export const deleteTeamUpRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { creatorId: true }
   });

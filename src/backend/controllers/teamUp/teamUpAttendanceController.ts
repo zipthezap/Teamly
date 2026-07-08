@@ -59,6 +59,7 @@ export const updateTeamUpRsvp = async (req: Request, res: Response) => {
       checkMutePreference: false,
     });
   } catch (_error) {
+    void _error;
     // Non-fatal notification path.
   }
 
@@ -180,6 +181,7 @@ export const sendTeamUpReminderNudges = async (req: Request, res: Response) => {
       checkMutePreference: false,
     });
   } catch (_error) {
+    void _error;
     // Non-fatal notification path.
   }
 

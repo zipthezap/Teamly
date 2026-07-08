@@ -5,7 +5,7 @@ import { TRANSACTION } from '../config/security';
 import { SessionParticipantStatus, GuestParticipantStatus, SessionNotificationType } from '../../shared/types/event.types';
 import { CacheService } from '../services/cacheService';
 import { NotificationFactory } from '../services/notificationFactory';
-import { NotFoundError, ConflictError, BadRequestError } from '../utils/errors';
+import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from '../utils/errors';
 
 export const joinEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -332,6 +332,11 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
 
     if (!participant) {
       return null;
+    }
+
+    // Prevent users who are currently waitlisted from self-confirming a spot
+    if (status === SessionParticipantStatus.confirmed && participant.status === SessionParticipantStatus.waitlisted) {
+      throw new ForbiddenError('Cannot self-confirm from waitlisted status; await promotion');
     }
 
     const updated = await tx.sessionParticipant.update({

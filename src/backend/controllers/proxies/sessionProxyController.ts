@@ -84,7 +84,7 @@ const proxySessionRequest = async (
     } catch (err) {
       // Print stack to stderr so test runner captures the trace, then
       // pass error to next so Express error middleware maps it correctly.
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       return next(err);
     }
@@ -145,7 +145,7 @@ const proxySessionRequest = async (
         await Promise.resolve(_fallback(req, res, next));
         return;
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error(err instanceof Error ? err.stack : err);
         return next(err);
       }

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 import prisma from '../../../config/database';
 import { logger } from '../../../utils/logger';
@@ -137,7 +138,7 @@ export const getTournament = async (req: Request, res: Response) => {
 
     const tiebreakerRules = (syncedTournament.tiebreakerRules as string[] | null) ?? null;
     if (tiebreakerRules && tiebreakerRules.includes('head_to_head')) {
-      await tournamentService.computeAndAttachHeadToHeadPoints(syncedTournament.id, syncedTournament.standings ?? [] as Array<Record<string, any>>);
+      await tournamentService.computeAndAttachHeadToHeadPoints(syncedTournament.id, syncedTournament.standings ?? [] as Array<Record<string, unknown>>);
     }
     const sortedStandings = tournamentService.sortStandingsByTiebreakerRules(
       syncedTournament.standings ?? [],
@@ -322,7 +323,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
     if (paidTxns.length > 0) {
       const teamIds = paidTxns.map((t) => t.teamId).filter(Boolean) as string[];
 
-      const txOps: any[] = [];
+      const txOps: unknown[] = [];
       txOps.push(
         prisma.tournamentPaymentTransaction.updateMany({
           where: { tournamentId: id, status: TournamentPaymentTransactionStatus.PAID },
@@ -346,10 +347,10 @@ export const cancelTournament = async (req: Request, res: Response) => {
       // to mark the tournament cancelled.
 
       try {
-        await prisma.$transaction(txOps);
+      await prisma.$transaction(txOps as unknown as Prisma.PrismaPromise<unknown>[]);
 
         // Fetch the updated tournament (use update to match test mocks). Fall back to findUnique if needed.
-        let updatedTournament: any = null;
+        let updatedTournament: unknown = null;
         try {
           updatedTournament = await prisma.tournament.update({
             where: { id },
@@ -359,7 +360,8 @@ export const cancelTournament = async (req: Request, res: Response) => {
               group: { select: { id: true, name: true } },
             },
           });
-        } catch (e) {
+        } catch (_e) {
+          void _e;
           updatedTournament = await prisma.tournament.findUnique({
             where: { id },
             include: {
@@ -370,7 +372,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
         }
 
         if (!updatedTournament) {
-          updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as any;
+          updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as unknown;
         }
 
         tournamentService.invalidateSyncCache(id);
@@ -391,7 +393,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
         });
 
         // Try to update+return the updated tournament (matches test mocks)
-        let updatedTournament: any = null;
+        let updatedTournament: unknown = null;
         try {
           updatedTournament = await prisma.tournament.update({
             where: { id },
@@ -401,7 +403,8 @@ export const cancelTournament = async (req: Request, res: Response) => {
               group: { select: { id: true, name: true } },
             },
           });
-        } catch (e) {
+        } catch (_e) {
+          void _e;
           updatedTournament = await prisma.tournament.findUnique({
             where: { id },
             include: {
@@ -412,7 +415,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
         }
 
         if (!updatedTournament) {
-          updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as any;
+          updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as unknown;
         }
 
         tournamentService.invalidateSyncCache(id);
@@ -423,7 +426,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
     }
 
     // No paid transactions — simple status update
-    let updatedTournament: any = null;
+    let updatedTournament: unknown = null;
     try {
       updatedTournament = await prisma.tournament.update({
         where: { id },
@@ -433,7 +436,8 @@ export const cancelTournament = async (req: Request, res: Response) => {
           group: { select: { id: true, name: true } },
         },
       });
-    } catch (e) {
+    } catch (_e) {
+      void _e;
       updatedTournament = await prisma.tournament.findUnique({
         where: { id },
         include: {
@@ -444,7 +448,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
     }
 
     if (!updatedTournament) {
-      updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as any;
+      updatedTournament = { ...tournament, status: TournamentStatus.CANCELLED } as unknown;
     }
 
     tournamentService.invalidateSyncCache(id);

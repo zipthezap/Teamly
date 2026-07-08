@@ -134,6 +134,9 @@ const getCacheInstance = (): CacheAdapter | null => {
  * Cache service for storing and retrieving data
  */
 export class CacheService {
+  // In-flight promise map to prevent cache stampede (singleflight)
+  private static inflight: Map<string, Promise<unknown>> = new Map();
+
   /**
    * Get a value from cache
    */
@@ -280,10 +283,32 @@ export class CacheService {
       return cached;
     }
 
-    // Execute function and cache result
-    const result = await fn();
-    await this.set(key, result, ttlSeconds);
-    return result;
+    // If another caller is already computing this key, wait for that result
+    const existing = this.inflight.get(key) as Promise<T> | undefined;
+    if (existing) {
+      try {
+        return await existing;
+      } catch (err) {
+        void err;
+        // If the inflight operation failed, fall through to recompute
+      }
+    }
+
+    // Otherwise, start the computation and store the promise to prevent stampede
+    const p = (async () => {
+      try {
+        const result = await fn();
+        await this.set(key, result, ttlSeconds);
+        return result;
+      } finally {
+        // Ensure we remove the inflight marker regardless of success/failure
+        this.inflight.delete(key);
+      }
+    })();
+
+    this.inflight.set(key, p as Promise<unknown>);
+
+    return await p;
   }
 
   /**
@@ -298,7 +323,8 @@ export class CacheService {
       await this.deletePattern(pattern);
       logger.debug('Cache invalidated', 'Cache', { pattern });
     } catch (error) {
-      logger.error('Cache invalidation error', 'Cache', { resourceType, resourceId, error });
+        void error;
+        logger.error('Cache invalidation error', 'Cache', { resourceType, resourceId, error: error });
     }
   }
 }

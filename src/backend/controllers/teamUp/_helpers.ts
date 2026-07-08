@@ -1,4 +1,4 @@
-import prisma from '../../config/database';
+import { Prisma } from '@prisma/client';
 import { ForbiddenError } from '../../utils/errors';
 import { Request } from 'express';
 import { TEAMUP_AUTOFILL_CONFIRMATION_MINUTES } from './_constants';
@@ -82,7 +82,7 @@ export const computeRoleFitForApplication = ({
 };
 
 export const getWaitlistRank = async (
-  tx: typeof prisma,
+  tx: Prisma.TransactionClient,
   teamUpRequestId: string,
   requestPositionId: string | null
 ): Promise<number> => {
@@ -91,8 +91,7 @@ export const getWaitlistRank = async (
     where: {
       teamUpRequestId,
       status: 'waitlisted',
-      // @ts-ignore
-      requestPositionId,
+      requestPositionId: requestPositionId ?? undefined,
     },
   });
   return (aggregate._max.waitlistRank ?? 0) + 1;

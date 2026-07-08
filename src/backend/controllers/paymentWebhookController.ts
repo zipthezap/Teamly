@@ -4,13 +4,13 @@ import { logger } from '../utils/logger';
 
 export const handleWebhook = async (req: Request, res: Response) => {
   // Expect a JSON payload from payment provider
-  const body = req.body as any;
+  const body = req.body as Record<string, unknown>;
 
   try {
     // Normalize expected fields. Different providers will have different
     // payload shapes; callers should transform to this canonical shape.
-    const provider = req.headers['x-provider'] as string || body.provider || 'unknown';
-    const providerReference = body.providerReference || body.id || body.transactionId;
+    const provider = (req.headers['x-provider'] as string) || (body['provider'] as string) || 'unknown';
+    const providerReference = (body['providerReference'] as string) || (body['id'] as string) || (body['transactionId'] as string);
 
     if (!providerReference) {
       res.status(400).json({ error: 'Missing providerReference' });
@@ -20,14 +20,14 @@ export const handleWebhook = async (req: Request, res: Response) => {
     await paymentReconciliationService.handlePaymentProviderWebhook({
       provider,
       providerReference,
-      tournamentId: body.tournamentId,
-      teamId: body.teamId,
-      amount: body.amount,
-      currency: body.currency,
-      status: body.status,
-      paidAt: body.paidAt,
-      refundedAt: body.refundedAt,
-      metadata: body.metadata,
+      tournamentId: body['tournamentId'] as string | undefined,
+      teamId: body['teamId'] as string | undefined,
+      amount: body['amount'] as number | undefined,
+      currency: body['currency'] as string | undefined,
+      status: (body['status'] as 'paid' | 'pending' | 'failed' | 'refunded' | 'cancelled' | undefined) ?? 'pending',
+      paidAt: body['paidAt'] as string | undefined,
+      refundedAt: body['refundedAt'] as string | undefined,
+      metadata: body['metadata'] as Record<string, unknown> | undefined,
     });
 
     res.status(200).json({ ok: true });

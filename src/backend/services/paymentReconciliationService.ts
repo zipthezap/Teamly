@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { TournamentPaymentTransactionStatus } from '../../shared/types/tournament.types';
 import { syncTeamPaymentStatuses } from './scheduledJobs';
@@ -59,7 +60,7 @@ export const handlePaymentProviderWebhook = async (input: {
       if (mappedStatus === TournamentPaymentTransactionStatus.REFUNDED && refundedAt) updates.refundedAt = new Date(refundedAt as string);
 
       if (Object.keys(updates).length > 0) {
-        await prisma.tournamentPaymentTransaction.update({ where: { id: existing.id }, data: updates as any });
+        await prisma.tournamentPaymentTransaction.update({ where: { id: existing.id }, data: updates as unknown as Prisma.TournamentPaymentTransactionUpdateInput });
       } else {
         logger.debug('Payment webhook received but no updates required', 'PaymentReconciliation', { provider, providerReference });
       }

@@ -69,6 +69,11 @@ export const getEventByInviteToken = async (req: Request, res: Response) => {
     throw new NotFoundError('Event not found or invite link is invalid');
   }
 
+  // Check invite expiry
+  if (session.inviteTokenExpiresAt && new Date() > new Date(session.inviteTokenExpiresAt)) {
+    throw new ForbiddenError('This invite link has expired');
+  }
+
   res.json(session);
 };
 
@@ -130,6 +135,11 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
 
     if (!session) {
       throw new NotFoundError('Event not found or invite link is invalid');
+    }
+
+    // Check invite expiry
+    if (session.inviteTokenExpiresAt && new Date() > new Date(session.inviteTokenExpiresAt)) {
+      throw new BadRequestError('This invite link has expired');
     }
 
     // Check max players with accurate count within transaction

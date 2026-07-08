@@ -57,7 +57,7 @@ const proxyGet = async (
       const reason = getProxyFallbackReason(err);
       recordProxyFailClosed('CommunityProxyController', 'community-service', reason);
       logger.error('Community fallback handler failed', 'CommunityProxyController', { error: err });
-      // eslint-disable-next-line no-console
+       
       console.error(err instanceof Error ? err.stack : err);
       res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
       return;
@@ -115,7 +115,7 @@ const proxyGet = async (
         const reason = getProxyFallbackReason(err);
         recordProxyFailClosed('CommunityProxyController', 'community-service', reason);
         logger.error('Community fallback handler failed', 'CommunityProxyController', { error: err });
-        // eslint-disable-next-line no-console
+         
         console.error(err instanceof Error ? err.stack : err);
         res.status(503).json({ error: COMMUNITY_FAIL_CLOSED_MESSAGE });
         return;

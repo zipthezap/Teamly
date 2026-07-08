@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import { sanitizeString } from '../utils/validation';
+import { sanitizeString, escapeHtml } from '../utils/validation';
 import { CacheService } from './cacheService';
 import { Prisma } from '@prisma/client';
 import { BadRequestError } from '../utils/errors';
@@ -154,12 +154,12 @@ export const sanitizeGroupData = (data: {
   tags?: string;
 }) => {
   return {
-    name: data.name ? sanitizeString(data.name) : undefined,
-    description: data.description ? sanitizeString(data.description) : undefined,
-    locationName: data.locationName ? sanitizeString(data.locationName) : undefined,
+    name: data.name ? escapeHtml(sanitizeString(data.name)) : undefined,
+    description: data.description ? escapeHtml(sanitizeString(data.description)) : undefined,
+    locationName: data.locationName ? escapeHtml(sanitizeString(data.locationName)) : undefined,
     city: data.city ? sanitizeString(data.city) : undefined,
     country: data.country ? sanitizeString(data.country) : undefined,
-    tags: data.tags ? sanitizeString(data.tags) : undefined
+    tags: data.tags ? escapeHtml(sanitizeString(data.tags)) : undefined
   };
 };
 

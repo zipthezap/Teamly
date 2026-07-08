@@ -80,6 +80,23 @@ export const teamUpCommentLimiter = rateLimit({
   keyGenerator: authAwareKeyGenerator,
 });
 
+// Limiter for group messages to prevent per-user-per-group spam (e.g., 20 messages/minute)
+export const groupMessageLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  message: { error: 'Too many messages, slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: (req: Request) => {
+    const userKey = authAwareKeyGenerator(req);
+    const body = req.body as { groupId?: string } | undefined;
+    const params = req.params as { groupId?: string } | undefined;
+    const groupId = (body && body.groupId) || (params && params.groupId) || 'global';
+    return `gmsg:${userKey}:${groupId}`;
+  }
+});
+
 // TeamUp post limiter to prevent request creation spam
 export const teamUpCreateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

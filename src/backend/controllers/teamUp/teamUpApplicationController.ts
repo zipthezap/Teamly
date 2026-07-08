@@ -20,6 +20,33 @@ import { BLOCKING_APPLICATION_STATUSES, REAPPLY_ELIGIBLE_STATUSES } from './_con
 /** Max responseIds allowed in a single bulk operation */
 const MAX_BULK_RESPONSE_IDS = 50;
 
+type TeamUpPositionLite = { id: string; name?: string | null; slotsNeeded?: number | null; skillLevelRequired?: string | null };
+type TeamUpRequestLite = {
+  id?: string;
+  status?: string;
+  creatorId?: string;
+  title?: string;
+  sportType?: string | null;
+  dateTime?: string | Date | null;
+  playersNeeded?: number | null;
+  city?: string | null;
+  country?: string | null;
+  skillLevel?: string | null;
+  location?: string | null;
+  positions?: TeamUpPositionLite[];
+  creator?: { email?: string | null; name?: string | null } | null;
+};
+
+type TeamUpResponseWithUser = {
+  id: string;
+  teamUpRequestId: string;
+  userId: string;
+  requestPositionId?: string | null;
+  status?: string;
+  user?: { id: string; name?: string | null; email?: string | null; profilePicture?: string | null } | null;
+  requestPosition?: TeamUpPositionLite | null;
+};
+
 export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { message, requestPositionId, applicantSkillLevel } = req.body;
@@ -30,7 +57,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   const sanitizedApplicantSkillLevel =
     teamUpService.parseSkillLevel(applicantSkillLevel, 'applicantSkillLevel') ?? undefined;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { 
       status: true, 
@@ -42,8 +69,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       city: true,
       country: true,
       skillLevel: true,
-      // @ts-ignore
-      positions: {
+        positions: {
         select: {
           id: true,
           name: true,
@@ -81,7 +107,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   }
 
   // Check if user has already responded
-  const existingResponse: any = await prisma.teamUpResponse.findFirst({
+  const existingResponse = await prisma.teamUpResponse.findFirst({
     where: {
       teamUpRequestId: id,
       userId: req.user!.id
@@ -109,9 +135,9 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('requestPositionId is required for this TeamUp request');
   }
 
-  let selectedPosition: any = null;
+  let selectedPosition: TeamUpPositionLite | null = null;
   if (requestPositionId) {
-    selectedPosition = teamUpRequest.positions.find((position: any) => position.id === requestPositionId);
+    selectedPosition = teamUpRequest.positions.find((position) => position.id === requestPositionId) ?? null;
     if (!selectedPosition) {
       throw new BadRequestError('Invalid requestPositionId for this TeamUp request');
     }
@@ -134,24 +160,23 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     applicantCountry: applicantProfile?.country ?? null,
   });
 
-  const response: any = await prisma.$transaction(async (tx) => {
+  const response = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     let nextStatus: 'pending' | 'waitlisted' = 'pending';
     let waitlistRank: number | null = null;
     let autoFillOfferedAt: Date | null = null;
     let autoFillExpiresAt: Date | null = null;
 
-    if (selectedPosition) {
-      const acceptedForPosition = await tx.teamUpResponse.count({
+      if (selectedPosition) {
+        const acceptedForPosition = await tx.teamUpResponse.count({
         where: {
           teamUpRequestId: id,
-          // @ts-ignore
-          requestPositionId: selectedPosition.id,
+            requestPositionId: selectedPosition.id,
           status: 'accepted',
         },
       });
       if (acceptedForPosition >= selectedPosition.slotsNeeded) {
         nextStatus = 'waitlisted';
-        waitlistRank = await getWaitlistRank(tx as typeof prisma, id, selectedPosition.id);
+        waitlistRank = await getWaitlistRank(tx as Prisma.TransactionClient, id, selectedPosition.id);
       } else {
         nextStatus = 'pending';
       }
@@ -159,9 +184,9 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       const acceptedCount = await tx.teamUpResponse.count({
         where: { teamUpRequestId: id, status: 'accepted' },
       });
-      if (acceptedCount >= teamUpRequest.playersNeeded) {
+        if (acceptedCount >= teamUpRequest.playersNeeded) {
         nextStatus = 'waitlisted';
-        waitlistRank = await getWaitlistRank(tx as typeof prisma, id, null);
+        waitlistRank = await getWaitlistRank(tx as Prisma.TransactionClient, id, null);
       }
     }
 
@@ -174,7 +199,6 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     const responseData = {
       message: sanitized.message,
       status: nextStatus,
-      // @ts-ignore
       requestPositionId: selectedPosition?.id ?? null,
       applicantSkillLevel: sanitizedApplicantSkillLevel ?? null,
       matchScore,
@@ -190,10 +214,8 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       return tx.teamUpResponse.update({
         where: { id: existingResponse.id },
         data: responseData,
-        // @ts-ignore
         include: {
           user: { select: { id: true, name: true, email: true, profilePicture: true } },
-          // @ts-ignore
           requestPosition: { select: { id: true, name: true, slotsNeeded: true, skillLevelRequired: true } },
         },
       });
@@ -205,10 +227,8 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
         userId: req.user!.id,
         ...responseData,
       },
-      // @ts-ignore
       include: {
         user: { select: { id: true, name: true, email: true, profilePicture: true } },
-        // @ts-ignore
         requestPosition: { select: { id: true, name: true, slotsNeeded: true, skillLevelRequired: true } },
       },
     });
@@ -285,7 +305,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
   }
 
   // Verify the creator owns this request (outside transaction for early exit)
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest: TeamUpRequestLite | null = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: {
       creatorId: true,
@@ -294,7 +314,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
       sportType: true,
       dateTime: true,
       location: true,
-      // @ts-ignore
       positions: {
         select: {
           id: true,
@@ -314,9 +333,8 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the creator can manage responses');
   }
 
-  const existingResponse: any = await prisma.teamUpResponse.findUnique({
+  const existingResponse: TeamUpResponseWithUser | null = await prisma.teamUpResponse.findUnique({
     where: { id: responseId },
-    // @ts-ignore
     include: {
       user: {
         select: {
@@ -326,7 +344,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
           profilePicture: true
         }
       },
-      // @ts-ignore
       requestPosition: {
         select: {
           id: true,
@@ -368,12 +385,12 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         );
       }
 
-      if (hasPositionRequirements) {
-        if (!existingResponse.requestPositionId) {
+        if (hasPositionRequirements) {
+        if (!existingResponse?.requestPositionId) {
           throw new BadRequestError('Response is missing requestPositionId');
         }
         const selectedPosition = teamUpRequest.positions.find(
-          (position: any) => position.id === existingResponse.requestPositionId
+          (position) => position.id === existingResponse.requestPositionId
         );
         if (!selectedPosition) {
           throw new BadRequestError('Selected position is no longer available');
@@ -382,7 +399,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         const acceptedForPosition = await tx.teamUpResponse.count({
           where: {
             teamUpRequestId: id,
-            // @ts-ignore
             requestPositionId: existingResponse.requestPositionId,
             status: 'accepted',
             id: { not: responseId },
@@ -404,7 +420,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     const updated = await tx.teamUpResponse.update({
       where: { id: responseId },
       data: { status: action === 'accept' ? 'accepted' : 'declined' },
-      // @ts-ignore
       include: {
         user: {
           select: {
@@ -414,7 +429,6 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
             profilePicture: true
           }
         },
-        // @ts-ignore
         requestPosition: {
           select: {
             id: true,
@@ -429,15 +443,13 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     // Auto-fill: recount after update and mark request filled if needed
     let requestFilled = false;
     if (action === 'accept') {
-      if (teamUpRequest.positions.length > 0) {
-        const acceptedResponses: any[] = await tx.teamUpResponse.findMany({
+        if (teamUpRequest.positions.length > 0) {
+        const acceptedResponses: { requestPositionId?: string | null }[] = await tx.teamUpResponse.findMany({
           where: {
             teamUpRequestId: id,
             status: 'accepted',
-            // @ts-ignore
             requestPositionId: { not: null },
           },
-          // @ts-ignore
           select: { requestPositionId: true },
         });
         const acceptedByPosition = new Map<string, number>();
@@ -448,7 +460,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
             (acceptedByPosition.get(response.requestPositionId) ?? 0) + 1
           );
         });
-        requestFilled = teamUpRequest.positions.every((position: any) => {
+        requestFilled = teamUpRequest.positions.every((position) => {
           const acceptedCount = acceptedByPosition.get(position.id) ?? 0;
           return acceptedCount >= position.slotsNeeded;
         });
@@ -544,14 +556,13 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
   const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100);
   const parsedOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
 
-  const [responses, total]: [any[], number] = await prisma.$transaction([
+  const [responses, total]: [unknown[], number] = await prisma.$transaction([
     prisma.teamUpResponse.findMany({
       where: {
         teamUpRequest: {
           creatorId: req.user!.id
         }
       },
-      // @ts-ignore
       include: {
         user: {
           select: {
@@ -561,7 +572,6 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
             profilePicture: true
           }
         },
-        // @ts-ignore
         requestPosition: {
           select: {
             id: true,
@@ -577,7 +587,6 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
             sportType: true,
             requestType: true,
             dateTime: true,
-            // @ts-ignore
             positions: {
               select: {
                 id: true,
@@ -603,12 +612,16 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
   ]);
 
   res.json({
-    data: responses.map((response) => ({
-      ...response,
-      reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(response.status),
-      blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(response.status),
-      canUpdateRsvp: response.status === 'accepted',
-    })),
+    data: responses.map((response) => {
+      const respObj = response as unknown as Record<string, unknown>;
+      const status = (respObj.status as string) ?? '';
+      return {
+        ...respObj,
+        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as any),
+        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as any),
+        canUpdateRsvp: status === 'accepted',
+      };
+    }),
     pagination: {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -623,12 +636,11 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
   const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100);
   const parsedOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
 
-  const [responses, total]: [any[], number] = await prisma.$transaction([
+  const [responses, total]: [unknown[], number] = await prisma.$transaction([
     prisma.teamUpResponse.findMany({
       where: {
         userId: req.user!.id
       },
-      // @ts-ignore
       include: {
         user: {
           select: {
@@ -638,7 +650,6 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
             profilePicture: true
           }
         },
-        // @ts-ignore
         requestPosition: {
           select: {
             id: true,
@@ -657,7 +668,6 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
             city: true,
             location: true,
             status: true,
-            // @ts-ignore
             positions: {
               select: {
                 id: true,
@@ -687,12 +697,16 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
   ]);
 
   res.json({
-    data: responses.map((response) => ({
-      ...response,
-      reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(response.status),
-      blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(response.status),
-      canUpdateRsvp: response.status === 'accepted',
-    })),
+    data: responses.map((response) => {
+      const respObj = response as unknown as Record<string, unknown>;
+      const status = (respObj.status as string) ?? '';
+      return {
+        ...respObj,
+        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as any),
+        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as any),
+        canUpdateRsvp: status === 'accepted',
+      };
+    }),
     pagination: {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -749,7 +763,6 @@ export const withdrawTeamUpResponse = async (req: Request, res: Response) => {
       where: {
         teamUpRequestId: id,
         status: 'waitlisted',
-        // @ts-ignore
         requestPositionId: existingResponse.requestPositionId ?? null,
       },
       orderBy: [{ waitlistRank: 'asc' }, { createdAt: 'asc' }],
@@ -847,7 +860,6 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
     select: {
       creatorId: true,
       playersNeeded: true,
-      // @ts-ignore
       positions: {
         select: {
           id: true,

@@ -8,7 +8,7 @@ import { TeamUpNotificationType } from '../../../shared/types/event.types';
 export const getTeamUpComments = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { id: true }
   });
@@ -19,7 +19,6 @@ export const getTeamUpComments = async (req: Request, res: Response) => {
 
   const comments = await prisma.teamUpComment.findMany({
     where: { teamUpRequestId: id },
-    // @ts-ignore
     include: {
       user: {
         select: {
@@ -48,7 +47,7 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
   const sanitized = teamUpService.sanitizeTeamUpData({ message: content });
   teamUpService.validateTeamUpTextLengths({ message: sanitized.message });
 
-  const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
+  const teamUpRequest2 = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { 
       id: true, 
@@ -59,7 +58,7 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
     }
   });
 
-  if (!teamUpRequest) {
+  if (!teamUpRequest2) {
     throw new NotFoundError('TeamUp request not found');
   }
 
@@ -69,7 +68,6 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
       userId: req.user!.id,
       content: sanitized.message || content.trim()
     },
-    // @ts-ignore
     include: {
       user: {
         select: {
@@ -83,15 +81,15 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
   });
 
   // Create notification for TeamUp creator if commenter is not the creator
-  if (req.user!.id !== teamUpRequest.creatorId) {
+  if (req.user!.id !== teamUpRequest2.creatorId) {
     await NotificationFactory.createTeamUpNotifications({
       teamUpRequestId: id,
       type: TeamUpNotificationType.teamup_comment,
-      userIds: [teamUpRequest.creatorId],
+      userIds: [teamUpRequest2.creatorId],
       params: {
         name: req.user!.name,
-        title: teamUpRequest.title,
-        sportType: teamUpRequest.sportType,
+        title: teamUpRequest2.title,
+        sportType: teamUpRequest2.sportType,
       },
       metadata: {
         commentId: comment.id,

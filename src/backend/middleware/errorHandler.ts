@@ -73,7 +73,7 @@ export const errorHandler = (
 
   // Always print the stack to stderr for test diagnostics so failing
   // unit tests surface the underlying error stacks in CI/local runs.
-  // eslint-disable-next-line no-console
+   
   console.error(error.stack ?? error);
 
   res.status(statusCode).json(response);

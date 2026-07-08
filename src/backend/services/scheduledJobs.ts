@@ -5,6 +5,8 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from './emailQueueService';
 import { expireOldInvitations, syncTournamentAutoStatus } from './tournamentService';
 import { NotificationFactory } from './notificationFactory';
+import { determineSessionStatus } from './sessionService';
+import { escapeHtml } from '../utils/validation';
 import {
   MatchIncidentStatus,
   TournamentNotificationType,
@@ -272,13 +274,16 @@ export const sendDueEventReminders = async (): Promise<void> => {
         // Send email notification if user has email notifications enabled
         if (reminder.user.emailNotifications) {
           const eventDate = reminder.session.startTime.toLocaleString();
+          const recipientName = String(reminder.user.name ?? '');
+          const sessionTitle = String(reminder.session.title ?? 'Event');
+          const sessionLocation = reminder.session.location ? String(reminder.session.location) : '';
           const htmlContent = `
             <h2>Event Reminder</h2>
-            <p>Hi ${reminder.user.name},</p>
+            <p>Hi ${escapeHtml(recipientName)},</p>
             <p>This is a reminder for your upcoming session:</p>
-            <h3>${reminder.session.title}</h3>
+            <h3>${escapeHtml(sessionTitle)}</h3>
             <p><strong>When:</strong> ${eventDate}</p>
-            ${reminder.session.location ? `<p><strong>Where:</strong> ${reminder.session.location}</p>` : ''}
+            ${sessionLocation ? `<p><strong>Where:</strong> ${escapeHtml(sessionLocation)}</p>` : ''}
             <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${reminder.session.id}" 
                style="display:inline-block;padding:12px 24px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:4px;">
               View Event
@@ -286,7 +291,7 @@ export const sendDueEventReminders = async (): Promise<void> => {
           `;
           await sendEmailWithQueue(
             reminder.user.email,
-            `Reminder: ${reminder.session.title}`,
+            `Reminder: ${escapeHtml(sessionTitle)}`,
             htmlContent,
             { templateType: 'eventReminder' }
           );
@@ -314,13 +319,16 @@ export const sendDueEventReminders = async (): Promise<void> => {
         try {
           if (reminder.user.emailNotifications) {
             const eventDate = reminder.session.startTime.toLocaleString();
+            const recipientName = String(reminder.user.name ?? '');
+            const sessionTitle = String(reminder.session.title ?? 'Event');
+            const sessionLocation = reminder.session.location ? String(reminder.session.location) : '';
             const htmlContent = `
               <h2>Event Reminder</h2>
-              <p>Hi ${reminder.user.name},</p>
+              <p>Hi ${escapeHtml(recipientName)},</p>
               <p>This is a reminder for your upcoming session:</p>
-              <h3>${reminder.session.title}</h3>
+              <h3>${escapeHtml(sessionTitle)}</h3>
               <p><strong>When:</strong> ${eventDate}</p>
-              ${reminder.session.location ? `<p><strong>Where:</strong> ${reminder.session.location}</p>` : ''}
+              ${sessionLocation ? `<p><strong>Where:</strong> ${escapeHtml(sessionLocation)}</p>` : ''}
               <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${reminder.session.id}" 
                  style="display:inline-block;padding:12px 24px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:4px;">
                 View Event
@@ -328,7 +336,7 @@ export const sendDueEventReminders = async (): Promise<void> => {
             `;
             await sendEmailWithQueue(
               reminder.user.email,
-              `Reminder: ${reminder.session.title}`,
+              `Reminder: ${escapeHtml(sessionTitle)}`,
               htmlContent,
               { templateType: 'eventReminder' }
             );
@@ -392,7 +400,7 @@ export const checkIncidentSlas = async (): Promise<void> => {
         type: TournamentNotificationType.tournament_updated,
         userIds: [incident.tournament.organizerId],
         params: {
-          tournamentName: incident.tournament.name,
+          tournamentName: escapeHtml(String(incident.tournament.name ?? '')),
           incidentStatus: 'sla_breached',
         },
         metadata: {
@@ -418,12 +426,14 @@ export const checkIncidentSlas = async (): Promise<void> => {
 
 export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> => {
   const now = new Date();
+  const lookAheadHours = 24; // send reminders for deadlines within the next 24 hours
+  const cutoff = new Date(now.getTime() + lookAheadHours * 60 * 60 * 1000);
 
   try {
     const tournaments = await prisma.tournament.findMany({
       where: {
-        // Use strict less-than to avoid sending duplicates on the exact tick
-        paymentDeadline: { lt: now },
+        // Send reminders for upcoming deadlines in the next `lookAheadHours`
+        paymentDeadline: { gte: now, lte: cutoff },
         status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
       },
       select: {
@@ -468,7 +478,7 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
           type: TournamentNotificationType.payment_reminder,
           userIds: [team.captainUserId],
           params: {
-            tournamentName: tournament.name,
+            tournamentName: escapeHtml(String(tournament.name ?? '')),
           },
           metadata: {
             paymentReminderKey: `payment_deadline:${tournament.id}:${team.id}`,
@@ -510,9 +520,9 @@ export const syncAllSessionStatuses = async (): Promise<void> => {
     let updated = 0;
     for (const s of candidates) {
       try {
-        const desired = require('../services/sessionService').determineSessionStatus(
-          s.startTime?.toISOString?.() ?? s.startTime,
-          s.endTime?.toISOString?.() ?? s.endTime
+        const desired = determineSessionStatus(
+          typeof s.startTime === 'string' ? s.startTime : s.startTime?.toISOString?.() ?? '',
+          typeof s.endTime === 'string' ? s.endTime : s.endTime?.toISOString?.()
         );
         if (desired && desired !== s.status) {
           await prisma.session.update({ where: { id: s.id }, data: { status: desired } });
@@ -537,22 +547,34 @@ export const syncAllSessionStatuses = async (): Promise<void> => {
 
 export const syncTeamPaymentStatuses = async (): Promise<void> => {
   try {
-    // Fetch recent payment transactions for teams
-    const txs = await prisma.tournamentPaymentTransaction.findMany({
-      where: { tournamentId: { not: null } },
-      select: { teamId: true, status: true },
-    });
-
+    // Fetch recent payment transactions for teams in paginated batches to avoid OOM on large datasets
+    const pageSize = 500;
+    let page = 0;
     const teamMap: Record<string, { hasPaid: boolean; hasPending: boolean }> = {};
-    for (const t of txs) {
-      if (!t.teamId) continue;
-      const current = teamMap[t.teamId] || { hasPaid: false, hasPending: false };
-      if (t.status === TournamentPaymentStatus.PAID) current.hasPaid = true;
-      if (t.status === TournamentPaymentStatus.PENDING) current.hasPending = true;
-      teamMap[t.teamId] = current;
-    }
+    while (true) {
+      const txs = await prisma.tournamentPaymentTransaction.findMany({
+        where: { tournamentId: { not: null } },
+        select: { teamId: true, status: true },
+        skip: page * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!txs || txs.length === 0) break;
 
-    const updates: Promise<any>[] = [];
+      for (const t of txs) {
+        if (!t.teamId) continue;
+        const current = teamMap[t.teamId] || { hasPaid: false, hasPending: false };
+        if (t.status === TournamentPaymentStatus.PAID) current.hasPaid = true;
+        if (t.status === TournamentPaymentStatus.PENDING) current.hasPending = true;
+        teamMap[t.teamId] = current;
+      }
+
+      if (txs.length < pageSize) break;
+      page++;
+    }
+    
+
+    const updates: Promise<unknown>[] = [];
     for (const [teamId, flags] of Object.entries(teamMap)) {
       const desired: TournamentPaymentStatus = flags.hasPaid
         ? TournamentPaymentStatus.PAID
@@ -619,6 +641,7 @@ export const syncTeamPaymentStatuses = async (): Promise<void> => {
               try {
                 await prisma.$transaction([deleteOp, shiftOp]);
               } catch (txErr) {
+                void txErr;
                 // If transaction fails, attempt operations individually as a
                 // best-effort fallback to avoid losing promotable slots.
                 await deleteOp;
@@ -635,7 +658,7 @@ export const syncTeamPaymentStatuses = async (): Promise<void> => {
                   tournamentId: t.id,
                   type: TournamentNotificationType.tournament_updated,
                   userIds: [firstEntry.team.captainUserId],
-                  params: { tournamentName: t.name, teamName: firstEntry.team.name },
+                  params: { tournamentName: escapeHtml(String(t.name ?? '')), teamName: escapeHtml(String(firstEntry.team?.name ?? '')) },
                   metadata: { updateType: 'waitlist_promoted', teamId: firstEntry.team.id },
                   checkMutePreference: false,
                 });

@@ -51,6 +51,14 @@ vi.mock('../../config/database', () => ({
 
 vi.mock('../../utils/validation', () => ({
   sanitizeString: vi.fn((str: string) => str.trim()),
+  escapeHtml: vi.fn((str: string) =>
+    String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  ),
 }));
 
 vi.mock('../../utils/logger', () => ({

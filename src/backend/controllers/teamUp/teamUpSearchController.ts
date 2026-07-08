@@ -33,7 +33,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
     : Math.min(Math.max(parsedLimit, 1), 100);
 
   // Get all open TeamUp requests with location data
-  const requests: any[] = await prisma.teamUpRequest.findMany({
+  const requests = await prisma.teamUpRequest.findMany({
     where: {
       AND: [
         { latitude: { not: null } },
@@ -46,7 +46,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
         gte: new Date() // Only show future requests
       }
     },
-    // @ts-ignore
+    // Prisma types may be complex for nested includes; accept inferred types here
     include: {
       creator: {
         select: {
@@ -62,7 +62,6 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
         where: {
           status: 'accepted'
         },
-        // @ts-ignore
         include: {
           user: {
             select: {
@@ -71,7 +70,6 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
               profilePicture: true
             }
           },
-          // @ts-ignore
           requestPosition: {
             select: {
               id: true,
@@ -82,7 +80,6 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
           },
         }
       },
-      // @ts-ignore
       positions: {
         orderBy: { createdAt: 'asc' },
       },
@@ -210,10 +207,7 @@ export const getTeamUpReplacementSuggestions = async (req: Request, res: Respons
         where: {
           status: { in: ['declined', 'cancelled', 'waitlisted'] },
           ...(requestPositionId
-            ? {
-                // @ts-ignore
-                requestPositionId: String(requestPositionId),
-              }
+            ? { requestPositionId: String(requestPositionId) }
             : {}),
         },
         select: {

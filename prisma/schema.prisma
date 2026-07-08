@@ -94,10 +94,11 @@ model GroupMessage {
   id        String   @id @default(uuid())
   content   String
   createdAt DateTime @default(now())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   groupId   String
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 model SessionReminder {
@@ -424,6 +425,7 @@ model GroupJoinRequest {
   invitedBy String?   // ID of user who sent the invite
   inviter   User?     @relation("GroupInviter", fields: [invitedBy], references: [id])
   
+  @@unique([groupId, userId]) // Prevent duplicate join requests for same user/group
   @@index([status]) // For filtering by status
   @@index([userId, status]) // For user's pending requests
   @@index([expiresAt]) // For cleaning up expired invites
@@ -1394,6 +1396,8 @@ model TournamentStanding {
   @@index([tournamentId])
   @@index([teamId])
   @@index([points])
+  // Composite index to cover common ORDER BY queries when retrieving standings
+  @@index([tournamentId, groupName, points, goalsFor, goalsAgainst, wins, losses])
 }
 
 // Tournament players - tracks registered players on a team

@@ -64,7 +64,10 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   // Do not allow marking attendance before the event starts.
   // Require the user to already be a participant. Do not auto-confirm or create
   // participants here; that was causing unexpected behavior in tests.
-  const participantObj = session.participants?.find((p: any) => p.userId === targetUserId);
+  type ParticipantRecord = { userId: string; status?: string } | Record<string, unknown>;
+  const participantObj = session.participants?.find((p: ParticipantRecord) => {
+    return (p as Record<string, unknown>)['userId'] === targetUserId;
+  }) as { userId: string; status?: string } | undefined;
   if (!participantObj) {
     throw new BadRequestError('User is not a participant');
   }
@@ -85,7 +88,13 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   }
 
   // For 'late' only allow if participant is confirmed (if status is available)
-  if (status === 'late' && participantObj.status && participantObj.status !== 'confirmed') {
+  // Prevent waitlisted users from marking attendance in any way
+  if (participantObj.status === 'waitlisted') {
+    throw new BadRequestError('Waitlisted participants cannot be marked as attending');
+  }
+
+  // For 'late' only allow if participant is confirmed (or the session creator is marking)
+  if (status === 'late' && participantObj.status !== 'confirmed' && session.creatorId !== currentUserId) {
     throw new BadRequestError('Only confirmed participants can be marked as late');
   }
 

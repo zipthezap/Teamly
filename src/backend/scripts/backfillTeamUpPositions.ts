@@ -2,15 +2,22 @@ import prisma from '../config/database';
 
 const hasDryRunFlag = process.argv.includes('--dry-run');
 
+type BackfillRequest = {
+  id: string;
+  title: string;
+  playersNeeded?: number | null;
+  skillLevel?: string | null;
+  positions?: { id: string }[];
+};
+
 const run = async (): Promise<void> => {
-  const requests: any[] = await prisma.teamUpRequest.findMany({
+  const requests: BackfillRequest[] = await prisma.teamUpRequest.findMany({
     where: { requestType: 'need_players' },
     select: {
       id: true,
       title: true,
       playersNeeded: true,
       skillLevel: true,
-      // @ts-ignore
       positions: {
         select: { id: true },
       },
@@ -26,7 +33,7 @@ const run = async (): Promise<void> => {
 
     const safeTitle = request.title.replace(/[\r\n\t]/g, ' ').slice(0, 80);
       if (!hasDryRunFlag) {
-      await (prisma as any).teamUpRequestPosition.create({
+      await prisma.teamUpRequestPosition.create({
         data: {
           teamUpRequestId: request.id,
           name: 'Player',

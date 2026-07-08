@@ -1,4 +1,5 @@
 import prisma from '../../config/database';
+import { Prisma } from '@prisma/client';
 import { logger } from '../../utils/logger';
 import { Request, Response } from 'express';
 import * as permissionService from '../../services/permissionService';
@@ -77,7 +78,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
   // If auto-approve is enabled, directly add user as member
   if (group.autoApproveJoinRequests) {
     // Use transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx: typeof prisma) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Check capacity and existing membership atomically
       await groupService.checkGroupCapacityAndMembership(id, req.user!.id, group.maxMembers, tx);
 
@@ -285,13 +286,13 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     }
   }
 
-  let updatedRequest: any;
+  let updatedRequest: Awaited<ReturnType<typeof prisma.groupJoinRequest.update>> | null = null;
 
   // If approving, perform update + member create in a single transaction to avoid
   // races where the request becomes approved but the member create later fails.
   if (action === 'approve') {
     let groupName: string | undefined;
-    updatedRequest = await prisma.$transaction(async (tx: typeof prisma) => {
+    updatedRequest = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Get group to check max members and get name for notification
       const group = await tx.group.findUnique({
         where: { id },

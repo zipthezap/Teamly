@@ -31,8 +31,8 @@ export const reportTeamUpRequest = async (req: Request, res: Response) => {
     throw new NotFoundError('TeamUp request not found');
   }
 
-  await prisma.$transaction(async (tx) => {
-    await auditLog(tx as typeof prisma).create({
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await auditLog(tx as Prisma.TransactionClient).create({
       data: {
         entityType: 'teamup',
         entityId: id,

@@ -95,8 +95,8 @@ export const resendInviteNotifications = async (req: Request, res: Response) => 
           }
         });
         resent++;
-      } catch (e) {
-        logger.error('Failed to resend invite notification', 'AdminController', { error: e, inviteLogId: log.id });
+      } catch (_e) {
+        logger.error('Failed to resend invite notification', 'AdminController', { error: _e, inviteLogId: log.id });
       }
     }
 

@@ -636,6 +636,11 @@ export const addTeam = async (req: Request, res: Response) => {
     }
   }
 
+  // Guard against providing both legacy `poolNumber` and new `poolId` simultaneously
+  if (poolId && poolNumber !== undefined && poolNumber !== null) {
+    throw new BadRequestError('Provide either `poolId` to assign to a pool, or `poolNumber` (legacy). Do not provide both.');
+  }
+
   // If a captainUserId is provided, verify the user exists and is not an organizer or admin
   if (captainUserId) {
     const captainUser = await prisma.user.findUnique({ where: { id: captainUserId }, select: { id: true, deletedAt: true } });
@@ -823,6 +828,10 @@ export const updateTeam = async (req: Request, res: Response) => {
   // Only organizers and admins can change pool assignments and seeding
   if (isOrgOrAdmin) {
     if (poolNumber !== undefined) {
+      // If team is already assigned to a pool via poolId, require pool-move endpoint
+      if (team.poolId) {
+        throw new BadRequestError('Team is assigned to a pool via `poolId`; use the pool-move endpoint to change pool assignments or clear the pool first.');
+      }
       if (poolNumber === null || poolNumber === '') {
         updateData.poolNumber = null;
       } else {
@@ -1353,7 +1362,7 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
   // Enforce payment gate
   if (tournament.requirePaymentForBrackets && !forceGenerate) {
     const unpaidCount = await prisma.tournamentTeam.count({
-      where: { tournamentId: id, paymentStatus: { notIn: ['paid', 'waived'] } },
+      where: { tournamentId: id, paymentStatus: { notIn: [TournamentPaymentStatus.PAID, TournamentPaymentStatus.WAIVED] } },
     });
     if (unpaidCount > 0) {
       throw new BadRequestError(
@@ -1624,7 +1633,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
   // Enforce payment gate when required (organizer can force-override via forceGenerate flag)
   if (tournament.requirePaymentForBrackets && !forceGenerate) {
     const unpaidCount = await prisma.tournamentTeam.count({
-      where: { tournamentId: id, paymentStatus: { notIn: ['paid', 'waived'] } },
+      where: { tournamentId: id, paymentStatus: { notIn: [TournamentPaymentStatus.PAID, TournamentPaymentStatus.WAIVED] } },
     });
     if (unpaidCount > 0) {
       throw new BadRequestError(
@@ -1748,7 +1757,7 @@ export const submitScore = async (req: Request, res: Response) => {
   const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
   if ((isEliminationFormat || isKnockoutStage) && parsedHomeScore === parsedAwayScore) {
     // Allow draws for third-place matches, or when a detailedScore tie-breaker declares a winner (penalties/overtime)
-    const ds = detailedScore as any;
+    const ds = detailedScore as unknown;
     const resolvedByDetail = ds ? (typeof ds === 'string' ? (() => { try { return JSON.parse(ds); } catch { return null; } })() : ds) : null;
     if (match.stage === BracketStage.THIRD_PLACE) {
       // third-place match may be allowed to end in a draw
@@ -1975,7 +1984,7 @@ export const getStandings = async (req: Request, res: Response) => {
 
   const tiebreakerRules = tournament.tiebreakerRules as string[] | null;
   if (tiebreakerRules && tiebreakerRules.includes('head_to_head')) {
-    await tournamentService.computeAndAttachHeadToHeadPoints(id, rawStandings as Array<Record<string, any>>);
+    await tournamentService.computeAndAttachHeadToHeadPoints(id, rawStandings as Array<Record<string, unknown>>);
   }
   const standings = tournamentService.sortStandingsByTiebreakerRules(rawStandings, tiebreakerRules);
 
@@ -5213,7 +5222,7 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
       },
     });
 
-    await tournamentService.updateStandings(dispute.match.id, tournament, tx);
+    await tournamentService.updateStandings(correctedMatch.id, tournament, tx);
     return { updatedDispute, correctedMatch };
   });
 
