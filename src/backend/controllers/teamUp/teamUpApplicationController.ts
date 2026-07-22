@@ -119,7 +119,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     // status (e.g. pending or already accepted). Declined responses are a
     // special case: they should return a dedicated error code to indicate
     // the applicant was explicitly rejected and cannot re-apply.
-    if (BLOCKING_APPLICATION_STATUSES.includes(existingResponse.status as any)) {
+    if (BLOCKING_APPLICATION_STATUSES.includes(existingResponse.status as 'pending' | 'accepted')) {
       throw new BadRequestError('You have already responded to this request');
     }
     if (existingResponse.status === 'declined') {
@@ -617,8 +617,8 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
       const status = (respObj.status as string) ?? '';
       return {
         ...respObj,
-        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as any),
-        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as any),
+        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as 'cancelled' | 'waitlisted'),
+        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as 'pending' | 'accepted'),
         canUpdateRsvp: status === 'accepted',
       };
     }),
@@ -702,8 +702,8 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
       const status = (respObj.status as string) ?? '';
       return {
         ...respObj,
-        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as any),
-        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as any),
+        reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(status as 'cancelled' | 'waitlisted'),
+        blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(status as 'pending' | 'accepted'),
         canUpdateRsvp: status === 'accepted',
       };
     }),

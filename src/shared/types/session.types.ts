@@ -34,11 +34,13 @@ export enum SessionParticipantStatus {
   co_organizer = 'co_organizer',
 }
 
-// Guest participants share the same status values as regular session participants.
-// Export a runtime alias so existing code using `GuestParticipantStatus` keeps working
-// but avoids duplicating enum definitions or diverging values.
-export const GuestParticipantStatus = SessionParticipantStatus;
-export type GuestParticipantStatus = SessionParticipantStatus;
+// Guest participants have a restricted set of statuses (subset of SessionParticipantStatus).
+// The Prisma schema defines: pending, confirmed, declined.
+export enum GuestParticipantStatus {
+  pending = 'pending',
+  confirmed = 'confirmed',
+  declined = 'declined',
+}
 
 export enum SessionRequestStatus {
   voting = 'voting',

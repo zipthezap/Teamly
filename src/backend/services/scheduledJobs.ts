@@ -442,7 +442,7 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
         paymentDeadline: true,
         teams: {
           where: {
-            captainUserId: { not: null },
+            NOT: { captainUserId: null },
             paymentStatus: {
               in: [TournamentPaymentStatus.UNPAID, TournamentPaymentStatus.PENDING],
             },
@@ -553,7 +553,6 @@ export const syncTeamPaymentStatuses = async (): Promise<void> => {
     const teamMap: Record<string, { hasPaid: boolean; hasPending: boolean }> = {};
     while (true) {
       const txs = await prisma.tournamentPaymentTransaction.findMany({
-        where: { tournamentId: { not: null } },
         select: { teamId: true, status: true },
         skip: page * pageSize,
         take: pageSize,
@@ -602,7 +601,7 @@ export const syncTeamPaymentStatuses = async (): Promise<void> => {
       const tournaments = await prisma.tournament.findMany({
         where: {
           autoPromoteRegistrationWaitlist: true,
-          maxTeams: { not: null },
+          NOT: { maxTeams: null },
           status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
         },
         select: {

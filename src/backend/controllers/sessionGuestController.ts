@@ -590,10 +590,10 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
   }
 
   // Update guest participant status
-  // Cast to `any` for Prisma client compatibility with generated enum types
+  // Status is already validated above
   const updatedGuest = await prisma.guestParticipant.update({
     where: { id: guestId },
-    data: { status: status as any }
+    data: { status: status as 'pending' | 'confirmed' | 'declined' }
   });
 
   // Invalidate events cache for all group members

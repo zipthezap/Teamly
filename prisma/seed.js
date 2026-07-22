@@ -186,63 +186,35 @@ async function backfillSeedTournament4ScheduleData() {
 }
 
 async function main() {
-  // Check if seeding is needed (skip if Alice exists)
-  const existingAlice = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });
-  if (existingAlice) {
-    const backfilled = await backfillSeedTournament4ScheduleData();
-    console.log(
-      backfilled
-        ? 'Seed data already exists. Applied tournament 4 schedule backfill.'
-        : 'Seed data already exists. Skipping seeding.'
-    );
-    return;
-  }
-
-  // Hash the password for both users
+  // Insert seed users directly using SQL ON CONFLICT DO NOTHING to avoid relying
+  // on Prisma lookups by email (which may fail if client/db mismatch exists).
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // Create two initial users
-  const user1 = await prisma.user.upsert({
-    where: { email: 'alice@example.com' },
-    update: {},
-    create: {
-      email: 'alice@example.com',
-      password: hashedPassword, // In production, hash passwords!
-      name: 'Alice',
-      emailVerified: true,
-    },
-  });
-  const user2 = await prisma.user.upsert({
-    where: { email: 'bob@example.com' },
-    update: {},
-    create: {
-      email: 'bob@example.com',
-      password: hashedPassword,
-      name: 'Bob',
-      emailVerified: true,
-    },
-  });
-  const user3 = await prisma.user.upsert({
-    where: { email: 'charlie@example.com' },
-    update: {},
-    create: {
-      email: 'charlie@example.com',
-      password: hashedPassword,
-      name: 'Charlie',
-      emailVerified: true,
-    },
-  });
-  const user4 = await prisma.user.upsert({
-    where: { email: 'diana@example.com' },
-    update: {},
-    create: {
-      email: 'diana@example.com',
-      password: hashedPassword,
-      name: 'Diana',
-      emailVerified: true,
-    },
-  });
-  console.log('Seeded users:', user1.email, user2.email, user3.email, user4.email);
+  const now = new Date().toISOString();
+  await pool.query(
+    `INSERT INTO "User" (id, email, password, name, "createdAt", "updatedAt", "emailVerified") VALUES
+    ($1,$2,$3,$4,$5,$5,$6),
+    ($7,$8,$9,$10,$5,$5,$6),
+    ($11,$12,$13,$14,$5,$5,$6),
+    ($15,$16,$17,$18,$5,$5,$6)
+    ON CONFLICT (email) DO NOTHING;`,
+    [
+      'seed-user-alice', 'alice@example.com', hashedPassword, 'Alice', now, true,
+      'seed-user-bob', 'bob@example.com', hashedPassword, 'Bob',
+      'seed-user-charlie', 'charlie@example.com', hashedPassword, 'Charlie',
+      'seed-user-diana', 'diana@example.com', hashedPassword, 'Diana',
+    ]
+  );
+
+  console.log('Seeded users (sql ensured).');
+
+  // Resolve user objects from their known seed IDs (inserted via raw SQL above)
+  const [user1, user2, user3, user4] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: 'seed-user-alice' } }),
+    prisma.user.findUniqueOrThrow({ where: { id: 'seed-user-bob' } }),
+    prisma.user.findUniqueOrThrow({ where: { id: 'seed-user-charlie' } }),
+    prisma.user.findUniqueOrThrow({ where: { id: 'seed-user-diana' } }),
+  ]);
 
   // Create multiple groups with different configurations
   const group1 = await prisma.group.upsert({
@@ -455,6 +427,7 @@ async function main() {
   const events = [
     // Group 1 (Alice's Sports Club) events
     {
+      id: 'seed-session-1',
       title: 'Weekend Football Match',
       description: 'Join us for a friendly football match this weekend!',
       sessionType: 'football',
@@ -479,6 +452,7 @@ async function main() {
     },
       // Additional upcoming events for Alice's Sports Club
       {
+        id: 'seed-session-2',
         title: 'Spring Soccer Kickoff',
         description: 'Start the season with a friendly soccer match!',
         sessionType: 'football',
@@ -501,6 +475,7 @@ async function main() {
         ]
       },
       {
+        id: 'seed-session-3',
         title: 'Ultimate Frisbee Challenge',
         description: 'Join us for a fast-paced frisbee game!',
         sessionType: 'other',
@@ -523,6 +498,7 @@ async function main() {
         ]
       },
       {
+        id: 'seed-session-4',
         title: 'Volleyball Night',
         description: 'Evening volleyball games for all skill levels.',
         sessionType: 'volleyball',
@@ -546,6 +522,7 @@ async function main() {
       },
       // Additional past events for Alice's Sports Club
       {
+        id: 'seed-session-5',
         title: 'Winter Indoor Soccer',
         description: 'Indoor soccer to keep warm during winter!',
         sessionType: 'football',
@@ -568,6 +545,7 @@ async function main() {
         ]
       },
       {
+        id: 'seed-session-6',
         title: 'Autumn Running Meetup',
         description: 'Group run through Central Park to enjoy the fall colors.',
         sessionType: 'running',
@@ -590,6 +568,7 @@ async function main() {
         ]
       },
     {
+      id: 'seed-session-7',
       title: 'Morning Yoga Session',
       description: 'Relaxing morning yoga session at the park',
       sessionType: 'other',
@@ -614,6 +593,7 @@ async function main() {
     },
     // Group 2 (Bob's Basketball League) events
     {
+      id: 'seed-session-8',
       title: 'Basketball Pickup Game',
       description: 'Join us for a casual basketball game!',
       sessionType: 'basketball',
@@ -637,6 +617,7 @@ async function main() {
       ]
     },
     {
+      id: 'seed-session-9',
       title: 'Championship Game',
       description: 'Final championship game of the season!',
       sessionType: 'basketball',
@@ -660,6 +641,7 @@ async function main() {
     },
     // Group 3 (Charlie's Tennis Club) events
     {
+      id: 'seed-session-10',
       title: 'Private Tennis Clinic',
       description: 'Members-only tennis coaching session',
       sessionType: 'tennis',
@@ -685,11 +667,14 @@ async function main() {
 
   const createdEvents = [];
   for (const eventData of events) {
-    const event = await prisma.session.create({
-      data: {
-        ...eventData,
+    const { participants, ...sessionData } = eventData;
+    const event = await prisma.session.upsert({
+      where: { id: sessionData.id },
+      update: {},
+      create: {
+        ...sessionData,
         participants: {
-          create: eventData.participants
+          create: participants
         }
       }
     });
@@ -716,7 +701,6 @@ async function main() {
     },
     update: { status: 'waitlisted' },
     create: {
-      id: 'seed-event-participant-waitlisted-1',
       sessionId: weekendFootballEvent.id,
       userId: user4.id,
       status: 'waitlisted'
@@ -732,7 +716,6 @@ async function main() {
     },
     update: { status: 'co_organizer' },
     create: {
-      id: 'seed-event-participant-coorganizer-1',
       sessionId: springSoccerEvent.id,
       userId: user3.id,
       status: 'co_organizer'
