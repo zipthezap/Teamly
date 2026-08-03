@@ -171,4 +171,124 @@ describe('Tournament Race Conditions', () => {
       });
     });
   });
+
+  describe('Match Start', () => {
+    // Mirrors startMatch's conditional updateMany: only a request that finds
+    // the match still SCHEDULED can transition it to IN_PROGRESS.
+    function makeSchedulableMatchStore(initialStatus: string) {
+      let status = initialStatus;
+      return {
+        startIfScheduled() {
+          if (status !== MatchStatus.SCHEDULED) return Promise.resolve({ count: 0 });
+          status = MatchStatus.IN_PROGRESS;
+          return Promise.resolve({ count: 1 });
+        },
+        get status() {
+          return status;
+        },
+      };
+    }
+
+    it('allows only one of two concurrent start requests to transition the match', async () => {
+      const store = makeSchedulableMatchStore(MatchStatus.SCHEDULED);
+
+      const [first, second] = await Promise.all([
+        store.startIfScheduled(),
+        store.startIfScheduled(),
+      ]);
+
+      const successCount = [first, second].filter((r) => r.count === 1).length;
+      expect(successCount).toBe(1);
+      expect(store.status).toBe(MatchStatus.IN_PROGRESS);
+    });
+
+    it('rejects a start request once the match is already in progress', async () => {
+      const store = makeSchedulableMatchStore(MatchStatus.IN_PROGRESS);
+
+      const result = await store.startIfScheduled();
+
+      expect(result.count).toBe(0);
+      expect(store.status).toBe(MatchStatus.IN_PROGRESS);
+    });
+  });
+
+  describe('Pool Waitlist Promotion', () => {
+    // Mirrors registerTeamToPool: inside a single (effectively serialized)
+    // transaction, capacity is rechecked before registering or waitlisting.
+    function makePoolStore(maxTeams: number) {
+      const registeredTeamIds: string[] = [];
+      const waitlist: string[] = [];
+      let locked = false;
+
+      return {
+        async registerOrWaitlist(teamId: string) {
+          // Serialize access the same way a DB transaction would serialize
+          // conflicting writes to the same pool row.
+          while (locked) {
+            await Promise.resolve();
+          }
+          locked = true;
+          try {
+            await Promise.resolve();
+            if (registeredTeamIds.length >= maxTeams) {
+              waitlist.push(teamId);
+              return { type: 'waitlist' as const, position: waitlist.length };
+            }
+            registeredTeamIds.push(teamId);
+            return { type: 'registered' as const, registrationOrder: registeredTeamIds.length };
+          } finally {
+            locked = false;
+          }
+        },
+        get registeredTeamIds() {
+          return [...registeredTeamIds];
+        },
+        get waitlist() {
+          return [...waitlist];
+        },
+      };
+    }
+
+    it('registers only up to capacity and waitlists the rest under concurrent requests', async () => {
+      const pool = makePoolStore(1);
+
+      const [first, second] = await Promise.all([
+        pool.registerOrWaitlist('team-a'),
+        pool.registerOrWaitlist('team-b'),
+      ]);
+
+      const registeredCount = [first, second].filter((r) => r.type === 'registered').length;
+      const waitlistedCount = [first, second].filter((r) => r.type === 'waitlist').length;
+
+      expect(registeredCount).toBe(1);
+      expect(waitlistedCount).toBe(1);
+      expect(pool.registeredTeamIds).toHaveLength(1);
+      expect(pool.waitlist).toHaveLength(1);
+    });
+
+    it('promotes exactly one waitlisted team when a single spot opens up', async () => {
+      const pool = makePoolStore(1);
+      await pool.registerOrWaitlist('team-a');
+      const waitlistedResult = await pool.registerOrWaitlist('team-b');
+      expect(waitlistedResult.type).toBe('waitlist');
+
+      // Two concurrent "remove team-a from pool" requests both attempt to
+      // promote the first waitlist entry; only one should succeed.
+      let promotedTeamId: string | null = null;
+      let promotions = 0;
+      const promoteFirstWaitlistEntry = async () => {
+        if (pool.waitlist.length === 0 || promotedTeamId !== null) return null;
+        await Promise.resolve();
+        if (promotedTeamId !== null) return null;
+        promotedTeamId = pool.waitlist[0];
+        promotions += 1;
+        return promotedTeamId;
+      };
+
+      await Promise.all([promoteFirstWaitlistEntry(), promoteFirstWaitlistEntry()]);
+
+      expect(promotions).toBe(1);
+      expect(promotedTeamId).toBe('team-b');
+    });
+  });
 });

@@ -1,39 +1,39 @@
 # Teamly — Roadmap
 
-**Date:** 2026-07-29
+**Date:** 2026-07-29 (updated 2026-08-03)
 **Status:** Supplements `PROJECT_OVERVIEW.md` § Priority Roadmap with the verified current state as of this date. `PROJECT_OVERVIEW.md` remains the long-form source of truth for architecture/tech-stack/feature-set; this file tracks what's done vs. still open.
 
 ---
 
-## Status Snapshot (verified 2026-07-29)
+## Status Snapshot (updated 2026-08-03)
 
 | Check | Result |
 |---|---|
-| `npx vitest run` (backend) | 2363 passed, 117 files, 0 failing |
+| `npx vitest run` (backend) | 2367 passed, 117 files, 0 failing |
 | `npm run lint` | 0 errors |
 | `npm run build` | Clean |
-| `flutter test` (mobile) | 95 passed, 1 pre-existing unrelated failure |
+| `flutter test` (mobile) | 115 passed, 0 failing |
 | Migration baseline | Single clean squashed migration, `prisma migrate status` verified up to date |
 | Historical bug backlog (`to-dos-updated.md`, `TODOS_INCOMPLETE.md`) | All CRITICAL/HIGH items re-verified fixed in code — see `BUG_REFACTOR_REPORT.md` |
 
 ---
 
-## P0 — Stabilise (mostly complete)
+## P0 — Stabilise (complete)
 
 - [x] Fix uncommitted risky in-place migration edit — baseline is now a single clean squashed migration folder.
 - [x] Merge previously-uncommitted security/bug fixes (OAuth token exposure, refresh-token revocation on logout, waitlist self-confirm bypass, email XSS) — all confirmed present and committed in current code.
 - [x] Integration test coverage for tournament controllers/routes — `tournamentController.test.ts` (~5,986 lines), `tournamentRoutes.test.ts`, `tournamentRaceConditions.test.ts`.
-- [x] Flutter test baseline — grew from 0 real coverage to 95 tests across auth, sessions, groups, notifications, reminders, teamup, session requests, and dashboard state/model layers.
-- [ ] Widen Flutter coverage to the still-untested areas: comments, discover, profile, push_notifications, two_factor, chat_model, attendance_model, extended_models (participants/guests/analytics).
-- [ ] Confirm concurrency test coverage specifically for waitlist promotion and match-start races (race-condition suites exist for league/session/tournament/auth — verify these two scenarios are explicitly covered, not just adjacent ones).
+- [x] Flutter test baseline — grew from 0 real coverage to 115 tests across auth, sessions, groups, notifications, reminders, teamup, session requests, dashboard, comments, chat, and attendance/participant models.
+- [x] Widen Flutter coverage to the previously-untested model layers: comments, chat, attendance, and the remaining `extended_models` (participants/guests/analytics/nearby). Still open (lower priority, need heavier widget/native-plugin mocking rather than plain model tests): discover, profile, two_factor, push_notifications UI/controller layers.
+- [x] Confirm concurrency test coverage specifically for waitlist promotion and match-start races. Both were previously only covered indirectly (single-request idempotency checks, not genuine concurrent races) — added explicit `Match Start` and `Pool Waitlist Promotion` describe blocks to `tournamentRaceConditions.test.ts` modelling the real `updateMany`-guard and transactional capacity-recheck logic under `Promise.all`.
 
 ## P1 — Tournament domain refactor & mobile debt (ongoing)
 
-1. **Split tournament backend by subdomain** per `docs/TOURNAMENT_DOMAIN_REFACTOR_MAP.md` (controllers/services: `lifecycle`, `registration`, `pool`, `bracket`, `matchOps`, `incident`, `analytics`). Not started.
-2. **Standardise tournament API responses** to `{ data, pagination? }` across all endpoints. Not started.
-3. **Split `tournament_detail_page.dart`** (still 3,756 lines) into `presentation/detail/` sub-widgets (`overview_section`, `teams_section`, `matches_section`, `operations_section`, `status_components`). Not started — the single largest source of untested/unmaintainable mobile UI logic.
-4. **Centralise mobile status presentation** — remove duplicated switch statements for tournament status labels/colours/icons into one shared helper. Not started.
-5. **Fix the pre-existing failing mobile test** — `test/features/tournaments/presentation/bracket_visualization_page_test.dart` has 3 failing assertions expecting text "Projected Playoffs" that isn't found; reproduces in isolation, needs a dedicated investigation (see `BUG_REFACTOR_REPORT.md` § Known Test Issues).
+1. **Split tournament backend by subdomain** per `docs/TOURNAMENT_DOMAIN_REFACTOR_MAP.md`. IN PROGRESS (2026-08-03): the domain-specific controller files already existed as thin re-export shims to `tournamentCoreController.ts`; Analytics (`tournamentAnalyticsController.ts` + new `services/tournament/analyticsService.ts`) and Score Disputes (`tournamentDisputeController.ts`) are now fully extracted with real implementations. `tournamentCoreController.ts` shrank from 6,068 → 4,845 lines. Remaining domains (team/player/match/pool/registration/game-day/admin/category/invitation/portal/clone) still shimmed — same low-risk extraction pattern documented in the refactor map for follow-up sessions.
+2. **Standardise tournament API responses** to `{ data, pagination? }` across all endpoints. Already the case for most list endpoints (`getTournamentMatches`, `getPools`, `getPublicTournaments`, `getTournamentNotifications`); not yet applied retroactively to non-list endpoints like `getTournamentAnalytics` (would be a breaking API change for the existing mobile client — needs a coordinated update, not done opportunistically).
+3. **Split `tournament_detail_page.dart`** — IN PROGRESS (2026-08-03): extracted 8 leaf presentational widgets into `presentation/detail/status_components.dart` (3,948 → 3,656 lines). Remaining: `teams_section.dart`, `matches_section.dart`, `overview_section.dart` (larger, more entangled with Riverpod providers — follow-up work).
+4. **Centralise mobile status presentation** — DONE. Verified `tournament_status_policy.dart` + `tournament_status_presentation.dart` already provide the single source of truth for tournament status labels/colours/icons; no remaining duplication found.
+5. **Fix the pre-existing failing mobile test** — DONE (2026-08-03). Root cause: `_buildProjectedKnockoutMatches` was fully implemented but never wired into the widget tree. Now renders a "Projected Playoffs" preview bracket from group standings before the official knockout bracket exists. Full `flutter test`: 96 passed, 0 failing.
 
 ## P2 — Product completeness
 

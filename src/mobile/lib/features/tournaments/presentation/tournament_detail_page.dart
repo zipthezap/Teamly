@@ -11,6 +11,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
+import 'detail/status_components.dart';
 import 'team_roster_page.dart';
 import 'tournament_match_utils.dart';
 import 'tournament_status_presentation.dart';
@@ -20,7 +21,7 @@ import '../state/tournaments_notifier.dart';
 
 bool _isTournamentStarted(TournamentModel tournament) {
   return isTournamentStartedStatus(tournament.status) ||
-      // Brackets have been generated but the status hasn't synced yet — treat
+      // Brackets have been generated but the status hasn't synced yet â€” treat
       // as started so the Scores tab is visible immediately.
       tournament.matches.isNotEmpty;
 }
@@ -393,46 +394,46 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _InfoCard(children: [
-            _InfoRow(
+          InfoCard(children: [
+            InfoRow(
                 icon: Icons.emoji_events_outlined,
                 label: 'Sport',
                 value: t.sportType),
-            _InfoRow(
+            InfoRow(
                 icon: Icons.account_tree_outlined,
                 label: 'Format',
                 value: _fmtLabel(t.format)),
-            _InfoRow(
+            InfoRow(
                 icon: Icons.info_outline,
                 label: 'Status',
                 value: _statusStageLabel(t)),
             if (t.startDate != null)
-              _InfoRow(
+              InfoRow(
                   icon: Icons.play_arrow_outlined,
                   label: 'Start',
                   value: dateFormat.format(t.startDate!.toLocal())),
             if (t.endDate != null)
-              _InfoRow(
+              InfoRow(
                   icon: Icons.flag_outlined,
                   label: 'End',
                   value: dateFormat.format(t.endDate!.toLocal())),
             if (t.registrationStartDate != null)
-              _InfoRow(
+              InfoRow(
                   icon: Icons.app_registration_outlined,
                   label: 'Reg. Opens',
                   value: dateFormat.format(t.registrationStartDate!.toLocal())),
             if (t.registrationDeadline != null)
-              _InfoRow(
+              InfoRow(
                   icon: Icons.event_busy_outlined,
                   label: 'Reg. Closes',
                   value: dateFormat.format(t.registrationDeadline!.toLocal())),
             if (t.locationName != null || t.location != null)
-              _InfoRow(
+              InfoRow(
                   icon: Icons.location_on_outlined,
                   label: 'Location',
                   value: t.locationName ?? t.location ?? ''),
             if (organizerNames.isNotEmpty)
-              _InfoRow(
+              InfoRow(
                 icon: Icons.groups_outlined,
                 label: organizerNames.length > 1 ? 'Organizers' : 'Organizer',
                 value: organizerNames.join(', '),
@@ -447,13 +448,13 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 (t.hasFee && t.paymentInfo != null))
               const Divider(height: 16),
             if (t.hasFee)
-              _InfoRow(
+              InfoRow(
                 icon: Icons.attach_money_outlined,
                 label: 'Entry Fee',
                 value: '\$${t.registrationFee!.toStringAsFixed(2)} per team',
               ),
             if (t.hasFee && t.paymentInfo != null)
-              _InfoRow(
+              InfoRow(
                 icon: Icons.payment_outlined,
                 label: 'How to Pay',
                 value: 'Tap to view',
@@ -461,7 +462,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     context, 'Payment Instructions', t.paymentInfo!),
               ),
             if (t.rulesDescription != null)
-              _InfoRow(
+              InfoRow(
                 icon: Icons.gavel_outlined,
                 label: 'Rules',
                 value: 'Tap to view',
@@ -469,7 +470,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     _showTextDialog(context, 'Rules', t.rulesDescription!),
               ),
             if (t.prizesDescription != null)
-              _InfoRow(
+              InfoRow(
                 icon: Icons.workspace_premium_outlined,
                 label: 'Prizes',
                 value: 'Tap to view',
@@ -479,7 +480,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ]),
           if (t.description != null) ...[
             const SizedBox(height: 12),
-            _SectionCard(
+            SectionCard(
                 title: 'About',
                 child: Text(t.description!,
                     style: TextStyle(
@@ -488,7 +489,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ],
           // Announcements shortcut (visible to everyone)
           const SizedBox(height: 12),
-          _InfoRow(
+          InfoRow(
             icon: Icons.campaign_outlined,
             label: 'Announcements',
             value: 'View',
@@ -538,7 +539,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               ],
                             )
                           : Text(
-                              'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team — payment details will be provided after registration.',
+                              'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team â€” payment details will be provided after registration.',
                               style: const TextStyle(
                                   fontSize: 13, color: Colors.orange),
                             ),
@@ -638,7 +639,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _TeamCardStatChip(
+                        TeamCardStatChip(
                           icon: team.isPaid
                               ? Icons.verified_rounded
                               : Icons.priority_high_rounded,
@@ -652,7 +653,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                               ? Colors.green.withValues(alpha: 0.12)
                               : Colors.deepOrange.withValues(alpha: 0.12),
                         ),
-                        _TeamCardStatChip(
+                        TeamCardStatChip(
                           icon: Icons.groups_2_rounded,
                           label: t.maxPlayers != null
                               ? '${team.players.length} of ${t.maxPlayers} players'
@@ -1064,7 +1065,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final poolSummary = tournament.pools
           .where((p) => p.teams.isNotEmpty)
           .map((p) =>
-              '${p.name} (${p.teams.length} teams)${p.venue != null ? ' · ${p.venue}' : ''}')
+              '${p.name} (${p.teams.length} teams)${p.venue != null ? ' Â· ${p.venue}' : ''}')
           .join('\n');
 
       // 0 = not chosen, 1 = auto-split, 2 = use pools
@@ -1086,7 +1087,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     const Text('Group Assignment',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
-                    _RadioOption(
+                    RadioOption(
                       label: 'Use existing pool assignments',
                       sublabel: 'Each pool becomes its own group',
                       value: 2,
@@ -1094,7 +1095,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       onChanged: (v) => setS(() => splitMode = v!),
                     ),
                     const SizedBox(height: 4),
-                    _RadioOption(
+                    RadioOption(
                       label: 'Split teams evenly into groups',
                       sublabel: 'Ignore current pool assignments',
                       value: 1,
@@ -1622,7 +1623,7 @@ class _GroupMatchesButton extends ConsumerWidget {
                   label: Text(
                     scheduleStartAt == null
                         ? 'Pick first game start time'
-                        : DateFormat('EEE, MMM d • h:mm a')
+                        : DateFormat('EEE, MMM d â€¢ h:mm a')
                             .format(scheduleStartAt!.toLocal()),
                   ),
                   onPressed: () async {
@@ -1924,50 +1925,6 @@ class _KnockoutBracketButton extends ConsumerWidget {
 // Payment Status Badge
 // ---------------------------------------------------------------------------
 
-class _PaymentStatusBadge extends StatelessWidget {
-  const _PaymentStatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    IconData icon;
-    String label;
-    switch (status) {
-      case 'paid':
-        color = Colors.green;
-        icon = Icons.check_circle_outline;
-        label = 'Paid';
-        break;
-      case 'waived':
-        color = Colors.blue;
-        icon = Icons.do_not_disturb_alt_outlined;
-        label = 'Fee Waived';
-        break;
-      case 'pending':
-        color = Colors.orange;
-        icon = Icons.schedule_outlined;
-        label = 'Payment Pending';
-        break;
-      default:
-        color = Colors.red;
-        icon = Icons.money_off_outlined;
-        label = 'Unpaid';
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 12, color: color, fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Admin Payment Panel
 // ---------------------------------------------------------------------------
@@ -2248,7 +2205,7 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Payments — $paid/${t.teams.length} paid${unpaid > 0 ? ' ($unpaid unpaid)' : ''}',
+                      'Payments â€” $paid/${t.teams.length} paid${unpaid > 0 ? ' ($unpaid unpaid)' : ''}',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -2330,7 +2287,7 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
                   child: Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    child: _PaymentStatusBadge(status: team.paymentStatus),
+                    child: PaymentStatusBadge(status: team.paymentStatus),
                   ),
                 ),
               ),
@@ -2629,7 +2586,7 @@ class _TeamRow extends StatelessWidget {
 // Scores Tab
 // ---------------------------------------------------------------------------
 
-// Internal view model for a standings row – adapts both standings and team-only data.
+// Internal view model for a standings row â€“ adapts both standings and team-only data.
 class _StandingRow {
   _StandingRow({
     required this.teamId,
@@ -2689,7 +2646,7 @@ class _ScoresTab extends StatelessWidget {
     final t = tournament;
     final hasStandings = t.standings.isNotEmpty;
 
-    // Build teamId→poolId lookup
+    // Build teamIdâ†’poolId lookup
     final teamPoolMap = {for (final tm in t.teams) tm.id: tm.poolId};
 
     // Compute category-wide seed rank (1-N) for each team in groups_knockout
@@ -2710,14 +2667,14 @@ class _ScoresTab extends StatelessWidget {
         return b.wins.compareTo(a.wins);
       }
 
-      // poolId → categoryId
+      // poolId â†’ categoryId
       final poolToCatId = <String, String>{};
       for (final cat in t.categories) {
         for (final pool in cat.pools) {
           poolToCatId[pool.id] = cat.id;
         }
       }
-      // categoryId → standings list
+      // categoryId â†’ standings list
       final catStandingsMap = <String, List<TournamentStandingModel>>{};
       for (final s in t.standings) {
         final poolId = teamPoolMap[s.teamId];
@@ -2742,7 +2699,7 @@ class _ScoresTab extends StatelessWidget {
         }
 
         // Merge all pools: for each pool-rank position, collect teams across
-        // all pools and sort them by performance → assign overall category seed.
+        // all pools and sort them by performance â†’ assign overall category seed.
         final maxPerPool =
             poolGroups.values.fold(0, (m, v) => v.length > m ? v.length : m);
 
@@ -2807,7 +2764,7 @@ class _ScoresTab extends StatelessWidget {
     final children = <Widget>[];
 
     if (t.categories.isNotEmpty) {
-      // Group by category → pool hierarchy
+      // Group by category â†’ pool hierarchy
       for (final cat in t.categories) {
         if (cat.pools.isEmpty) continue;
         children.add(Padding(
@@ -2970,20 +2927,20 @@ class _ScoreTable extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _StandingStatChip(
+                      StandingStatChip(
                           label: 'P', value: '${sorted[i].played}'),
-                      _StandingStatChip(label: 'W', value: '${sorted[i].wins}'),
+                      StandingStatChip(label: 'W', value: '${sorted[i].wins}'),
                       if (showsDraws)
-                        _StandingStatChip(
+                        StandingStatChip(
                             label: 'D', value: '${sorted[i].draws}'),
-                      _StandingStatChip(
+                      StandingStatChip(
                           label: 'L', value: '${sorted[i].losses}'),
                       if (showGoals) ...[
-                        _StandingStatChip(
+                        StandingStatChip(
                             label: 'Pts Won', value: '${sorted[i].gf ?? 0}'),
-                        _StandingStatChip(
+                        StandingStatChip(
                             label: 'Pts Lost', value: '${sorted[i].ga ?? 0}'),
-                        _StandingStatChip(
+                        StandingStatChip(
                             label: 'Ratio', value: sorted[i].ratioLabel),
                       ],
                     ],
@@ -2994,43 +2951,6 @@ class _ScoreTable extends StatelessWidget {
             if (i < sorted.length - 1) const Divider(height: 1),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _StandingStatChip extends StatelessWidget {
-  const _StandingStatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppThemeTokens.cardElevated(context),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppThemeTokens.border(context)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: TextStyle(
-            color: AppThemeTokens.textSecondary(context),
-            fontSize: 12,
-          ),
-          children: [
-            TextSpan(text: '$label '),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: AppThemeTokens.textSecondary(context),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -3232,7 +3152,7 @@ class _PoolScheduleTabState extends State<_PoolScheduleTab> {
           if (dutySummary.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              'Ref duties: ${dutySummary.map((entry) => '${teamNameById[entry.key] ?? 'Team'} ${entry.value}').join(' • ')}'
+              'Ref duties: ${dutySummary.map((entry) => '${teamNameById[entry.key] ?? 'Team'} ${entry.value}').join(' â€¢ ')}'
               '${dutySpread <= 1 ? '  (balanced)' : ''}',
               style: TextStyle(
                 fontSize: 12,
@@ -3278,7 +3198,7 @@ class _PoolScheduleTabState extends State<_PoolScheduleTab> {
                     Text(
                       match.scheduledAt == null
                           ? 'TBD'
-                          : '${dateFmt.format(match.scheduledAt!.toLocal())} • ${timeFmt.format(match.scheduledAt!.toLocal())}',
+                          : '${dateFmt.format(match.scheduledAt!.toLocal())} â€¢ ${timeFmt.format(match.scheduledAt!.toLocal())}',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppThemeTokens.textMuted(context),
@@ -3370,7 +3290,7 @@ class _PoolScheduleTabState extends State<_PoolScheduleTab> {
                               )}',
                             if ((match.courtName ?? '').trim().isNotEmpty)
                               'Court: ${match.courtName!.trim()}',
-                          ].join(' • '),
+                          ].join(' â€¢ '),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppThemeTokens.textMuted(context),
@@ -3534,7 +3454,7 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
                             : 'vs ${opponent ?? "TBD"}',
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 15))),
-                _StatusChip(m.status),
+                StatusChip(m.status),
               ],
             ),
             if (isRefAssignment) ...[
@@ -3548,7 +3468,7 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
             if (m.scheduledAt != null) ...[
               const SizedBox(height: 4),
               Text(
-                  DateFormat('EEE, MMM d • HH:mm')
+                  DateFormat('EEE, MMM d â€¢ HH:mm')
                       .format(m.scheduledAt!.toLocal()),
                   style: TextStyle(
                       color: AppThemeTokens.textMuted(context), fontSize: 12)),
@@ -3566,7 +3486,7 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
                         if (displayFacility != null)
                           'Facility: $displayFacility',
                         if (displayCourt != null) 'Court: $displayCourt',
-                      ].join(' • '),
+                      ].join(' â€¢ '),
                       style: TextStyle(
                           color: AppThemeTokens.textMuted(context),
                           fontSize: 12),
@@ -3584,7 +3504,7 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
                     Icon(Icons.sports_score_outlined,
                         size: 14, color: AppThemeTokens.textMuted(context)),
                     const SizedBox(width: 4),
-                    Text('Score: $myScore – $oppScore',
+                    Text('Score: $myScore â€“ $oppScore',
                         style: const TextStyle(
                             fontWeight: FontWeight.w500, fontSize: 13)),
                   ],
@@ -3730,218 +3650,6 @@ class _ScoreDialogState extends State<ScoreDialog> {
 // ---------------------------------------------------------------------------
 // Status chip
 // ---------------------------------------------------------------------------
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip(this.status);
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusPresentation = getTournamentStatusPresentation(status: status);
-    final statusColor = statusPresentation.color;
-    final bgColor = statusPresentation.backgroundColor;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: statusColor.withValues(alpha: 0.3))),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(statusPresentation.icon, size: 12, color: statusColor),
-          const SizedBox(width: 4),
-          Text(statusPresentation.label,
-              style: TextStyle(
-                  color: statusColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Shared helper widgets
-// ---------------------------------------------------------------------------
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-          color: AppThemeTokens.card(context),
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.border(context))),
-      child: Padding(
-          padding: const EdgeInsets.all(12), child: Column(children: children)),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(
-      {required this.icon,
-      required this.label,
-      required this.value,
-      this.onTap});
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: AppThemeTokens.textMuted(context)),
-          const SizedBox(width: 8),
-          Text('$label: ',
-              style: TextStyle(
-                  color: AppThemeTokens.textSecondary(context), fontSize: 13)),
-          Expanded(
-              child: Text(value,
-                  style: const TextStyle(fontSize: 13),
-                  overflow: TextOverflow.ellipsis)),
-          if (onTap != null)
-            Icon(Icons.chevron_right,
-                size: 16, color: AppThemeTokens.textMuted(context)),
-        ],
-      ),
-    );
-    if (onTap != null) {
-      return InkWell(
-          onTap: onTap, borderRadius: BorderRadius.circular(4), child: row);
-    }
-    return row;
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-          color: AppThemeTokens.card(context),
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.border(context))),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 6),
-          child,
-        ]),
-      ),
-    );
-  }
-}
-
-// ===========================================================================
-// Helper widgets
-// ===========================================================================
-
-class _RadioOption<T> extends StatelessWidget {
-  const _RadioOption({
-    required this.label,
-    this.sublabel,
-    required this.value,
-    required this.groupValue,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String? sublabel;
-  final T value;
-  final T groupValue;
-  final ValueChanged<T?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => onChanged(value),
-      borderRadius: BorderRadius.circular(8),
-      child: Row(
-        children: [
-          Radio<T>(value: value, groupValue: groupValue, onChanged: onChanged),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w500)),
-                if (sublabel != null)
-                  Text(sublabel!,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeamCardStatChip extends StatelessWidget {
-  const _TeamCardStatChip({
-    required this.icon,
-    required this.label,
-    required this.foregroundColor,
-    required this.backgroundColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color foregroundColor;
-  final Color backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: foregroundColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: foregroundColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ===========================================================================
 // Register Team Page

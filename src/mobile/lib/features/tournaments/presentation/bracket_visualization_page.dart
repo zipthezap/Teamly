@@ -177,6 +177,33 @@ class _GroupsKnockoutView extends StatelessWidget {
     final groupMatches = tournament.matches.where(isGroupStageMatch).toList();
     final allGroupMatchesCompleted =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+
+    // If standings are already available, project the likely knockout
+    // matchups from current group rankings so organisers/players get a
+    // preview before the official bracket is generated.
+    final projectedMatches = _buildProjectedKnockoutMatches(tournament);
+    if (projectedMatches.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: _StageSectionHeader(
+              title: 'Projected Playoffs',
+              subtitle:
+                  'Based on current standings — the official bracket will be generated once group play finishes.',
+            ),
+          ),
+          Expanded(
+            child: _KnockoutBracketView(
+              matches: projectedMatches,
+              useGroupsKnockoutLabels: true,
+            ),
+          ),
+        ],
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [

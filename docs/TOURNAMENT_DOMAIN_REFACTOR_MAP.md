@@ -85,3 +85,20 @@ This map defines target bounded contexts for tournament features and the current
 - Lifecycle/status rules must be edited in lifecycle policy files first (backend + mobile adapters), not inline in pages/controllers.
 - Route handlers stay orchestration-only; domain validation and transitions move to domain services.
 - New tournament endpoints should follow `{ data, pagination? }` response shape for consistency.
+
+## Migration Status (updated 2026-08-03)
+
+The `src/backend/tournament-service/controllers/tournament/*Controller.ts` files already exist as the target file layout, but most were still thin re-export shims pointing back into the monolithic `tournamentCoreController.ts`. Migration proceeds by moving real implementations into each domain file (not just renaming), verified via the full tournament test suite (route tests exercise the HTTP layer via supertest, so moving code between files is behavior-invisible as long as `index.ts` still re-exports the same names).
+
+Done:
+- **Analytics** — `getTournamentAnalytics` now lives in `tournamentAnalyticsController.ts`, with the aggregation query/computation extracted into `services/tournament/analyticsService.ts` (`computeTournamentAnalytics`). `getPublicTournaments`, `getTournamentNotifications`, `getPlayerStats`, `upsertPlayerStat` remain shimmed from Core (they don't belong to the analytics domain and weren't moved in this pass).
+- **Score Disputes** — `createScoreDispute`, `getMatchDisputes`, `resolveScoreDispute` fully moved into `tournamentDisputeController.ts`. `notifyMatchResultToCaptains` and `maybeAutoGenerateGroupsKnockoutBrackets` were exported from `tournamentCoreController.ts` (still shared with match-ops `submitScore`/`adminUpdateScore`) rather than duplicated.
+
+Still shimmed from `tournamentCoreController.ts` (not yet moved) — `tournamentTeamController.ts`, `tournamentPlayerController.ts`, `tournamentMatchController.ts`, `tournamentPoolController.ts`, `tournamentRegistrationController.ts`, `tournamentGameDayController.ts`, `tournamentAdminController.ts` (partially — some already implemented directly), `tournamentCategoryController.ts`, `tournamentInvitationController.ts`, `tournamentPortalController.ts`, `tournamentCloneController.ts`. `tournamentCoreController.ts` itself shrank from 6,068 → 4,845 lines after this pass; remaining domains are larger and more entangled with shared helpers (`assertCanViewTournament`, `assertTournamentSetupEditable`, schedule-overlap helpers, lifecycle reconciliation) and should be extracted incrementally following the same pattern: export shared helpers from Core first, then move the domain's functions verbatim, then re-run the full tournament test suite + `npm run build` + `npm run lint` before moving to the next domain.
+
+### Mobile status (updated 2026-08-03)
+
+- **Status presentation (item 4)** — already centralized before this pass: `tournament_status_policy.dart` (labels/lifecycle rules) + `tournament_status_presentation.dart` (`getTournamentStatusPresentation` → label/icon/color/backgroundColor) are the single source of truth and are used consistently; no further action needed.
+- **`tournament_detail_page.dart` split (item 3)** — in progress. Extracted the purely-presentational leaf widgets (`PaymentStatusBadge`, `StandingStatChip`, `StatusChip`, `InfoCard`, `InfoRow`, `SectionCard`, `RadioOption<T>`, `TeamCardStatChip`) into `presentation/detail/status_components.dart` (3,948 → 3,656 lines). Remaining candidates for `teams_section.dart`, `matches_section.dart`, and `overview_section.dart` are identified but not yet moved (see repo memory notes) — they're larger and reference Riverpod providers/parent callbacks, so need more careful dependency tracing than the leaf-widget slice.
+
+
